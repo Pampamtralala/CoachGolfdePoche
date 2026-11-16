@@ -24,7 +24,7 @@
   function effacerCartes() { GEO.cartes = {}; try { localStorage.removeItem(CLE_GEO); } catch (e) { /* rien */ } }
 
   /* ---------- Position suivie pendant la partie ---------- */
-  var POS = { veille: null, ll: null, pr: null, t: 0, main: null };
+  var POS = { veille: null, ll: null, pr: null, t: 0, main: null, abonnes: [] };
   function suiviVoulu() { return ui.partie === "saisie" && !!etat.partie && gpsPossible() && document.visibilityState !== "hidden"; }
   function arreterSuivi() { if (POS.veille != null) { try { navigator.geolocation.clearWatch(POS.veille); } catch (e) { /* rien */ } POS.veille = null; } }
   function majSuivi() {
@@ -39,11 +39,64 @@
   function surPosition(p) {
     var ll = [p.coords.latitude, p.coords.longitude], now = Date.now();
     if (!nombre(ll[0]) || !nombre(ll[1])) return;
+    POS.abonnes.slice().forEach(function (f) { f(ll, Math.max(1, Math.round(p.coords.accuracy || 0))); });
     if (POS.ll && now - POS.t < 900 && dist2(projeter(POS.ll, ll[0], ll[1]), [0, 0]) < 2) return;
     POS.ll = ll; POS.pr = Math.max(1, Math.round(p.coords.accuracy || 0)); POS.t = now;
     majCarteDirect();
   }
   document.addEventListener("visibilitychange", majSuivi);
+
+  /* Position prise APRÈS le toucher : une position gardée d'avant n'est jamais utilisée, sauf si elle a moins de o.age ms.
+     o.n : nombre de points GPS à moyenner ; o.prMax : précision visée (m) ; o.attente : délai maximal (ms).
+     fin(ll, précision, erreur) : ll arrondi au millionième, ou null. */
+  function positionFraiche(fin, o) {
+    o = o || {};
+    var N = o.n || 1, prMax = o.prMax || 30, pts = [], fini = false, tm = null, err = null;
+    var terminer = function () {
+      if (fini) return; fini = true;
+      if (tm) clearTimeout(tm);
+      POS.abonnes = POS.abonnes.filter(function (f) { return f !== recevoir; });
+      if (!pts.length) { fin(null, null, err); return; }
+      /* Moyenne des meilleurs points, pondérée par la précision. */
+      var best = Math.min.apply(null, pts.map(function (q) { return q.pr; })), garde = pts.filter(function (q) { return q.pr <= Math.max(best * 1.5, best + 3); });
+      var w = 0, la = 0, lo = 0;
+      garde.forEach(function (q) { var k = 1 / (q.pr * q.pr); w += k; la += q.ll[0] * k; lo += q.ll[1] * k; });
+      var pr = Math.max(1, Math.round(best / Math.sqrt(garde.length)));
+      fin([Math.round(la / w * 1e6) / 1e6, Math.round(lo / w * 1e6) / 1e6], pr, null);
+    };
+    var recevoir = function (ll, pr) {
+      if (fini) return;
+      pts.push({ ll: ll, pr: pr });
+      if (pts.filter(function (q) { return q.pr <= prMax; }).length >= N) terminer();
+    };
+    if (o.age && POS.ll && Date.now() - POS.t <= o.age) recevoir(POS.ll.slice(), POS.pr);
+    if (fini) return;
+    POS.abonnes.push(recevoir);
+    tm = setTimeout(terminer, o.attente || 12000);
+    try {
+      navigator.geolocation.getCurrentPosition(function (p) {
+        if (nombre(p.coords.latitude) && nombre(p.coords.longitude)) recevoir([p.coords.latitude, p.coords.longitude], Math.max(1, Math.round(p.coords.accuracy || 0)));
+      }, function (e) {
+        err = e;
+        if (e && e.code === 1) { GPS.refuse = true; terminer(); }
+      }, { enableHighAccuracy: true, timeout: o.attente || 12000, maximumAge: 0 });
+    } catch (e) { err = e; terminer(); }
+  }
+
+  /* ---------- Apprentissage : drapeau en fin de trou, départ au premier coup ---------- */
+  function jourDuJour() { return Math.floor(Date.now() / 864e5); }
+  function apprendreFinTrou() {
+    var x = ctxCarte();
+    if (!x || !x.carte || !x.trou || !POS.ll || Date.now() - POS.t > 10000 || POS.pr > 12) return;
+    var r = noterFinTrou(x.carte, x.h, projeter(x.carte.o, POS.ll[0], POS.ll[1]), jourDuJour());
+    if (!r) return;
+    poserCarte(x.pc.id, x.carte);
+    if (r === "appris") message("Green du trou " + (x.h + 1) + " affiné d'après tes parties : les distances sont plus justes.");
+  }
+  function apprendreDepart(ll) {
+    var x = ctxCarte(); if (!x || !x.carte || !ll) return;
+    if (noterDepart(x.carte, x.h, projeter(x.carte.o, ll[0], ll[1]), jourDuJour())) poserCarte(x.pc.id, x.carte);
+  }
 
   /* Le trou en cours, son parcours et sa carte. */
   function ctxCarte() {
@@ -54,9 +107,10 @@
   /* Position du joueur dans le repère de la carte : le GPS s'il est sur le trou, sinon le point posé du doigt sur ce trou. */
   function positionJoueur(x) {
     if (!x || !x.carte) return null;
-    if (POS.ll && Date.now() - POS.t < 120000) {
+    /* Une position de plus de 20 secondes ne sert plus aux distances : le joueur a pu marcher. */
+    if (POS.ll && Date.now() - POS.t < 20000) {
       var q = projeter(x.carte.o, POS.ll[0], POS.ll[1]);
-      if (!x.trou || dist2(q, centrePoly(dePlat(x.trou.g))) <= 1500) return { q: q, gps: true, pr: POS.pr };
+      if (!x.trou || dist2(q, centrePoly(dePlat(x.trou.g))) <= 1500) return { q: q, gps: true, pr: POS.pr, age: Math.round((Date.now() - POS.t) / 1000) };
     }
     var m = POS.main;
     return m && x.pc && m.pc === x.pc.id && m.h === x.h ? { q: m.q, gps: false, pr: null } : null;
@@ -74,7 +128,7 @@
   function emfEtat(x, pos, d) {
     if (!x.trou) return gpsPossible() ? "Green à relever sur place" : "Green absent de la carte";
     if (d && d.sur) return "Tu es sur le green";
-    if (pos && pos.gps) return (x.trou.est ? "Green estimé · " : "") + "GPS ± " + pos.pr + " m";
+    if (pos && pos.gps) return (x.trou.est ? "Green estimé · " : x.trou.app ? "Green appris · " : "") + (pos.age > 8 ? "GPS d'il y a " + pos.age + " s" : "GPS ± " + pos.pr + " m");
     if (pos) return "Position posée à la main";
     if (gpsPossible()) return POS.ll ? "Tu es loin de ce trou" : "Recherche du GPS…";
     return "Touche pour te placer";
@@ -109,6 +163,21 @@
   /* ---------- Carte du trou ---------- */
   var VUE = null;   /* dernière carte dessinée : repère et échelle, pour retrouver le point touché */
   function chemin(pts) { return "M" + pts.map(function (q) { return q[0].toFixed(1) + " " + q[1].toFixed(1); }).join("L") + "Z"; }
+  /* Photo aérienne de l'IGN sous la carte. rep : rotation de la vue ; k : pixels par mètre ; (cxv, cyv) : centre de la vue.
+     Rien dans claude.ai (images extérieures interdites), hors de France, ou si le joueur a choisi le plan. */
+  function photoOk(c) { return !dansCadre() && etat.cartePhoto !== false && !!c && photoPossible(c.o); }
+  function photoCouche(c, rep, k, cxv, cyv, W, H) {
+    if (!photoOk(c)) return "";
+    var coins = [[0, 0], [W, 0], [0, H], [W, H]].map(function (p) { return depuisVue(rep, [cxv + (p[0] - W / 2) / k, cyv - (p[1] - H / 2) / k]); });
+    var tu = tuilesPour(c.o, coins, zoomPhoto(c.o, k * 1.25), 40); if (!tu.length) return "";
+    var a = k * rep.cos, b = -k * rep.sin, cc = -k * rep.sin, d = -k * rep.cos;
+    var e = W / 2 + k * (-rep.cx * rep.cos + rep.cy * rep.sin - cxv), f = H / 2 + k * (rep.cx * rep.sin + rep.cy * rep.cos + cyv);
+    var n = function (v) { return v.toFixed(4); };
+    return '<g class="cp-photo" transform="matrix(' + [a, b, cc, d, e, f].map(n).join(" ") + ')">' + tu.map(function (t) {
+      var sx = (t.x1 - t.x0) * 1.004, sy = (t.y1 - t.y0) * 1.004;
+      return '<image href="' + at(t.url) + '" width="1" height="1" preserveAspectRatio="none" transform="matrix(' + [sx, 0, 0, -sy, t.x0, t.y1].map(n).join(" ") + ')"/>';
+    }).join("") + '</g>';
+  }
   function cartePlanHTML() {
     var x = ctxCarte(), tr = x.trou, pos = positionJoueur(x);
     if (!tr) { VUE = null; return '<p class="carte-vide">' + t("Ce trou n'a pas encore de green sur la carte.") + '</p>'; }
@@ -135,9 +204,10 @@
     VUE = { rep: rep, k: k, cxv: cxv, cyv: cyv, W: W, H: H };
     var formes = function (ls, cls) { return ls.map(function (f) { return '<path class="' + cls + '" d="' + chemin(f.map(S)) + '"/>'; }).join(""); };
     var d = pos ? distancesGreen(pos.q, dePlat(tr.g)) : null;
-    var h = '<svg class="cp" viewBox="0 0 ' + W + ' ' + H + '" data-k="' + k.toFixed(4) + '" role="img" aria-label="' + at("Carte du trou, le jeu vers le haut. " + emfAria(x, pos, d).replace(". Ouvrir la carte du trou", "")) + '">' +
+    var photo = photoCouche(x.carte, rep, k, cxv, cyv, W, H);
+    var h = '<svg class="cp' + (photo ? " photo" : "") + '" viewBox="0 0 ' + W + ' ' + H + '" data-k="' + k.toFixed(4) + '" role="img" aria-label="' + at("Carte du trou, le jeu vers le haut" + (photo ? ", sur photo aérienne" : "") + ". " + emfAria(x, pos, d).replace(". Ouvrir la carte du trou", "")) + '">' +
       '<clipPath id="cp-cadre"><rect width="' + W + '" height="' + H + '" rx="16"/></clipPath><g clip-path="url(#cp-cadre)">' +
-      '<rect class="cp-fond" width="' + W + '" height="' + H + '"/>' + formes(fw, "cp-fairway") + formes(eau, "cp-eau") + formes(dp, "cp-depart") + formes(bk, "cp-bunker") +
+      '<rect class="cp-fond" width="' + W + '" height="' + H + '"/>' + photo + formes(fw, "cp-fairway") + formes(eau, "cp-eau") + formes(dp, "cp-depart") + formes(bk, "cp-bunker") +
       '<path class="cp-green' + (tr.est ? " est" : "") + '" d="' + chemin(g.map(S)) + '"/>';
     /* Cercles de distance au milieu du green, tous les 50 m. */
     if (!zoom) for (var rc = 50; rc * k < Math.max(W, H) && rc <= 500; rc += 50) {
@@ -145,7 +215,14 @@
       h += '<circle class="cp-cercle" cx="' + cc[0].toFixed(1) + '" cy="' + cc[1].toFixed(1) + '" r="' + (rc * k).toFixed(1) + '"/>' +
         (ly < H - 4 ? '<text class="cp-cercle-lib" x="' + (cc[0] + 4).toFixed(1) + '" y="' + ly.toFixed(1) + '">' + rc + '</text>' : '');
     }
-    if (l && !zoom) h += '<polyline class="cp-ligne" points="' + l.concat([[0, 0]]).map(function (q) { var s = S(q); return s[0].toFixed(1) + "," + s[1].toFixed(1); }).join(" ") + '"/>';
+    if (l && !zoom) {
+      var sd = S(l[0]);
+      h += '<polyline class="cp-ligne" points="' + l.concat([[0, 0]]).map(function (q) { var s = S(q); return s[0].toFixed(1) + "," + s[1].toFixed(1); }).join(" ") + '"/>' +
+        '<g class="cp-tee"><rect x="' + (sd[0] - 6).toFixed(1) + '" y="' + (sd[1] - 6).toFixed(1) + '" width="12" height="12" rx="3"/><text x="' + sd[0].toFixed(1) + '" y="' + (sd[1] + 4).toFixed(1) + '" text-anchor="middle">D</text></g>';
+    }
+    /* Green en cours de dessin sur la photo */
+    var De = ui.carteDessin && ui.carteDessin.pc === x.pc.id && ui.carteDessin.h === x.h ? ui.carteDessin : null;
+    if (De && De.e) { var se = S(V(De.e)); h += '<circle class="cp-bord dessin" cx="' + se[0].toFixed(1) + '" cy="' + se[1].toFixed(1) + '" r="6"/>'; }
     var c0 = S([0, 0]);
     h += '<circle class="cp-milieu" cx="' + c0[0].toFixed(1) + '" cy="' + c0[1].toFixed(1) + '" r="3"/>';
     if (moi && d && !d.sur) {
@@ -174,7 +251,8 @@
       '<p class="carte-etat">' + t(emfEtat(x, pos, d)) + '</p>';
   }
   function carteInfo() {
-    var x = ctxCarte(), pos = positionJoueur(x), M = ui.carteMesure;
+    var x = ctxCarte(), pos = positionJoueur(x), M = ui.carteMesure, De = ui.carteDessin;
+    if (De && De.pc === x.pc.id && De.h === x.h) return De.e ? "Touche maintenant le fond du green, au bout opposé." : "Touche l'entrée du green sur la photo : le bord le plus proche du départ.";
     if (!x.trou) return "";
     if (M && M.pc === x.pc.id && M.h === x.h) {
       var reste = Math.round(dist2(M.q, centrePoly(dePlat(x.trou.g))));
@@ -189,8 +267,9 @@
     var R = ui.releve && ui.releve.pc === x.pc.id && ui.releve.h === x.h ? ui.releve : {};
     return '<div class="carte-releve"><h4>' + t(x.trou && x.trou.est ? "Green estimé : le relever" : x.trou ? "Refaire le relevé du green" : "Relever ce green") + '</h4>' +
       '<p class="aide">' + t("Marche jusqu'à l'entrée du green et marque-la, puis fais de même au fond. Deux touchers, une fois pour toutes.") + '</p>' +
-      '<div class="carte-releve-b"><button class="btn" type="button" data-a="carte-releve" data-v="e" aria-pressed="' + !!R.e + '">' + t(R.e ? "Entrée marquée ✓" : "Je suis à l'entrée") + '</button>' +
-      '<button class="btn" type="button" data-a="carte-releve" data-v="f" aria-pressed="' + !!R.f + '">' + t(R.f ? "Fond marqué ✓" : "Je suis au fond") + '</button></div>' +
+      '<div class="carte-releve-b"><button class="btn" type="button" data-a="carte-releve" data-v="e" aria-pressed="' + !!R.e + '"' + (R.attente ? " disabled" : "") + '>' + t(R.attente === "e" ? "Mesure GPS…" : R.e ? "Entrée marquée ✓" : "Je suis à l'entrée") + '</button>' +
+      '<button class="btn" type="button" data-a="carte-releve" data-v="f" aria-pressed="' + !!R.f + '"' + (R.attente ? " disabled" : "") + '>' + t(R.attente === "f" ? "Mesure GPS…" : R.f ? "Fond marqué ✓" : "Je suis au fond") + '</button></div>' +
+      (R.attente ? '<p class="aide" role="status">' + t("Reste immobile quelques secondes : l'appli prend trois points GPS et en fait la moyenne.") + '</p>' : '') +
       (R.msg ? '<p class="erreur" role="alert">' + t(R.msg) + '</p>' : '') + '</div>';
   }
   function carteReglagesHTML() {
@@ -199,6 +278,13 @@
       h += '<div class="carte-reglages">' + choixLigne("carte-zoom", [{ v: "trou", t: "Trou entier" }, { v: "green", t: "Green" }], ui.carteZoom === "green" ? "green" : "trou");
       if (!(pos && pos.gps)) h += choixLigne("carte-mode", [{ v: "position", t: "Me placer" }, { v: "mesure", t: "Mesurer" }], ui.carteMode === "mesure" ? "mesure" : "position");
       h += '</div>';
+    }
+    if (x.carte && !dansCadre() && photoPossible(x.carte.o)) {
+      h += '<div class="carte-reglages">' + choixLigne("carte-fond", [{ v: "plan", t: "Plan" }, { v: "photo", t: "Photo aérienne" }], etat.cartePhoto !== false ? "photo" : "plan") + '</div>';
+      if (etat.cartePhoto !== false && x.trou) {
+        var De = ui.carteDessin && ui.carteDessin.pc === x.pc.id && ui.carteDessin.h === x.h;
+        h += '<button class="btn large" type="button" data-a="carte-dessin" aria-pressed="' + !!De + '">' + t(De ? "Annuler le dessin du green" : x.trou ? "Redessiner le green sur la photo" : "Dessiner le green sur la photo") + '</button>';
+      }
     }
     return h + releveHTML(x);
   }
@@ -210,7 +296,7 @@
       '<div class="carte-plan" id="carte-plan" data-a="carte-toucher">' + cartePlanHTML() + '</div>' +
       '<p class="carte-info" id="carte-info" aria-live="polite">' + t(carteInfo()) + '</p>' +
       '<div id="carte-reglages">' + carteReglagesHTML() + '</div>' +
-      '<p class="carte-credit">' + t(x.carte && x.carte.src === "releve" ? "Greens relevés sur place." : "Carte : © les contributeurs d'OpenStreetMap.") + '</p>' +
+      '<p class="carte-credit">' + t((x.carte && x.carte.src === "releve" ? "Greens relevés sur place." : "Carte : © les contributeurs d'OpenStreetMap.") + (photoOk(x.carte) ? " Photo aérienne : © IGN." : "")) + '</p>' +
       '<div class="pv-panneau-pied"><button class="btn" type="button" data-a="carte-fermer">Fermer</button>' +
       (x.trou && modeSaisie() !== "express" ? '<button class="btn principal" type="button" data-a="sjc-ouvrir">Se joue comme</button>' : '') + '</div></div>';
   }
@@ -226,21 +312,36 @@
   }
   ACTIONS["carte-ouvrir"] = function () {
     if (!etat.partie) return;
-    ui.pvCoup = null; ui.pvPanneau = "carte"; ui.carteMesure = null;
+    ui.pvCoup = null; ui.pvPanneau = "carte"; ui.carteMesure = null; ui.carteDessin = null;
     rendrePartie(); focusPartie("#carte-fermer");
   };
   ACTIONS["carte-fermer"] = function () { ui.pvPanneau = null; rendrePartie(); focusPartie(".pv-emf"); };
+  ACTIONS["carte-fond"] = function (el) { etat.cartePhoto = el.getAttribute("data-v") === "photo"; if (!etat.cartePhoto) ui.carteDessin = null; sauver(); majCartePanneau(); };
+  ACTIONS["carte-dessin"] = function () {
+    var x = ctxCarte(); if (!x || !x.carte) return;
+    ui.carteDessin = ui.carteDessin && ui.carteDessin.pc === x.pc.id && ui.carteDessin.h === x.h ? null : { pc: x.pc.id, h: x.h, e: null };
+    if (ui.carteDessin) ui.carteZoom = "trou";
+    majCartePanneau();
+  };
   ACTIONS["carte-zoom"] = function (el) { ui.carteZoom = el.getAttribute("data-v") === "green" ? "green" : "trou"; majCartePanneau(); };
   ACTIONS["carte-mode"] = function (el) { ui.carteMode = el.getAttribute("data-v") === "mesure" ? "mesure" : "position"; majCartePanneau(); };
   ACTIONS["carte-toucher"] = function (el, ev) {
     var svg = el.querySelector("svg"), x = ctxCarte();
-    if (!VUE || !svg || !x || !x.trou || !ev || ev.detail === 0) return;
+    var De = ui.carteDessin && x && ui.carteDessin.pc === x.pc.id && ui.carteDessin.h === x.h ? ui.carteDessin : null;
+    if (!VUE || !svg || !x || (!x.trou && !De) || !ev || ev.detail === 0) return;
     var r = svg.getBoundingClientRect(), s = Math.min(r.width / VUE.W, r.height / VUE.H);
     if (!(s > 0)) return;
     var px = (ev.clientX - r.left - (r.width - VUE.W * s) / 2) / s, py = (ev.clientY - r.top - (r.height - VUE.H * s) / 2) / s;
     if (px < 0 || py < 0 || px > VUE.W || py > VUE.H) return;
     var q = depuisVue(VUE.rep, [VUE.cxv + (px - VUE.W / 2) / VUE.k, VUE.cyv - (py - VUE.H / 2) / VUE.k]), pos = positionJoueur(x);
     q = [Math.round(q[0] * 10) / 10, Math.round(q[1] * 10) / 10];
+    if (De) {
+      if (!De.e) { De.e = q; majCartePanneau(); return; }
+      if (dist2(De.e, q) < 6 || dist2(De.e, q) > 80) { message("Entrée et fond doivent être à 6 à 80 m l'un de l'autre."); return; }
+      poserReleve(x.carte, x.h + 1, De.e, q); x.carte.maj = auj(); ui.carteDessin = null;
+      message(poserCarte(x.pc.id, x.carte) ? "Green du trou " + (x.h + 1) + " dessiné." : "Le téléphone n'a plus de place pour enregistrer la carte.");
+      rendrePartie(); focusPartie('[data-a="carte-dessin"]'); return;
+    }
     if ((pos && pos.gps) || ui.carteMode === "mesure") ui.carteMesure = { pc: x.pc.id, h: x.h, q: q };
     else { POS.main = { pc: x.pc.id, h: x.h, q: q }; ui.carteMesure = null; }
     majCartePanneau();
@@ -249,9 +350,10 @@
     var x = ctxCarte(), k = el.getAttribute("data-v") === "f" ? "f" : "e"; if (!x || !x.pc) return;
     if (!ui.releve || ui.releve.pc !== x.pc.id || ui.releve.h !== x.h) ui.releve = { pc: x.pc.id, h: x.h, e: null, f: null };
     var R = ui.releve, sel = '[data-a="carte-releve"][data-v="' + k + '"]';
+    if (R.attente) return;
     var poser = function (ll, pr) {
       if (ui.releve !== R) return;
-      if (!ll) R.msg = GPS.refuse ? "Position refusée par le téléphone." : "Position introuvable pour l'instant. Réessaie à découvert.";
+      if (!ll) R.msg = GPS.refuse ? "Position refusée par le téléphone." : "Aucune position GPS récente. Réessaie à découvert.";
       else if (pr > 25) R.msg = "Le GPS est encore imprécis (± " + pr + " m). Attends quelques secondes et recommence.";
       else {
         R.msg = ""; R[k] = ll;
@@ -265,7 +367,10 @@
       }
       if (ui.pvPanneau === "carte") { rendrePartie(); focusPartie(ui.releve ? sel : "#carte-fermer"); }
     };
-    if (POS.ll && Date.now() - POS.t < 8000) poser(POS.ll.slice(), POS.pr); else prendrePosition(poser);
+    /* Trois points GPS (celui de l'instant du toucher, puis les suivants), moyennés : jamais une position de plus de 2 secondes. */
+    R.attente = k; R.msg = "";
+    if (ui.pvPanneau === "carte") { rendrePartie(); focusPartie(sel); }
+    positionFraiche(function (ll, pr) { R.attente = null; poser(ll, pr); }, { age: 2000, n: 3, prMax: 25, attente: 6000 });
   };
   ACTIONS["sjc-carte"] = function () { var s = etatSjc(); s.brut = null; rePanneau('[data-a="sjc-brut"][data-d="1"]'); };
 
@@ -285,10 +390,12 @@
       .then(null, function (e) { if (i + 1 < OVERPASS.length) return overpass(q, i + 1); throw e; });
   }
   function resumeCarte(c, pc) {
-    var n = pc ? pc.pars.length : c.trous.length, ok = 0, est = 0;
-    for (var i = 0; i < n; i++) { var tr = trouCarte(c, i); if (tr) { ok++; if (tr.est) est++; } }
+    var n = pc ? pc.pars.length : c.trous.length, ok = 0, est = 0, app = 0;
+    for (var i = 0; i < n; i++) { var tr = trouCarte(c, i); if (tr) { ok++; if (tr.est) est++; if (tr.app) app++; } }
     return { n: n, ok: ok, est: est, libres: c.libres.length, texte: (c.src === "releve" ? "Relevé sur place" : c.src === "fichier" ? "Fichier importé" : "OpenStreetMap") + " : " + ok + " green" + (ok > 1 ? "s" : "") + " sur " + n + (c.maj ? ", le " + dateCourte(c.maj).replace(/\.$/, "") : "") + "." +
-      (est ? " " + (est === ok ? "Tous estimés" : est + " estimé" + (est > 1 ? "s" : "")) + " d'après les drapeaux : le milieu correspond au drapeau, l'entrée et le fond sont approchés." : "") };
+      (est ? " " + (est === ok ? "Tous estimés" : est + " estimé" + (est > 1 ? "s" : "")) + " d'après les drapeaux : le milieu correspond au drapeau, l'entrée et le fond sont approchés." : "") +
+      (app ? " " + pluriel(app, "green") + " appris au fil de tes parties." : "") +
+      (est ? " Chaque partie jouée avec le GPS les affine : après " + CARTE_APPRIS.jours + " parties, un green estimé devient un green appris." : "") };
   }
   /* Vue d'ensemble, nord en haut : greens numérotés, greens sans numéro à toucher. */
   function carteApercuHTML(c) {
@@ -300,14 +407,16 @@
     x0 -= 40; x1 += 40; y0 -= 40; y1 += 40;
     var W = 320, sx = Math.max(x1 - x0, 120), sy = Math.max(y1 - y0, 120), H = Math.max(200, Math.min(420, Math.round(W * sy / sx))), k = Math.min(W / sx, H / sy);
     var S = function (q) { return [W / 2 + (q[0] - (x0 + x1) / 2) * k, H / 2 - (q[1] - (y0 + y1) / 2) * k]; };
-    var h = '<svg class="cp apercu" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + at("Vue d'ensemble du parcours, nord en haut : " + gs.filter(function (g) { return g.n; }).length + " greens numérotés" + (c.libres.length ? ", " + c.libres.length + " sans numéro" : "")) + '">' +
-      '<rect class="cp-fond" width="' + W + '" height="' + H + '" rx="16"/>';
+    var photo = photoCouche(c, { cx: 0, cy: 0, cos: 1, sin: 0 }, k, (x0 + x1) / 2, (y0 + y1) / 2, W, H);
+    var h = '<svg class="cp apercu' + (photo ? " photo" : "") + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + at("Vue d'ensemble du parcours, nord en haut : " + gs.filter(function (g) { return g.n; }).length + " greens numérotés" + (c.libres.length ? ", " + c.libres.length + " sans numéro" : "")) + '">' +
+      '<clipPath id="ap-cadre"><rect width="' + W + '" height="' + H + '" rx="16"/></clipPath><g clip-path="url(#ap-cadre)">' +
+      '<rect class="cp-fond" width="' + W + '" height="' + H + '"/>' + photo;
     gs.forEach(function (g) {
       var s = S(g.c), sel = g.libre != null && ui.carteNum === g.libre;
       h += '<g' + (g.libre != null ? ' class="cp-libre' + (sel ? " sel" : "") + '" data-a="carte-num" data-v="' + g.libre + '"' : '') + '><path class="cp-green' + (g.est ? " est" : "") + '" d="' + chemin(g.p.map(S)) + '"/>' +
         '<circle class="cp-pastille" cx="' + s[0].toFixed(1) + '" cy="' + s[1].toFixed(1) + '" r="10"/><text x="' + s[0].toFixed(1) + '" y="' + (s[1] + 4).toFixed(1) + '" text-anchor="middle">' + (g.n || "?") + '</text></g>';
     });
-    return h + '</svg>';
+    return h + '</g></svg>';
   }
   function carteRechercheHTML(pc) {
     var R = ui.carteRech || {}, h = "";
@@ -338,7 +447,7 @@
       '<header><p class="surtitre">Carte GPS</p><h2 id="f-titre">' + t(pc ? pc.nom : "Ajouter mon golf") + '</h2><button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>';
     if (c) {
       var rs = resumeCarte(c, pc);
-      h += '<p class="carte-resume">' + t(rs.texte) + '</p>' + (R.etat === "ok" ? '<p class="carte-ok" role="status">' + t("Carte enregistrée : les distances s'affichent sur le pavé pendant la partie.") + '</p>' : '') + carteApercuHTML(c);
+      h += '<p class="carte-resume">' + t(rs.texte) + '</p>' + (R.etat === "ok" ? '<p class="carte-ok" role="status">' + t("Carte enregistrée : les distances s'affichent sur le pavé pendant la partie.") + '</p>' : '') + carteApercuHTML(c) + photosHorsLigneHTML(pc, c);
       if (rs.libres) {
         h += '<p class="aide">' + t(rs.ok < rs.n ? "Des greens n'ont pas de numéro. Touche un green marqué « ? », puis choisis son trou." : pluriel(rs.libres, "green") + " sans numéro (putting green, autre parcours) : rien à faire.") + '</p>';
         if (ui.carteNum != null && c.libres[ui.carteNum]) h += '<div class="carte-numeros" role="group" aria-label="Numéro du trou de ce green">' + pc.pars.map(function (v, i) {
@@ -354,8 +463,34 @@
     if (pc && !c && gpsPossible()) h += '<h3 class="titre-bloc">Sans OpenStreetMap</h3><p>' + t("Tu peux relever chaque green sur place : pendant la partie, ouvre la carte du trou, marque l'entrée puis le fond du green.") + '</p>' +
       '<button class="btn large" type="button" data-a="carte-vide" data-id="' + pc.id + '">Relever les greens moi-même</button>';
     if (c) h += '<p style="margin-top:16px"><button class="btn danger large" type="button" data-a="carte-suppr" data-id="' + pc.id + '">Supprimer cette carte</button></p>';
-    return h + '<p class="carte-credit">' + t("Données cartographiques : © les contributeurs d'OpenStreetMap, sous licence ODbL. Recherche : Nominatim.") + '</p></section>';
+    return h + '<p class="carte-credit">' + t("Données cartographiques : © les contributeurs d'OpenStreetMap, sous licence ODbL. Recherche : Nominatim." + (photoOk(c) ? " Photos aériennes : © IGN." : "")) + '</p></section>';
   }
+  /* Photos aériennes gardées dans le téléphone, pour jouer sans réseau. */
+  var CACHE_PHOTOS = "coach-photos-1";
+  function photosHorsLigneHTML(pc, c) {
+    if (!photoOk(c) || typeof caches === "undefined" || !("serviceWorker" in navigator)) return "";
+    var P = ui.photosDl && ui.photosDl.pc === pc.id ? ui.photosDl : null;
+    return '<div class="carte-photos"><button class="btn large" type="button" data-a="carte-photos" data-id="' + pc.id + '"' + (P && !P.fini ? " disabled" : "") + '>' + icone("carte") + t(" Garder les photos aériennes pour jouer sans réseau") + '</button>' +
+      (P ? '<p class="aide" role="status">' + t(P.fini ? (P.ko ? P.ok + " photos gardées sur " + P.total + ". Réessaie avec un meilleur réseau pour les autres." : "Les " + P.total + " photos du parcours sont dans le téléphone.") : "Téléchargement : " + P.ok + " sur " + P.total + "…") + '</p>'
+        : '<p class="aide">' + t("Environ " + Math.max(1, Math.round(tuilesParcours(c).length * 0.03)) + " Mo, à faire en wifi avant d'aller au golf.") + '</p>') + '</div>';
+  }
+  ACTIONS["carte-photos"] = function (el) {
+    var pc = parcoursDe(el.getAttribute("data-id")), c = pc ? carteDe(pc.id) : null; if (!c || typeof caches === "undefined") return;
+    var urls = tuilesParcours(c), P = ui.photosDl = { pc: pc.id, total: urls.length, ok: 0, ko: 0, fini: false }, i = 0;
+    var maj = function () { if (ui.photosDl === P) { var z = document.querySelector("#feuille .carte-photos"); if (z) z.outerHTML = photosHorsLigneHTML(pc, c); } };
+    maj();
+    caches.open(CACHE_PHOTOS).then(function (cache) {
+      var suivant = function () {
+        if (i >= urls.length) return Promise.resolve();
+        var u = urls[i++];
+        return cache.match(u).then(function (g) {
+          return g ? true : fetch(u, { mode: "cors" }).then(function (r) { if (!r.ok) throw new Error("http"); return cache.put(u, r); });
+        }).then(function () { P.ok++; }, function () { P.ko++; }).then(function () { if ((P.ok + P.ko) % 8 === 0) maj(); return suivant(); });
+      };
+      /* Quatre téléchargements à la fois. */
+      return Promise.all([suivant(), suivant(), suivant(), suivant()]);
+    }).then(function () { P.fini = true; maj(); }, function () { P.fini = true; P.ko = P.total - P.ok; maj(); });
+  };
   function majFeuilleCarte(sel) {
     if (!ui.feuille || !ui.feuille.carte) return;
     rendreFeuilleSeule();
@@ -421,6 +556,9 @@
     var anc = carteDe(pc.id);
     if (anc) anc.trous.forEach(function (tr, i) { if (tr && tr.rel && !trouCarte(r.carte, i)) { while (r.carte.trous.length <= i) r.carte.trous.push(null); r.carte.trous[i] = tr; } });
     r.bilan.pars.forEach(function (par, i) { if (par >= 3 && par <= 5 && i < pc.pars.length && !pc.pars[i]) pc.pars[i] = par; });
+    /* Handicap des trous : repris d'OpenStreetMap s'il y est complet et que le parcours n'en a pas. */
+    var hcO = r.bilan.hcp.slice(0, pc.pars.length);
+    if (!(pc.hcp && pc.hcp.some(function (v) { return v > 0; })) && hcO.length === pc.pars.length && lireHcp(hcO.join(" "), pc.pars.length)) pc.hcp = hcO;
     var ok = poserCarte(pc.id, r.carte);
     sauver();
     ui.feuille = { carte: pc.id }; ui.carteNum = null; ui.carteRech = { etat: ok ? "ok" : "place", q: q };

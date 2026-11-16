@@ -324,15 +324,24 @@ function etatObjectif(st, val, obj) {
 function differentiel(partie, pc, index) {
   var st = statsTrous(partie.trous);
   if (st.T < 9 || st.N !== st.T) return null;
-  var slope = pc && pc.slope ? pc.slope : 113;
+  /* Repère de la partie, sinon le premier du parcours. */
+  var reps = pc && pc.reps ? pc.reps : [], rp = (estNombre(partie.rep) && reps[partie.rep]) || reps[0] || (pc ? { sss: pc.sss, slope: pc.slope } : {});
+  var slope = rp.slope || 113;
   var parT = st.PAR, cr = parT;
-  if (pc && pc.sss) {
+  if (pc && rp.sss) {
     var par18 = somme(pc.pars) * (pc.pars.length === 9 ? 2 : 1);
-    if (pc.pars.every(function (v) { return v > 0; }) && par18 > 0) cr = pc.sss * parT / par18;
+    if (pc.pars.every(function (v) { return v > 0; }) && par18 > 0) cr = rp.sss * parT / par18;
   }
-  var rendus = Math.max(0, Math.ceil((index * slope / 113 + (cr - parT) * 18 / st.T) / 18));
+  var H18 = index * slope / 113 + (cr - parT) * 18 / st.T, rendus = Math.max(0, Math.ceil(H18 / 18));
+  /* Handicap des trous connu : double bogey net avec les vrais coups reçus de chaque trou. */
+  var o = partie.o || 0, hc = partie.trous.map(function (t, k) { return pc && pc.hcp ? pc.hcp[(o + k) % pc.pars.length] || 0 : 0; }), recus = null;
+  if (hc.every(function (v) { return v > 0; })) {
+    var Ht = Math.round(H18 * st.T / 18), ordre = hc.map(function (v, k) { return { k: k, v: v }; }).sort(function (a, b) { return a.v - b.v || a.k - b.k; });
+    var q = Math.floor(Ht / st.T), r = Ht - q * st.T; recus = [];
+    ordre.forEach(function (x, rang) { recus[x.k] = q + (rang < r ? 1 : 0); });
+  }
   var ajuste = 0;
-  partie.trous.forEach(function (t) { ajuste += Math.min(t[4], t[5] + 2 + rendus); });
+  partie.trous.forEach(function (t, k) { ajuste += Math.min(t[4], t[5] + 2 + (recus ? recus[k] : rendus)); });
   var d = (113 / slope) * (ajuste - cr) + (18 - st.T) / 9 * (0.52 * index + 1.2);
   return { v: arrondi1(d), ajuste: ajuste, T: st.T };
 }

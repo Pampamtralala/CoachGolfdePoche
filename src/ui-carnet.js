@@ -35,9 +35,28 @@
         longueurs: pars.map(function (v, i) { return entier(lg[i], 40, 700, 0); }),
         dangers: pars.map(function (v, i) { return assainirDangers(dz[i]); }),
         greens: pars.map(function (v, i) { return a(GREENS, gr[i]) ? gr[i] : "m"; }),
-        sss: nombre(pc.sss) && pc.sss >= 50 && pc.sss <= 85 ? Math.round(pc.sss * 10) / 10 : null,
-        slope: entier(pc.slope, 55, 155, null) };
-    }).filter(Boolean).slice(0, 20);
+        sss: null, slope: null, reps: assainirReps(pc), hcp: assainirHcp(pc.hcp, pars.length) };
+    }).filter(Boolean).map(function (pc) {
+      /* SSS et slope du parcours : ceux du premier repère (anciens calculs). */
+      if (pc.reps.length) { pc.sss = pc.reps[0].sss; pc.slope = pc.reps[0].slope; }
+      return pc;
+    }).slice(0, 20);
+  }
+  /* Repères : nom, SSS et slope (valeurs 18 trous). Un ancien parcours garde son SSS et son slope comme premier repère. */
+  function assainirReps(pc) {
+    var l = liste(pc.reps).map(function (r) {
+      if (!r || typeof r !== "object") return null;
+      var sss = nombre(r.sss) && r.sss >= 50 && r.sss <= 85 ? Math.round(r.sss * 10) / 10 : null, slope = entier(r.slope, 55, 155, null);
+      return sss || slope ? { n: texteCourt(r.n, 30), sss: sss, slope: slope } : null;
+    }).filter(Boolean).slice(0, 8);
+    if (!l.length && ((nombre(pc.sss) && pc.sss >= 50 && pc.sss <= 85) || entier(pc.slope, 55, 155, null))) l.push({ n: "", sss: nombre(pc.sss) && pc.sss >= 50 && pc.sss <= 85 ? Math.round(pc.sss * 10) / 10 : null, slope: entier(pc.slope, 55, 155, null) });
+    return l;
+  }
+  /* Handicap des trous : une valeur de 1 à 18 par trou, sans doublon ; 0 si inconnu. */
+  function assainirHcp(l, n) {
+    var r = [], vus = {};
+    for (var i = 0; i < n; i++) { var v = entier(liste(l)[i], 1, 18, 0); if (v && vus[v]) v = 0; if (v) vus[v] = true; r.push(v); }
+    return r.some(Boolean) ? r : null;
   }
   /* Dangers autour d'un green : à gauche, à droite, court, long ; chacun un danger connu ou rien. */
   function assainirDangers(d) {
@@ -136,6 +155,7 @@
       var tr = idx.map(function (i) { return brut[i]; });
       if (tr.length < 9) return null;
       var r = { d: dateOk(p.d), trous: tr, pc: pc, o: decalage(p, pc, tr.length) }, cp = liste(p.coups);
+      if (pc && entier(p.rep, 0, 7, null) != null) r.rep = p.rep;
       var coups = idx.map(function (i) { return assainirCoups(cp[i]); });
       if (coups.some(function (x) { return x.length; })) r.coups = coups;
       var js = assainirJoueurs(p.joueurs, idx); if (js.length) r.joueurs = js;
@@ -153,6 +173,7 @@
         tr2.push(tr);
       }
       e.partie = { d: dateOk(pc.d), n: pc.n, i: entier(pc.i, 0, pc.n - 1, 0), trous: tr2, pc: pc2, o: decalage(pc, pc2, pc.n) };
+      if (pc2 && entier(pc.rep, 0, 7, null) != null) e.partie.rep = pc.rep;
       var tous = []; for (var k = 0; k < pc.n; k++) tous.push(k);
       var cp2 = liste(pc.coups);
       e.partie.coups = tous.map(function (k) { return assainirCoups(cp2[k]); });
@@ -162,6 +183,7 @@
         temp: TEMPERATURES.some(function (x) { return x.id === cd.temp; }) ? cd.temp : null };
     }
     e.detail = o.detail === true;
+    e.cartePhoto = o.cartePhoto !== false;
     e.modeSaisie = o.modeSaisie === "express" ? "express" : "detail";
     /* Historique de l'index : dates et valeurs ; sans historique, le point de départ est l'index actuel. */
     e.indexHist = liste(o.indexHist).map(function (x) { return x && nombre(x.v) && x.v >= -10 && x.v <= 54 ? { d: dateOk(x.d), v: Math.round(x.v * 10) / 10 } : null; }).filter(function (x) { return x && x.d; }).slice(-60);

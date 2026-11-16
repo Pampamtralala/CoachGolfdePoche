@@ -39,6 +39,12 @@
     if (!pc) d.pc = "nouveau";
     var choix = (pc ? pc.pars.length : d.L) === 18 ? ["18", "aller", "retour"] : ["9", "2x9"];
     if (choix.indexOf(d.jeu) < 0) d.jeu = choix[0];
+    /* Repère : le dernier joué sur ce parcours, sinon le premier. */
+    var nr = pc && pc.reps ? pc.reps.length : 0;
+    if (!(d.rep >= 0 && d.rep < nr)) {
+      d.rep = 0;
+      for (var i = etat.parties.length - 1; i >= 0; i--) if (etat.parties[i].pc === d.pc && etat.parties[i].rep >= 0 && etat.parties[i].rep < nr) { d.rep = etat.parties[i].rep; break; }
+    }
   }
   function departHTML() {
     var d = ui.depart, nouveau = d.pc === "nouveau", pc = nouveau ? null : parcoursDe(d.pc), L = pc ? pc.pars.length : d.L;
@@ -57,6 +63,8 @@
       (L === 18 ? opt("jeu", "18", "Les 18 trous", d.jeu) + opt("jeu", "aller", "L'aller, 1 à 9", d.jeu) + opt("jeu", "retour", "Le retour, 10 à 18", d.jeu)
         : opt("jeu", "9", "9 trous", d.jeu) + opt("jeu", "2x9", "18 trous, en deux tours", d.jeu)) + '</div></fieldset>' +
       (nouveau ? '<p class="aide">Tu indiques le par de chaque trou en jouant. L’appli s’en souvient pour les parties suivantes.</p>' : '') +
+      (pc && pc.reps && pc.reps.length > 1 ? '<div class="champ"><label for="dp-rep">Tes repères de départ</label><select id="dp-rep" data-c="dp-rep">' +
+        pc.reps.map(function (r, i) { return '<option value="' + i + '"' + (i === d.rep ? " selected" : "") + '>' + t(r.n || "Repère " + (i + 1)) + '</option>'; }).join("") + '</select></div>' : '') +
       joueursDepartHTML() +
       '<p class="erreur" id="dp-err" role="alert" hidden></p>' +
       '<div class="ligne-btn"><button class="btn principal" type="button" data-a="pt-nouvelle">Commencer</button><button class="btn" type="button" data-a="dp-annuler">Annuler</button></div></div>';
@@ -109,12 +117,14 @@
 
   /* ---------- Carte de score d'une partie, dans le calque des fiches ---------- */
   function cartePartieHTML(i) {
-    var pt = etat.parties[i], s = statsTrous(pt.trous), sc = scorePartie(pt), o = pt.o || 0, n = pt.trous.length;
+    var pt = etat.parties[i], s = statsTrous(pt.trous), sc = scorePartie(pt), o = pt.o || 0, n = pt.trous.length, R = recusPartie(pt);
+    function pts(k) { var tr = pt.trous[k]; return R && trouNote(tr) ? pointsStableford(tr[4], tr[5], R.recus[k] || 0) : null; }
+    function ptsTotal(a, b) { var x = 0; for (var k = a; k < b; k++) x += pts(k) || 0; return x; }
     function oui(v) { return v ? '<span class="main" aria-label="oui">' + TRAIT + '</span>' : '<span class="non" aria-label="non">×</span>'; }
-    function total(lib, l) {
-      var x = statsTrous(l), note = x.N === x.T;
+    function total(lib, a, b) {
+      var x = statsTrous(pt.trous.slice(a, b)), note = x.N === x.T;
       return '<tr class="total"><th scope="row">' + lib + '</th><td class="num rep">' + (note ? x.PAR : "–") + '</td><td class="num"><span class="main">' + (note ? x.S : "–") + '</span></td>' +
-        '<td class="num">' + x.J + '</td><td class="num">' + x.G + '</td><td class="num">' + x.P + '</td><td class="num">' + x.X + '</td></tr>';
+        '<td class="num">' + x.J + '</td><td class="num">' + x.G + '</td><td class="num">' + x.P + '</td><td class="num">' + x.X + '</td>' + (R ? '<td class="num">' + ptsTotal(a, b) + '</td>' : '') + '</tr>';
     }
     var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer la carte" tabindex="-1"></button>' +
       '<section class="feuille" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
@@ -124,18 +134,20 @@
       '<dl class="stats"><div><dt>Mises en jeu jouables</dt><dd>' + s.J + '/' + s.T + '</dd></div><div><dt>Greens en régulation</dt><dd>' + s.G + '</dd></div>' +
       '<div><dt>Putts</dt><dd>' + s.P + '</dd></div><div><dt>Coups de pénalité</dt><dd>' + s.X + '</dd></div></dl>' +
       '<div class="defile"><table class="carte-score trous"><thead><tr><th scope="col">Trou</th><th scope="col" class="num">Par</th><th scope="col" class="num">Score</th>' +
-      '<th scope="col" class="num">Dép.</th><th scope="col" class="num">Green</th><th scope="col" class="num">Putts</th><th scope="col" class="num">Pén.</th></tr></thead><tbody>';
+      '<th scope="col" class="num">Dép.</th><th scope="col" class="num">Green</th><th scope="col" class="num">Putts</th><th scope="col" class="num">Pén.</th>' + (R ? '<th scope="col" class="num">Pts</th>' : '') + '</tr></thead><tbody>';
     pt.trous.forEach(function (tr, k) {
       var note = trouNote(tr), d = tr[4] - tr[5];
       h += '<tr><th scope="row">' + (o + k + 1) + '</th><td class="num rep">' + (tr[5] || "–") + '</td>' +
         '<td class="num">' + (note ? '<span class="marque ' + (d < 0 ? "dessus" : d > 0 ? "dessous" : "") + '" aria-label="' + at(tr[4] + ", " + nomScore(tr[4], tr[5])) + '">' + tr[4] + '</span>' : '<span class="marque inconnu">–</span>') + '</td>' +
         '<td class="num">' + oui(tr[0]) + (tr[0] ? (tr[7] ? '<small>' + t(CLUBS_DEPART[tr[7]].toLowerCase()) + '</small>' : '') : (tr[6] ? '<small>' + t(COTES[tr[6]].toLowerCase().replace("à ", "")) + '</small>' : '')) + '</td>' +
         '<td class="num">' + oui(tr[1]) + '</td>' +
-        '<td class="num">' + tr[2] + (tr[8] ? '<small>' + t((tr.length >= 11 ? PUTT1B : PUTT1)[tr[8]] || "") + '</small>' : '') + '</td><td class="num">' + (tr[3] || "") + '</td></tr>';
-      if (k === 8 && n > 9) h += total(o ? "Retour" : "Aller", pt.trous.slice(0, 9));
+        '<td class="num">' + tr[2] + (tr[8] ? '<small>' + t((tr.length >= 11 ? PUTT1B : PUTT1)[tr[8]] || "") + '</small>' : '') + '</td><td class="num">' + (tr[3] || "") + '</td>' +
+        (R ? '<td class="num">' + (pts(k) == null ? "–" : pts(k)) + (R.recus[k] > 0 ? '<small>' + t(R.recus[k] > 1 ? R.recus[k] + " reçus" : "1 reçu") + '</small>' : '') + '</td>' : '') + '</tr>';
+      if (k === 8 && n > 9) h += total(o ? "Retour" : "Aller", 0, 9);
     });
-    if (n > 9) h += total("Retour", pt.trous.slice(9));
-    h += total("Total", pt.trous) + '</tbody></table></div>';
+    if (n > 9) h += total("Retour", 9, n);
+    h += total("Total", 0, n) + '</tbody></table></div>';
+    if (R && R.notes) h += '<p class="aide">' + t("Stableford : " + R.points + " points, score net " + R.net + ", avec " + pluriel(R.H, "coup") + " reçu" + (R.H > 1 ? "s" : "") + (R.hcpConnus ? "." : ". Sans le handicap des trous (fiche du parcours), les coups reçus sont répartis dans l'ordre des trous."))+ '</p>';
     if (sc.N) h += '<p class="legende"><span><span class="marque dessus">3</span> sous le par</span><span><span class="marque dessous">5</span> au-dessus</span></p>';
     else h += '<p class="aide">Cette partie a été saisie avant la carte de score : elle n’a pas de score par trou.</p>';
     h += carteCompleteHTML(pt, i);
@@ -175,6 +187,16 @@
     }).join("") + '</ol>';
   }
 
+  /* Coups reçus, score net et points Stableford d'une partie (si l'index est connu). */
+  function recusPartie(pt) {
+    var pr = etat.profil; if (!pr || pr.sansIndex || !nombre(pr.index)) return null;
+    return coupsRecusPartie(pt, parcoursDe(pt.pc), pr.index);
+  }
+  function stablefordChiffre(pt, chiffre) {
+    var r = recusPartie(pt); if (!r || !r.notes) return "";
+    return chiffre("Stableford", r.points + " pts", "net " + r.net + ", " + pluriel(r.H, "coup") + " reçu" + (r.H > 1 ? "s" : "") + (r.hcpConnus && r.exact ? "" : " (approximatif)"));
+  }
+
   /* ---------- Bilan de fin de partie ---------- */
   function bilanPartieHTML() {
     var pt = ui.bilanPartie, s = statsTrous(pt.trous), sc = scorePartie(pt), cu = cumulParties(etat.parties, 54);
@@ -185,7 +207,7 @@
       '<h2 id="pt-titre">Ta partie en chiffres' + (recordPartie(pt) ? ' <span class="tampon">record ' + TRAIT + '</span>' : '') + '</h2><dl class="cinq">' +
       chiffre("Score", sc.complet ? sc.coups : "–", sc.complet ? (sc.ecart ? ecartLib(sc.ecart) + " par rapport au par" : "dans le par") : "") +
       chiffre("Mises en jeu jouables", s.J, "sur " + s.T) + chiffre("Greens en régulation", s.G, "sur " + s.T) +
-      chiffre("Putts", s.P, s.P3 ? s.P3 + " fois 3 putts ou plus" : "") + chiffre("Coups de pénalité", s.X, "") + '</dl>' +
+      chiffre("Putts", s.P, s.P3 ? s.P3 + " fois 3 putts ou plus" : "") + chiffre("Coups de pénalité", s.X, "") + stablefordChiffre(pt, chiffre) + '</dl>' +
       '<p>' + t((sc.complet && s.C ? pluriel(s.C, "trou") + " à triple bogey ou pire. " : "") + "Ton bilan est à jour. Il s'appuie sur " + (cu.n > 1 ? "tes " + cu.n + " dernières parties, soit " + cu.T + " trous." : "cette partie.")) + '</p>';
     if (r) {
       var pire = r.secteurs.filter(function (x) { return x.sg != null; }).sort(function (x, y) { return x.sg - y.sg; })[0];
@@ -228,6 +250,7 @@
     p.trous.forEach(function (x, k) { if (x) memoriserPar(p, k); });
     var idx = []; p.trous.forEach(function (x, k) { if (x) idx.push(k); });
     var pt = { d: p.d, trous: saisis, pc: parcoursDe(p.pc) ? p.pc : null, o: p.o || 0 };
+    if (pt.pc && p.rep >= 0) pt.rep = p.rep;
     /* Coups et partenaires suivent les trous gardés. */
     var coups = idx.map(function (k) { return (p.coups && p.coups[k]) || []; });
     if (coups.some(function (l) { return l.length; })) pt.coups = coups;
@@ -261,6 +284,7 @@
     normaliserDepart(); rendreEtFocus(el);
   };
   SAISIES["dp-nom"] = function (el) { if (ui.depart) ui.depart.nom = el.value; };
+  CHANGEMENTS["dp-rep"] = function (el) { if (ui.depart) ui.depart.rep = parseInt(el.value, 10) || 0; };
   CHANGEMENTS["dp-pc"] = function (el) {
     if (!ui.depart) return;
     ui.depart.pc = el.value; normaliserDepart(); rendre();
@@ -284,6 +308,7 @@
     etat.partie = { d: auj(), n: n, i: 0, trous: tr, pc: pc.id, o: d.jeu === "retour" && pc.pars.length === 18 ? 9 : 0,
       coups: tr.map(function () { return []; }),
       joueurs: (d.joueurs || []).map(function (nm) { return { nom: nm, s: tr.map(function () { return null; }) }; }) };
+    if (pc.reps && pc.reps.length) etat.partie.rep = d.rep >= 0 && d.rep < pc.reps.length ? d.rep : 0;
     ui.depart = null;
     sauver(); garderEcran(true);
     ui.partie = "saisie"; rendre(); rendrePartie(); focusPartie("#pt-suiv");
@@ -332,6 +357,7 @@
   };
   ACTIONS["pt-suiv"] = function () {
     var p = etat.partie; if (!p) return;
+    apprendreFinTrou();
     poserTrou(trouCourant().slice());
     memoriserPar(p, p.i);
     vibrer(35); ui.pvLong = false; ui.pvCoup = null; ui.pvPanneau = null;

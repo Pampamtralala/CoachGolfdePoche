@@ -97,10 +97,95 @@
       h += '<tr><th scope="row">Trou</th>' + pc.pars.slice(d, d + 9).map(function (v, i) { return '<td class="num rep">' + (d + i + 1) + '</td>'; }).join("") + '</tr>' +
         '<tr><th scope="row">Par</th>' + pc.pars.slice(d, d + 9).map(function (v, i) {
           return '<td class="num"><button type="button" data-a="pc-par" data-v="' + (d + i) + '" aria-label="' + at("Trou " + (d + i + 1) + ", par " + (v || "non renseigné") + ". Toucher pour changer") + '"><span class="main">' + (v || "–") + '</span></button></td>';
-        }).join("") + '</tr>';
+        }).join("") + '</tr>' +
+        (pc.hcp ? '<tr><th scope="row">Hcp</th>' + pc.pars.slice(d, d + 9).map(function (v, i) { return '<td class="num rep">' + (pc.hcp[d + i] || "–") + '</td>'; }).join("") + '</tr>' : '');
     }
     return h + '</tbody></table></div><p class="aide">Touche un par pour le changer. Les parties déjà jouées sur ce parcours suivent.</p>';
   }
+
+  /* ---------- Carte de score du parcours : pars, handicap des trous, repères ---------- */
+  function libRep(r, i) { return r.n || (i ? "Repère " + (i + 1) : "Mes repères"); }
+  function coupsRecusLib(pc, rep) {
+    var p = etat.profil; if (!p || p.sansIndex || !nombre(p.index)) return "";
+    var hj = handicapJeu(p.index, rep, pc, 18);
+    return hj ? "Avec ton index de " + indexLib(p.index) + ", tu reçois " + pluriel(hj.v, "coup") + " sur 18 trous" + (hj.exact ? "" : " (approximatif : il manque le SSS, le slope ou un par)") + "." : "";
+  }
+  function carteScoreParcoursHTML(pc) {
+    var reps = pc.reps || [], n = pc.pars.length, F = ui.pcCarte && ui.pcCarte.id === pc.id ? ui.pcCarte : {};
+    var h = '<h3 class="titre-bloc">Carte de score</h3>' + parsHTML(pc);
+    if (reps.length) h += '<ul class="liste-reps">' + reps.map(function (r, i) {
+      return '<li><b>' + t(libRep(r, i)) + '</b><span>' + t("SSS " + (r.sss == null ? "–" : indexLib(r.sss)) + " · slope " + (r.slope || "–")) + '</span><small>' + t(coupsRecusLib(pc, r).replace(/^Avec ton index de [^,]+, tu reçois /, "").replace(/ sur 18 trous.*$/, " reçus")) + '</small></li>';
+    }).join("") + '</ul>';
+    var lib = coupsRecusLib(pc, reps[0]);
+    h += '<p class="aide">' + t(lib ? lib + (pc.hcp ? "" : " Ajoute le handicap des trous pour savoir sur quels trous.") : "Ajoute le SSS et le slope de tes repères : l'appli calcule tes coups reçus, ton score net et tes points Stableford.") + '</p>';
+    /* Saisie à la main */
+    h += '<details' + (F.ouvert === "main" ? " open" : "") + '><summary>Modifier les repères et le handicap des trous</summary><form data-f="pc-carte" data-id="' + pc.id + '" novalidate>';
+    var lignes = reps.slice(); while (lignes.length < Math.min(8, reps.length + 1)) lignes.push({ n: "", sss: null, slope: null });
+    lignes.forEach(function (r, i) {
+      h += '<fieldset class="champ rep-ligne"><legend>' + t(i < reps.length ? libRep(r, i) : "Nouveau repère") + '</legend><div class="trio">' +
+        '<div class="champ"><label for="rp-n' + i + '">Nom</label><input id="rp-n' + i + '" type="text" maxlength="30" autocomplete="off" placeholder="Jaune" value="' + at(r.n || "") + '"></div>' +
+        '<div class="champ"><label for="rp-s' + i + '">SSS</label><input id="rp-s' + i + '" type="text" inputmode="decimal" maxlength="5" autocomplete="off" value="' + (r.sss == null ? "" : indexLib(r.sss)) + '"></div>' +
+        '<div class="champ"><label for="rp-l' + i + '">Slope</label><input id="rp-l' + i + '" type="text" inputmode="numeric" maxlength="3" autocomplete="off" value="' + (r.slope == null ? "" : r.slope) + '"></div></div></fieldset>';
+    });
+    h += '<p class="aide">' + t("Le SSS et le slope sont sur la carte de score du club, pour chaque couleur de départ (Messieurs ou Dames)." + (n === 9 ? " Donne les valeurs pour 18 trous, comme sur la carte." : "") + " Vide une ligne pour retirer un repère.") + '</p>' +
+      '<div class="champ"><label for="pc-hcp">Handicap des trous, du trou 1 au trou ' + n + '</label><input id="pc-hcp" type="text" inputmode="numeric" autocomplete="off" maxlength="60" placeholder="' + (n === 18 ? "12 2 18 16 6 14 10 8 4 9 11 1 17 5 15 3 13 7" : "5 9 1 3 7 2 8 4 6") + '" value="' + (pc.hcp ? pc.hcp.join(" ") : "") + '"></div>' +
+      '<p class="aide">' + t("La ligne « Hcp » ou « Coups reçus » de la carte : le trou 1 reçoit le premier coup.") + '</p>' +
+      '<p class="erreur" id="pc-carte-err" role="alert" hidden></p><button class="btn large" type="submit">Enregistrer</button></form></details>';
+    /* Collage de la carte de score */
+    h += '<details' + (F.ouvert === "coller" ? " open" : "") + '><summary>Coller la carte de score</summary><form data-f="pc-coller" data-id="' + pc.id + '" novalidate>' +
+      '<label for="pc-texte">Texte de la carte de score</label><textarea id="pc-texte" rows="6" maxlength="6000" placeholder="' + at("Jaune 69,4 126 75,2 134\nPar 4 3 5 4 4 3 4 5 4 …\nHcp 12 2 18 16 6 14 10 8 4 …") + '">' + t(F.texte || "") + '</textarea>' +
+      '<p class="aide">' + t("Copie le tableau depuis le site du club ou de la fédération, puis colle-le ici. L'appli y cherche les repères (SSS et slope), les pars et le handicap des trous.") + '</p>' +
+      '<button class="btn large" type="submit">Lire la carte</button></form>';
+    if (F.lu) {
+      var L = F.lu, rien = !L.reps.length && !L.pars && !L.hcp;
+      h += rien ? '<p class="erreur" role="alert">' + t("Rien de lisible : vérifie qu'une ligne commence par une couleur (« Jaune 69,4 126 »), par « Par » ou par « Hcp ».") + '</p>'
+        : '<div class="pc-lu" role="status"><p><b>Trouvé :</b></p><ul>' +
+          (L.reps.length ? '<li>' + t(pluriel(L.reps.length, "repère") + " : " + L.reps.map(function (r) { return r.n + " (" + indexLib(r.sss) + " / " + r.slope + ")"; }).join(", ")) + '</li>' : '') +
+          (L.pars ? '<li>' + t("Pars : " + L.pars.join(" ")) + '</li>' : '') + (L.hcp ? '<li>' + t("Handicap des trous : " + L.hcp.join(" ")) + '</li>' : '') +
+          '</ul><button class="btn principal large" type="button" data-a="pc-coller-ok">Utiliser ces valeurs</button></div>';
+    }
+    return h + '</details>';
+  }
+  FORMULAIRES["pc-carte"] = function (form) {
+    var pc = parcoursDe(form.getAttribute("data-id")), err = document.getElementById("pc-carte-err"); if (!pc) return;
+    var reps = [], txt = "", i = 0, el;
+    while ((el = document.getElementById("rp-n" + i))) {
+      var nm = texteCourt(el.value, 30), bs = document.getElementById("rp-s" + i).value.trim().replace(",", "."), bl = document.getElementById("rp-l" + i).value.trim();
+      var sss = bs === "" ? null : (/^\d{2}(\.\d)?$/.test(bs) ? parseFloat(bs) : NaN), slope = bl === "" ? null : (/^\d{2,3}$/.test(bl) ? parseInt(bl, 10) : NaN);
+      if (!txt && sss !== null && !(sss >= 50 && sss <= 85)) txt = "Le SSS est un nombre entre 50 et 85, par exemple 70,4.";
+      if (!txt && slope !== null && !(slope >= 55 && slope <= 155)) txt = "Le slope est un nombre entier entre 55 et 155.";
+      if (sss !== null || slope !== null) reps.push({ n: nm, sss: sss, slope: slope });
+      i++;
+    }
+    var bh = document.getElementById("pc-hcp").value.trim(), hcp = bh === "" ? null : lireHcp(bh, pc.pars.length);
+    if (!txt && bh !== "" && !hcp) txt = "Le handicap des trous : " + pc.pars.length + " nombres différents, de 1 à 18, séparés par des espaces.";
+    if (txt) { err.textContent = txt; err.hidden = false; return; }
+    pc.reps = reps.slice(0, 8); pc.hcp = hcp;
+    pc.sss = reps[0] ? reps[0].sss : null; pc.slope = reps[0] ? reps[0].slope : null;
+    ui.pcCarte = null;
+    majIndicateursParties(); sauver(); rendre(); rendreFeuille(); message("Carte de score enregistrée.");
+  };
+  FORMULAIRES["pc-coller"] = function (form) {
+    var pc = parcoursDe(form.getAttribute("data-id")); if (!pc) return;
+    var tx = document.getElementById("pc-texte").value;
+    ui.pcCarte = { id: pc.id, ouvert: "coller", texte: tx.slice(0, 6000), lu: lireCarteScore(tx, pc.pars.length) };
+    rendreFeuille();
+    var b = document.querySelector('#feuille [data-a="pc-coller-ok"]') || document.getElementById("pc-texte"); if (b) b.focus({ preventScroll: true });
+  };
+  ACTIONS["pc-coller-ok"] = function () {
+    var F = ui.pcCarte, pc = F ? parcoursDe(F.id) : null; if (!pc || !F.lu) return;
+    var L = F.lu;
+    if (L.reps.length) { pc.reps = L.reps.slice(0, 8); pc.sss = pc.reps[0].sss; pc.slope = pc.reps[0].slope; }
+    if (L.hcp) pc.hcp = L.hcp.slice();
+    if (L.pars) {
+      pc.pars = L.pars.slice();
+      var suivre = function (p) { if (p && p.pc === pc.id) p.trous.forEach(function (tr, k) { if (tr) { tr[5] = pc.pars[((p.o || 0) + k) % pc.pars.length]; if (tr[5] === 3) tr[7] = 0; } }); };
+      etat.parties.forEach(suivre); suivre(etat.partie);
+    }
+    ui.pcCarte = null;
+    majIndicateursParties(); sauver(); rendre(); rendreFeuille(); rendrePartie(); message("Carte de score enregistrée.");
+    var b = document.getElementById("f-fermer"); if (b) b.focus({ preventScroll: true });
+  };
 
   /* Fiche d'un parcours, dans le calque des fiches. */
   function parcoursHTML(id) {
@@ -118,7 +203,7 @@
     } else {
       h += '<p>Joue une partie sur ce parcours : l’appli tracera ton score moyen trou par trou.</p>';
     }
-    h += carteBlocParcours(pc) + '<h3 class="titre-bloc">Les pars</h3>' + parsHTML(pc);
+    h += carteBlocParcours(pc) + carteScoreParcoursHTML(pc);
     if (an.N) {
       h += '<details><summary>Tes chiffres trou par trou</summary><div class="defile"><table class="carte-score trous"><thead><tr><th scope="col">Trou</th><th scope="col" class="num">Par</th><th scope="col" class="num">Score</th>' +
         '<th scope="col" class="num">Dép.</th><th scope="col" class="num">Green</th><th scope="col" class="num">Putts</th><th scope="col" class="num">Pén.</th></tr></thead><tbody>' +
@@ -127,18 +212,15 @@
             (x.n ? '<td class="num">' + x.J + "/" + x.n + '</td><td class="num">' + x.G + "/" + x.n + '</td><td class="num">' + nb1(x.putts) + '</td><td class="num">' + nb1(x.pen) + '</td>' : '<td class="num" colspan="4">pas encore joué</td>') + '</tr>';
         }).join("") + '</tbody></table></div><p class="aide" style="margin-top:8px">Score : moyenne par rapport au par. Départs et greens : réussites sur le nombre de passages. Putts et pénalités : moyenne par passage.</p></details>';
     }
-    h += '<details><summary>Nom, SSS et slope</summary><form data-f="pc-infos" data-id="' + pc.id + '" novalidate>' +
+    h += '<details><summary>Nom du parcours</summary><form data-f="pc-infos" data-id="' + pc.id + '" novalidate>' +
       '<div class="champ"><label for="pc-nom">Nom du parcours</label><input id="pc-nom" type="text" maxlength="40" autocomplete="off" value="' + at(pc.nom) + '"></div>' +
-      '<div class="duo"><div class="champ"><label for="pc-sss">SSS</label><input id="pc-sss" type="text" inputmode="decimal" autocomplete="off" maxlength="5" value="' + (pc.sss == null ? "" : indexLib(pc.sss)) + '"></div>' +
-      '<div class="champ"><label for="pc-slope">Slope</label><input id="pc-slope" type="text" inputmode="numeric" autocomplete="off" maxlength="3" value="' + (pc.slope == null ? "" : pc.slope) + '"></div></div>' +
-      '<p class="aide">Le SSS et le slope figurent sur la carte de score du club, pour tes repères de départ. Ils affinent ton index estimé. ' + (pc.pars.length === 9 ? "Donne les valeurs pour 18 trous. " : "") + 'Tu peux laisser ces deux cases vides.</p>' +
       '<p class="erreur" id="pc-err" role="alert" hidden></p><button class="btn large" type="submit">Enregistrer</button></form></details>';
     return h + '<p style="margin-top:16px"><button class="btn danger large" type="button" data-a="pc-suppr" data-v="' + pc.id + '">Supprimer ce parcours</button></p></section>';
   }
 
   ACTIONS["pc-ouvrir"] = function (el) {
     var id = el.getAttribute("data-id"); if (!parcoursDe(id)) return;
-    ui.retourFocus = el;
+    ui.retourFocus = el; ui.pcCarte = null;
     ui.feuille = { parcours: id };
     rendreFeuille();
     var b = document.getElementById("f-fermer"); if (b) b.focus();
@@ -163,13 +245,8 @@
   FORMULAIRES["pc-infos"] = function (form) {
     var pc = parcoursDe(form.getAttribute("data-id")), err = document.getElementById("pc-err"); if (!pc) return;
     var nom = texteCourt(document.getElementById("pc-nom").value, 40);
-    var bs = document.getElementById("pc-sss").value.trim().replace(",", "."), bl = document.getElementById("pc-slope").value.trim();
-    var sss = bs === "" ? null : (/^\d{2}(\.\d)?$/.test(bs) ? parseFloat(bs) : NaN), slope = bl === "" ? null : (/^\d{2,3}$/.test(bl) ? parseInt(bl, 10) : NaN);
-    var txt = !nom ? "Donne un nom au parcours."
-      : sss !== null && !(sss >= 50 && sss <= 85) ? "Le SSS est un nombre entre 50 et 85, par exemple 70,4."
-      : slope !== null && !(slope >= 55 && slope <= 155) ? "Le slope est un nombre entier entre 55 et 155." : "";
-    if (txt) { err.textContent = txt; err.hidden = false; return; }
-    pc.nom = nom; pc.sss = sss; pc.slope = slope;
+    if (!nom) { err.textContent = "Donne un nom au parcours."; err.hidden = false; return; }
+    pc.nom = nom;
     sauver(); rendre(); rendreFeuille(); message("Parcours enregistré.");
   };
   ACTIONS["pc-suppr"] = function (el) {

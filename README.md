@@ -1,7 +1,8 @@
 # Coach de golf de poche
 
 Une appli de golf qui tient dans le téléphone : parties notées à une main, carte GPS des greens (distances à l'entrée,
-au milieu et au fond), sac et distances par club, stratégie, programme d'entraînement, défis et statistiques.
+au milieu et au fond, sur photo aérienne), coups reçus et Stableford selon l'index, sac et distances par club, stratégie,
+programme d'entraînement, défis et statistiques.
 
 **L'appli en ligne :** https://pampamtralala.github.io/CoachGolfdePoche/
 Sur téléphone, ouvre cette adresse dans Chrome (Android) ou Safari (iPhone), puis « Ajouter à l'écran d'accueil » :
@@ -35,3 +36,8 @@ lancement suivant. La date de la version s'affiche en bas du profil.
 - Cartes des parcours : © les contributeurs d'[OpenStreetMap](https://www.openstreetmap.org/copyright), licence ODbL,
   téléchargées par l'appli via l'API Overpass.
 - [Chart.js](https://www.chartjs.org/) (MIT) et les médias de [NoSleep.js](https://github.com/richtr/NoSleep.js) (MIT) sont inclus dans `src/`.
+
+## Données extérieures
+
+Carte des parcours : © les contributeurs d'OpenStreetMap (ODbL), recherche par Nominatim.
+Photos aériennes : © IGN, Géoplateforme (Licence ouverte Etalab 2.0), en France seulement.

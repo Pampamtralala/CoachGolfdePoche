@@ -1443,3 +1443,30 @@ main.entree { animation: entreeVue .22s ease-out; }
 .carte-fichier { display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .btn .ico { width: 20px; height: 20px; vertical-align: -4px; }
 .version { margin-top: 24px; text-align: center; }
+
+/* Carte de score du parcours : repères, collage */
+.trio { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 8px; }
+.rep-ligne { margin: 0 0 6px; padding: 0; border: 0; }
+.rep-ligne legend { font-size: .8rem; margin-bottom: 4px; }
+.liste-reps { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.liste-reps li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 12px; border-radius: 12px; background: var(--papier-2); }
+.liste-reps li small { grid-column: 1 / -1; color: var(--encre-2); opacity: .8; }
+.liste-reps li small:empty { display: none; }
+#pc-texte { width: 100%; font: inherit; font-size: .95rem; padding: 10px; border-radius: 12px; border: 1px solid var(--filet-fort); background: transparent; color: inherit; resize: vertical; }
+.pc-lu { margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--papier-2); }
+.pc-lu ul { margin: 4px 0 10px; padding-left: 18px; }
+.pv-score small.pv-recus { display: block; margin-top: 2px; opacity: .85; }
+
+/* Carte GPS sur photo aérienne */
+.cp.photo .cp-fairway { fill: none; }
+.cp.photo .cp-depart { fill: none; stroke: rgba(255,255,255,.6); stroke-width: 1; }
+.cp.photo .cp-bunker { fill: #E8D5A4; fill-opacity: .25; stroke: #F5E7C0; stroke-width: 1; }
+.cp.photo .cp-eau { fill: #3D82C8; fill-opacity: .25; stroke: #9CC8F2; stroke-width: 1; }
+.cp.photo .cp-green { fill-opacity: .18; stroke-width: 2; }
+.cp.photo .cp-cercle { stroke: rgba(255,255,255,.45); }
+.cp.photo .cp-cercle-lib { fill: #FFFFFF; paint-order: stroke; stroke: rgba(0,0,0,.55); stroke-width: 2.5px; }
+.cp.photo .cp-ligne { stroke: rgba(255,255,255,.8); }
+.cp .cp-tee rect { fill: #FFFFFF; stroke: #0B1610; stroke-width: 1.5; }
+.cp .cp-tee text { font: 700 9px var(--f-titre); fill: #0B1610; }
+.cp .cp-bord.dessin { fill: #FFFFFF; }
+.carte-photos { margin: 12px 0; }

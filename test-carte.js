@@ -153,6 +153,50 @@ const T = D.trous().map(t => Object.assign({}, t, { dep: P(t.dep), green: P(t.gr
   ok(uo === 'https://api.openstreetmap.org/api/0.6/map.json?bbox=2.252959,46.203654,2.270074,46.212243', 'téléchargement du parcours : ' + uo);
 }
 
+/* --- Apprentissage au fil des parties --- */
+{
+  const r = C.construireCarte(D.golfDrapeaux(), 'osm'), c = r.carte, T = D.trous();
+  const P = q => C.projeter(c.o, ...C.deprojeter(D.O, q[0], q[1]));
+  const vrai = P([T[0].green[0] + 4, T[0].green[1] + 6]);   /* le vrai green est décalé de 7 m par rapport au drapeau de la carte */
+  /* Drapeaux du jour, répartis sur un green de 30 m sur 22 */
+  const drapeaux = [[-8, -5], [7, 4], [0, 9], [-3, -8], [9, -2], [-6, 6]];
+  let res = [];
+  drapeaux.forEach((d, j) => res.push(C.noterFinTrou(c, 0, [vrai[0] + d[0], vrai[1] + d[1]], 20000 + j)));
+  ok(res.join() === 'note,note,note,note,appris,note', 'green appris à la 5e partie : ' + res.join());
+  const t = c.trous[0], g = C.centrePoly(C.dePlat(t.g));
+  ok(!t.est && t.app === 6 && C.dist2(g, vrai) < 3, 'green appris : centré à ' + C.dist2(g, vrai).toFixed(1) + ' m du vrai green');
+  ok(C.noterFinTrou(c, 0, [vrai[0] + 60, vrai[1]], 20010) === null, 'un point à 60 m du green est écarté');
+  ok(C.noterFinTrou(c, 1, P(T[1].green), 20000) === 'note' && C.noterFinTrou(c, 1, P(T[1].green), 20000) === 'note' && C.joursDistincts(c.trous[1].ap) === 1, 'deux fois le même jour : un seul jour compté');
+  const a2 = C.assainirCarte(JSON.parse(JSON.stringify(c)));
+  ok(JSON.stringify(a2.trous[0]) === JSON.stringify(c.trous[0]) && a2.trous[0].app === 6, 'green appris et points gardés au stockage');
+  C.poserReleve(c, 3, [0, 0], [0, 30]);
+  ok(C.noterFinTrou(c, 2, [0, 15], 20000) === null && !c.trous[2].app, 'un green relevé sur place ne bouge plus');
+  const brut = C.construireCarte(D.golfTest(), 'osm').carte;
+  ok(C.noterFinTrou(brut, 0, C.centrePoly(C.dePlat(brut.trous[0].g)), 20000) === null, 'un green dessiné sur OpenStreetMap ne bouge pas');
+  /* Départ appris */
+  const dep = P([T[4].dep[0] + 12, T[4].dep[1] - 8]);
+  const rd = [0, 1, 2].map(j => C.noterDepart(c, 4, [dep[0] + j, dep[1]], 20000 + j));
+  ok(rd.join() === 'note,note,depart' && C.dist2(C.dePlat(c.trous[4].l)[0], [dep[0] + 1, dep[1]]) < 0.2, 'départ appris à la 3e partie : ' + rd.join());
+  ok(C.noterDepart(c, 4, P(T[4].green), 20005) === null, 'un « départ » sur le green est écarté');
+  const e = C.ellipseNuage([[-10, 0], [10, 0], [0, 4], [0, -4], [-6, 2], [6, -2], [-6, -2], [6, 2]]);
+  const d = e.pts.map(q => Math.hypot(q[0] - e.c[0], q[1] - e.c[1]));
+  ok(Math.abs(Math.atan2(e.pts[0][1], e.pts[0][0])) < 0.05 && Math.max(...d) > Math.min(...d) + 3, 'ellipse allongée dans l\'axe du nuage');
+}
+
+/* --- Photos aériennes --- */
+{
+  const o = [46.2079, 2.2615];
+  ok(C.photoPossible(o) && !C.photoPossible([40.4, -3.7]) && !C.photoPossible(null), 'photos IGN : France seulement');
+  const ll = C.tuileLL(132718, 93042, 18), xy = C.tuileXY(ll[0], ll[1], 18);
+  ok(Math.abs(xy[0] - 132718) < 1e-6 && Math.abs(xy[1] - 93042) < 1e-6, 'tuiles : aller-retour');
+  const tu = C.tuilesPour(o, [[-100, -200], [100, 200]], 18, 40);
+  ok(tu.length === 15 && Math.abs(tu[0].x1 - tu[0].x0 - 105.7) < 0.5 && /TILEMATRIX=18&TILEROW=\d+&TILECOL=\d+$/.test(tu[0].url), 'tuiles d\'un trou au zoom 18 : ' + tu.length);
+  ok(C.tuilesPour(o, [[-2000, -2000], [2000, 2000]], 19, 40)[0].z < 17, 'trop de tuiles : le zoom baisse');
+  const n = C.tuilesParcours(C.construireCarte(D.golfDrapeaux(), 'osm').carte).length;
+  ok(n > 50 && n < 1500, 'photos du parcours pour jouer sans réseau : ' + n + ' tuiles');
+  ok(C.zoomPhoto(o, 2) === 19 && C.zoomPhoto(o, 0.05) === 14, 'niveau de zoom borné');
+}
+
 /* --- Contrôle du stockage --- */
 {
   const a = C.assainirCarte(JSON.parse(JSON.stringify(carte)));

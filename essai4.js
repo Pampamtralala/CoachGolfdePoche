@@ -198,11 +198,13 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   verifie(e.parcours[0].pars[2] === 4 && e.parties.every(p => p.o === 9 || p.trous[2][5] === 4), 'par changé : les parties suivent');
   await page.click('#feuille [data-a="pc-par"][data-v="2"]'); await page.click('#feuille [data-a="pc-par"][data-v="2"]');
   verifie((await lire()).parcours[0].pars[2] === 3, 'cycle des pars : retour à 3');
-  await page.click('#feuille details:last-of-type summary');
-  await page.fill('#pc-sss', '99'); await page.click('#feuille form[data-f="pc-infos"] button[type="submit"]');
-  res.erreurSSS = await page.textContent('#pc-err');
-  await page.fill('#pc-sss', '70,4'); await page.fill('#pc-slope', '128'); await page.fill('#pc-nom', 'Golf des Essais');
-  await page.click('#feuille form[data-f="pc-infos"] button[type="submit"]');
+  await page.click('#feuille details:has([data-f="pc-carte"]) summary');
+  await page.fill('#rp-s0', '99'); await page.click('#feuille form[data-f="pc-carte"] button[type="submit"]');
+  res.erreurSSS = await page.textContent('#pc-carte-err');
+  await page.fill('#rp-n0', 'Jaune'); await page.fill('#rp-s0', '70,4'); await page.fill('#rp-l0', '128');
+  await page.click('#feuille form[data-f="pc-carte"] button[type="submit"]');
+  await page.click('#feuille details:has([data-f="pc-infos"]) summary');
+  await page.fill('#pc-nom', 'Golf des Essais'); await page.click('#feuille form[data-f="pc-infos"] button[type="submit"]');
   e = await lire();
   verifie(e.parcours[0].sss === 70.4 && e.parcours[0].slope === 128 && e.parcours[0].nom === 'Golf des Essais', 'SSS, slope et nom enregistrés');
   await page.keyboard.press('Escape');

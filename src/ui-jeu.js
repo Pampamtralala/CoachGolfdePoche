@@ -49,22 +49,19 @@
   }
   /* Une position, tout de suite : la dernière du suivi si elle a moins de cinq secondes, sinon une demande au téléphone ;
      si la demande n'aboutit pas, la dernière position connue (moins de deux minutes) sert de repli. */
-  function prendrePosition(fin) {
-    var arrondi = function (ll) { return [Math.round(ll[0] * 1e6) / 1e6, Math.round(ll[1] * 1e6) / 1e6]; };
-    var age = POS.ll ? Date.now() - POS.t : Infinity;
-    if (age < 5000) { fin(arrondi(POS.ll), POS.pr); return; }
-    navigator.geolocation.getCurrentPosition(function (pos) {
-      fin(arrondi([pos.coords.latitude, pos.coords.longitude]), Math.round(pos.coords.accuracy));
-    }, function (err) {
-      if (err && err.code === 1) GPS.refuse = true;
-      else if (POS.ll && Date.now() - POS.t < 120000) { fin(arrondi(POS.ll), POS.pr); return; }
-      fin(null, null, err);
-    }, { enableHighAccuracy: true, timeout: age < 60000 ? 4000 : 15000, maximumAge: 0 });
-  }
+  /* Position du joueur au moment du toucher : un point reçu dans les 3 dernières secondes, sinon le prochain.
+     Plus de repli sur une position ancienne : sans point frais, la mesure échoue et le dit. */
+  function prendrePosition(fin) { positionFraiche(fin, { age: 3000, n: 1, prMax: 30, attente: 12000 }); }
 
   /* ---------- Données du trou ---------- */
   function coupsDuTrou(p, k) { if (!p.coups) p.coups = []; return p.coups[k] || []; }
-  function longueurTrou(p, k) { var pc = parcoursDe(p.pc); return pc && pc.longueurs ? pc.longueurs[trouPhysique(p, k)] || 0 : 0; }
+  /* Longueur du trou : celle notée à la main, sinon celle de la carte GPS (départ → milieu du green). Une seule source affichée. */
+  function longueurTrou(p, k) {
+    var pc = parcoursDe(p.pc), h = trouPhysique(p, k), m = pc && pc.longueurs ? pc.longueurs[h] || 0 : 0;
+    if (m) return m;
+    var c = pc ? carteDe(pc.id) : null, l = c ? longueurTrouCarte(c, h) : null;
+    return l >= 40 && l <= 700 ? l : 0;
+  }
   function nomClub(id) { return CLUB[id] ? CLUB[id].nom.split(",")[0] : ""; }
   /* Green en régulation : sur le green en par moins deux coups, pénalités comprises. */
   function girDe(v) { return v[4] - v[2] <= v[5] - 2 ? 1 : 0; }
@@ -81,8 +78,14 @@
     return "Trou " + numeroTrou(p, p.i) + " · par " + par + (x ? " · " + x[4] + " + " + pluriel(x[2], "putt") : " · à noter");
   }
   function cumulPartie(p) {
-    var s = statsTrous(p.trous);
-    return s.T ? (s.N === s.T ? ecartLib(s.S - s.PAR) : pluriel(s.P, "putt")) + " après " + pluriel(s.T, "trou") : "premier trou";
+    var s = statsTrous(p.trous), R = recusPartie(p);
+    return s.T ? (s.N === s.T ? ecartLib(s.S - s.PAR) + (R && R.notes ? " · " + R.points + " pts" : "") : pluriel(s.P, "putt")) + " après " + pluriel(s.T, "trou") : "premier trou";
+  }
+  /* Coups reçus sur le trou en cours et points Stableford du score affiché. */
+  function recusTrouHTML(p, v) {
+    var R = recusPartie(p); if (!R) return "";
+    var r = R.recus[p.i] || 0;
+    return '<small class="pv-recus">' + t((r > 0 ? (r > 1 ? r + " coups reçus" : "1 coup reçu") : r < 0 ? "1 coup rendu" : "Pas de coup reçu") + " · " + pluriel(pointsStableford(v[4], v[5], r), "point")) + '</small>';
   }
 
   /* ---------- Le pavé ---------- */
@@ -102,7 +105,7 @@
     var expr = modeSaisie() === "express";
     h += '<div class="pv-corps">' + emfLigneHTML() + (expr ? '' : sjcLigneHTML()) + planDuTrou(p) +
       '<div class="pv-score" role="group" aria-label="Score du trou"><button class="pv-pm" type="button" data-a="pt-score" data-d="-1" aria-label="Un coup de moins"' + (v[4] <= scoreMini(v[2], v[3]) ? " disabled" : "") + '>−</button>' +
-      '<p aria-live="polite"><span class="main">' + v[4] + '</span><small>' + t(nomScore(v[4], v[5])) + '</small></p>' +
+      '<p aria-live="polite"><span class="main">' + v[4] + '</span><small>' + t(nomScore(v[4], v[5])) + '</small>' + recusTrouHTML(p, v) + '</p>' +
       '<button class="pv-pm" type="button" data-a="pt-score" data-d="1" aria-label="Un coup de plus"' + (v[4] >= 15 ? " disabled" : "") + '>+</button></div>' +
       '<div class="pv-duo"><div class="pv-putts" role="group" aria-label="Putts"><span>Putts</span>' +
       '<button class="pv-pm petit" type="button" data-a="pv-putts" data-d="-1" aria-label="Un putt de moins"' + (v[2] <= 0 ? " disabled" : "") + '>−</button>' +
@@ -324,6 +327,7 @@
     if (C.i >= 0) l[C.i] = coup; else l.push(coup);
     p.coups[p.i] = l.slice(0, 15);
     var n = C.i >= 0 ? C.i + 1 : l.length;
+    if (n === 1 && coup.g) apprendreDepart([coup.g[0], coup.g[1]]);
     ui.pvCoup = null; ui.pvRetour = null;
     sauver(); rendrePartie(); focusPartie('[data-a="pv-coup"][data-v="-1"]');
     if (coup.d) message(nomClub(coup.c) + " : " + coup.d + " m notés. Ton sac est à jour.");

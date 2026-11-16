@@ -197,7 +197,8 @@ function construireCarte(data, src, maj) {
     /* Tracé dessiné à l'envers : le green est du côté du premier point. */
     if (deb && fin && deb.d < fin.d && deb.d <= CARTE_GREEN_MAX && fin.d > CARTE_GREEN_MAX) { pts = pts.slice().reverse(); fin = deb; }
     var par = parseInt(x.tags.par, 10);
-    var t = { l: pts, par: par >= 3 && par <= 6 ? par : 0, g: null };
+    var hc = parseInt(x.tags.handicap || x.tags.hcp, 10);
+    var t = { l: pts, par: par >= 3 && par <= 6 ? par : 0, hcp: hc >= 1 && hc <= 18 ? hc : 0, g: null };
     if (fin && fin.d <= CARTE_GREEN_MAX && !fin.g.pris) { fin.g.pris = true; t.g = fin.g; }
     trous[num - 1] = t;
   });
@@ -247,7 +248,7 @@ function construireCarte(data, src, maj) {
   restes.slice(0, 30).forEach(function (g) { carte.libres.push(encoderLibre(g)); });
   var estimes = carte.trous.filter(function (t) { return t && t.est; }).length;
   var bilan = { nom: nom, greens: greens.length, estimes: estimes, drapeaux: pinsLL.length, numerotes: carte.trous.filter(Boolean).length, libres: carte.libres.length, traces: trous.filter(Boolean).length,
-    bunkers: formes.b.length, eaux: formes.e.length, fairways: formes.f.length, doublons: doublons, pars: trous.map(function (t) { return t ? t.par : 0; }) };
+    bunkers: formes.b.length, eaux: formes.e.length, fairways: formes.f.length, doublons: doublons, pars: trous.map(function (t) { return t ? t.par : 0; }), hcp: trous.map(function (t) { return t ? t.hcp : 0; }) };
   return { carte: carte, bilan: bilan };
 }
 /* Donne un numéro à un green sans numéro (ou retire son numéro à un trou : num = 0). */
@@ -261,6 +262,7 @@ function numeroterGreen(carte, iLibre, num) {
   /* Le tracé du trou, s'il existe, reste : seul le green change. */
   carte.trous[num - 1] = { g: x.g, l: ancien ? ancien.l : null, par: ancien ? ancien.par : 0, b: x.b || [], e: x.e || [], f: x.f || [], d: x.d || [] };
   if (x.est) carte.trous[num - 1].est = 1;
+  if (ancien && ancien.ad) carte.trous[num - 1].ad = ancien.ad;
   return true;
 }
 /* Green relevé sur place : deux positions, l'entrée et le fond. Le green est dessiné comme un ovale entre les deux. */
@@ -287,9 +289,65 @@ function poserReleve(carte, num, entree, fond) {
   if (!(num >= 1 && num <= CARTE_MAX_TROUS)) return false;
   while (carte.trous.length < num) carte.trous.push(null);
   var t = carte.trous[num - 1] || { g: null, l: null, par: 0, b: [], e: [], f: [], d: [] };
-  t.g = aPlat(greenReleve(entree, fond)); t.rel = aPlat([entree, fond]); delete t.est;
+  t.g = aPlat(greenReleve(entree, fond)); t.rel = aPlat([entree, fond]); delete t.est; delete t.app;
   carte.trous[num - 1] = t;
   return true;
+}
+
+/* ---------- Apprentissage au fil des parties ----------
+   Fin de trou : le joueur est au drapeau du jour. Les drapeaux changent de place sur le green d'une partie à l'autre :
+   leur nuage dessine le green. Premier coup du trou : le joueur est au départ.
+   Points gardés en décimètres avec le numéro du jour : [x, y, jour, x, y, jour…]. */
+var CARTE_APPRIS = { jours: 5, joursDepart: 3, max: 60, rayon: 30 };
+function joursDistincts(l) { var v = {}, n = 0; for (var i = 2; i < (l || []).length; i += 3) if (!v[l[i]]) { v[l[i]] = true; n++; } return n; }
+function pointsAppris(l) { var r = []; for (var i = 0; i + 2 < (l || []).length; i += 3) r.push([l[i] / 10, l[i + 1] / 10]); return r; }
+function mediane(v) { var s = v.slice().sort(function (a, b) { return a - b; }), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+function ajouterPoint(l, q, jour, max) {
+  var r = (l || []).concat([Math.round(q[0] * 10), Math.round(q[1] * 10), jour]);
+  return r.length > max * 3 ? r.slice(r.length - max * 3) : r;
+}
+/* Ellipse du nuage de points : centre médian, axes principaux, demi-axes = 2 écarts-types + 4 m (bornés). */
+function ellipseNuage(pts) {
+  var c = [mediane(pts.map(function (q) { return q[0]; })), mediane(pts.map(function (q) { return q[1]; }))];
+  var l = pts.filter(function (q) { return dist2(q, c) <= CARTE_APPRIS.rayon; });
+  if (l.length < 3) return null;
+  var sxx = 0, syy = 0, sxy = 0;
+  l.forEach(function (q) { var dx = q[0] - c[0], dy = q[1] - c[1]; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; });
+  sxx /= l.length; syy /= l.length; sxy /= l.length;
+  var tr = sxx + syy, det = sxx * syy - sxy * sxy, dl = Math.sqrt(Math.max(0, tr * tr / 4 - det));
+  var l1 = tr / 2 + dl, l2 = Math.max(0, tr / 2 - dl), ang = Math.atan2(l1 - sxx, sxy || 1e-9);
+  if (Math.abs(sxy) < 1e-9) ang = sxx >= syy ? 0 : Math.PI / 2;
+  var a = Math.max(9, Math.min(22, 2 * Math.sqrt(l1) + 4)), b = Math.max(8, Math.min(20, 2 * Math.sqrt(l2) + 4)), out = [];
+  for (var i = 0; i < 16; i++) {
+    var t = 2 * Math.PI * i / 16, x = a * Math.cos(t), y = b * Math.sin(t);
+    out.push([c[0] + x * Math.cos(ang) - y * Math.sin(ang), c[1] + x * Math.sin(ang) + y * Math.cos(ang)]);
+  }
+  return { c: c, pts: out, n: l.length };
+}
+/* Point pris en fin de trou (q en mètres). Rend "appris" quand le green estimé vient d'être remplacé, "note" s'il est
+   gardé, null s'il est écarté (trop loin du green, green relevé ou dessiné sur OpenStreetMap). */
+function noterFinTrou(carte, h, q, jour) {
+  var t = trouCarte(carte, h);
+  if (!t || t.rel || !(t.est || t.app) || dist2(q, centrePoly(dePlat(t.g))) > CARTE_APPRIS.rayon) return null;
+  t.ap = ajouterPoint(t.ap, q, jour, CARTE_APPRIS.max);
+  var nj = joursDistincts(t.ap);
+  if (nj < CARTE_APPRIS.jours) return "note";
+  var e = ellipseNuage(pointsAppris(t.ap));
+  if (!e) return "note";
+  var neuf = !t.app;
+  t.g = aPlat(e.pts); t.app = nj; delete t.est;
+  return neuf ? "appris" : "note";
+}
+/* Position au premier coup du trou : après 3 parties, le départ appris remplace le début du tracé. */
+function noterDepart(carte, h, q, jour) {
+  var t = trouCarte(carte, h); if (!t) return null;
+  var c = centrePoly(dePlat(t.g)), l = t.l ? dePlat(t.l) : null, dc = dist2(q, c);
+  if (dc < 60 || dc > 650 || (l && dist2(q, l[0]) > 120)) return null;
+  t.ad = ajouterPoint(t.ad, q, jour, 30);
+  if (joursDistincts(t.ad) < CARTE_APPRIS.joursDepart) return "note";
+  var p = pointsAppris(t.ad), dep = [mediane(p.map(function (x) { return x[0]; })), mediane(p.map(function (x) { return x[1]; }))];
+  if (l) { l[0] = dep; t.l = aPlat(l); } else t.l = aPlat([dep, c]);
+  return "depart";
 }
 
 /* ---------- Distances ----------
@@ -406,9 +464,67 @@ function lireGolfs(data) {
   return out;
 }
 
+/* ---------- Photos aériennes de l'IGN (orthophotos, Licence ouverte) ----------
+   Tuiles de 256 px en projection Web Mercator. Sur la taille d'un trou, chaque tuile se pose
+   comme un rectangle dans le repère local en mètres. */
+var CARTE_IGN = "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM";
+function tuileXY(lat, lon, z) {
+  var n = Math.pow(2, z), r = lat * Math.PI / 180;
+  return [(lon + 180) / 360 * n, (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n];
+}
+function tuileLL(x, y, z) {
+  var n = Math.pow(2, z), m = Math.PI - 2 * Math.PI * y / n;
+  return [180 / Math.PI * Math.atan(0.5 * (Math.exp(m) - Math.exp(-m))), x / n * 360 - 180];
+}
+function urlTuile(z, x, y) { return CARTE_IGN + "&TILEMATRIX=" + z + "&TILEROW=" + y + "&TILECOL=" + x; }
+function photoPossible(o) { return !!o && o[0] >= CARTE_FRANCE[0] && o[0] <= CARTE_FRANCE[2] && o[1] >= CARTE_FRANCE[1] && o[1] <= CARTE_FRANCE[3]; }
+/* Niveau de zoom : assez fin pour pxParM pixels d'écran par mètre (écran à haute densité compris). */
+function zoomPhoto(o, pxParM) {
+  var z = Math.ceil(Math.log(156543.03 * Math.cos(o[0] * Math.PI / 180) * pxParM * 2) / Math.LN2);
+  return Math.max(14, Math.min(19, z));
+}
+/* Tuiles qui couvrent les points (mètres, repère de la carte d'origine o) : [{ z, x, y, url, x0, y0, x1, y1 }].
+   Au-delà de max tuiles, le zoom baisse d'un cran. */
+function tuilesPour(o, pts, z, max) {
+  max = max || 40;
+  for (; z >= 12; z--) {
+    var xs = [], ys = [];
+    pts.forEach(function (q) { var ll = deprojeter(o, q[0], q[1]), t = tuileXY(ll[0], ll[1], z); xs.push(t[0]); ys.push(t[1]); });
+    var ax = Math.floor(Math.min.apply(null, xs)), bx = Math.floor(Math.max.apply(null, xs)), ay = Math.floor(Math.min.apply(null, ys)), by = Math.floor(Math.max.apply(null, ys));
+    if ((bx - ax + 1) * (by - ay + 1) > max) continue;
+    var out = [];
+    for (var x = ax; x <= bx; x++) for (var y = ay; y <= by; y++) {
+      var no = tuileLL(x, y, z), se = tuileLL(x + 1, y + 1, z), a = projeter(o, no[0], no[1]), b = projeter(o, se[0], se[1]);
+      out.push({ z: z, x: x, y: y, url: urlTuile(z, x, y), x0: a[0], y1: a[1], x1: b[0], y0: b[1] });
+    }
+    return out;
+  }
+  return [];
+}
+/* Tuiles d'un parcours entier, pour jouer sans réseau : chaque trou au zoom 18, la vue d'ensemble au zoom 16. */
+function tuilesParcours(carte) {
+  var vus = {}, out = [], ajouter = function (l) { l.forEach(function (t) { if (!vus[t.url]) { vus[t.url] = true; out.push(t.url); } }); }, tous = [];
+  (carte.trous || []).concat(carte.libres || []).forEach(function (t) {
+    if (!t || !t.g) return;
+    var pts = dePlat(t.g).concat(t.l ? dePlat(t.l) : []), c = centrePoly(dePlat(t.g)), x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    if (!t.l) pts.push([c[0] - 160, c[1] - 160], [c[0] + 160, c[1] + 160]);
+    pts.forEach(function (q) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); });
+    var cadre = [[x0 - 40, y0 - 40], [x1 + 40, y1 + 40]];
+    tous = tous.concat(cadre);
+    ajouter(tuilesPour(carte.o, cadre, 18, 60));
+  });
+  if (tous.length) ajouter(tuilesPour(carte.o, tous, 16, 60));
+  return out.slice(0, 1500);
+}
+
 /* ---------- Contrôle d'une carte lue dans le stockage ---------- */
 function assainirForme(l, min) {
   if (!Array.isArray(l) || l.length < (min || 6) || l.length > 4000 || l.length % 2) return null;
+  for (var i = 0; i < l.length; i++) if (!carteNb(l[i]) || Math.abs(l[i]) > 200000) return null;
+  return l.map(Math.round);
+}
+function assainirPoints(l, max) {
+  if (!Array.isArray(l) || !l.length || l.length % 3 || l.length > max * 3) return null;
   for (var i = 0; i < l.length; i++) if (!carteNb(l[i]) || Math.abs(l[i]) > 200000) return null;
   return l.map(Math.round);
 }
@@ -426,6 +542,9 @@ function assainirCarte(c) {
     if (!g) { r.trous.push(null); return; }
     var x = { g: g, l: assainirForme(t.l, 4), par: t.par >= 3 && t.par <= 6 ? t.par : 0, b: formes(t.b), e: formes(t.e), f: formes(t.f), d: formes(t.d) };
     var rel = assainirForme(t.rel, 4); if (rel && rel.length === 4) x.rel = rel; else if (t.est) x.est = 1;
+    var ap = assainirPoints(t.ap, CARTE_APPRIS.max), ad = assainirPoints(t.ad, 30);
+    if (ap) x.ap = ap; if (ad) x.ad = ad;
+    if (!x.rel && !x.est && t.app >= 1 && t.app <= 999) x.app = Math.round(t.app);
     r.trous.push(x);
   });
   return r;
@@ -435,5 +554,5 @@ if (typeof module !== "undefined") {
   module.exports = { projeter, deprojeter, dist2, centrePoly, airePoly, pointDansPoly, distSegment, distLigne, longueurLigne, simplifier, aPlat, dePlat, anneaux, lireOSM, genreOSM,
     construireCarte, numeroterGreen, greenReleve, carteVide, poserReleve, distancesGreen, trouCarte, distancesTrou, longueurTrouCarte, repereTrou, versVue, depuisVue,
     motsNom, motifNom, requeteNom, requeteAutour, requeteGolf, lireGolfs, assainirForme, assainirCarte, CARTE_MAX_TROUS,
-    greenEstime, urlRechercheGolf, urlGolfsAutour, lireNominatim, urlCarteOSM };
+    greenEstime, urlRechercheGolf, urlGolfsAutour, lireNominatim, urlCarteOSM, tuileXY, tuileLL, urlTuile, photoPossible, zoomPhoto, tuilesPour, tuilesParcours, noterFinTrou, noterDepart, ellipseNuage, joursDistincts, CARTE_APPRIS };
 }

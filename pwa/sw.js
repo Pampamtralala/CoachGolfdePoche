@@ -1,7 +1,7 @@
 /* Service worker de Coach de golf de poche : l'appli s'ouvre sans réseau, et se met à jour dès que le réseau revient.
    La page est demandée au réseau d'abord (version la plus récente), avec la copie gardée en secours. */
 var VERSION = "__VERSION__";
-var CACHE = "coach-" + VERSION, POLICES = "coach-polices-1";
+var CACHE = "coach-" + VERSION, POLICES = "coach-polices-1", PHOTOS = "coach-photos-1";
 var FICHIERS = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", function (ev) {
@@ -9,7 +9,7 @@ self.addEventListener("install", function (ev) {
 });
 self.addEventListener("activate", function (ev) {
   ev.waitUntil(caches.keys().then(function (cles) {
-    return Promise.all(cles.filter(function (k) { return k !== CACHE && k !== POLICES; }).map(function (k) { return caches.delete(k); }));
+    return Promise.all(cles.filter(function (k) { return k !== CACHE && k !== POLICES && k !== PHOTOS; }).map(function (k) { return caches.delete(k); }));
   }).then(function () { return self.clients.claim(); }));
 });
 function avecDelai(promesse, ms) {
@@ -25,6 +25,15 @@ self.addEventListener("fetch", function (ev) {
       return c.match(req).then(function (garde) {
         var frais = fetch(req).then(function (r) { if (r && (r.ok || r.type === "opaque")) c.put(req, r.clone()); return r; }).catch(function () { return garde; });
         return garde || frais;
+      });
+    }));
+    return;
+  }
+  /* Photos aériennes de l'IGN : la copie gardée d'abord (jeu sans réseau), sinon le réseau, gardée au passage. */
+  if (url.hostname === "data.geopf.fr" && /REQUEST=GetTile/i.test(url.search)) {
+    ev.respondWith(caches.open(PHOTOS).then(function (c) {
+      return c.match(req.url).then(function (garde) {
+        return garde || fetch(req.url, { mode: "cors" }).then(function (r) { if (r && r.ok) c.put(req.url, r.clone()); return r; });
       });
     }));
     return;
