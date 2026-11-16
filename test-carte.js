@@ -44,7 +44,7 @@ const T = D.trous().map(t => Object.assign({}, t, { dep: P(t.dep), green: P(t.gr
   const gj = { type: 'FeatureCollection', features: brut.elements.filter(e => e.type === 'way').map(e => ({ type: 'Feature', properties: e.tags,
     geometry: e.tags.golf === 'hole' ? { type: 'LineString', coordinates: e.geometry.map(g => [g.lon, g.lat]) } : { type: 'Polygon', coordinates: [e.geometry.map(g => [g.lon, g.lat])] } })) };
   const r2 = C.construireCarte(gj, 'fichier');
-  ok(r2 && r2.bilan.numerotes === 17 && r2.carte.src === 'fichier', 'lecture d\'un GeoJSON : ' + (r2 && r2.bilan.numerotes) + ' greens numérotés (le 12 était une relation)');
+  ok(r2 && r2.bilan.numerotes === 18 && r2.bilan.estimes === 1 && r2.carte.trous[11].est === 1 && r2.carte.src === 'fichier', 'lecture d\'un GeoJSON : ' + (r2 && r2.bilan.numerotes) + ' greens, dont ' + (r2 && r2.bilan.estimes) + ' estimé (le 12 était une relation)');
   /* Ancien format : nœuds séparés */
   const noeuds = { elements: [{ type: 'node', id: 1, lat: 46.19, lon: 2.24 }, { type: 'node', id: 2, lat: 46.1902, lon: 2.24 }, { type: 'node', id: 3, lat: 46.1902, lon: 2.2403 }, { type: 'node', id: 4, lat: 46.19, lon: 2.2403 },
     { type: 'way', id: 9, nodes: [1, 2, 3, 4, 1], tags: { golf: 'green' } }] };
@@ -112,6 +112,45 @@ const T = D.trous().map(t => Object.assign({}, t, { dep: P(t.dep), green: P(t.gr
   const l = C.lireGolfs(D.rechercheTest());
   ok(l.length === 2 && l[0].nom === 'Golf de la Jonchère' && l[0].lieu === 'Gouzon' && l[0].bornes.length === 4 && l[1].bornes[2] - l[1].bornes[0] > 0.01, 'golfs trouvés : ' + l.map(x => x.nom).join(', '));
   ok(C.lireGolfs(null).length === 0 && C.lireGolfs({ elements: [{ type: 'way', tags: { leisure: 'park' } }] }).length === 0, 'réponse vide');
+}
+
+/* --- Golf sans green dessiné : drapeaux et tracés (comme La Jonchère) --- */
+{
+  const r = C.construireCarte(D.golfDrapeaux(), 'osm', '2026-11-16');
+  ok(r && r.bilan.greens === 0 && r.bilan.numerotes === 18 && r.bilan.estimes === 18 && r.bilan.drapeaux === 19 && r.bilan.nom === 'Golf de la Jonchère', 'drapeaux seuls : ' + JSON.stringify(r && r.bilan));
+  const c = r.carte, T = D.trous();
+  ok(c.trous.every(t => t && t.est === 1 && t.g.length === 32) && c.libres.length === 1 && c.libres[0].est === 1, '18 greens estimés, le putting green reste sans numéro');
+  const P = q => { const ll = C.deprojeter(D.O, q[0], q[1]); return C.projeter(c.o, ll[0], ll[1]); };
+  const g1 = C.centrePoly(C.dePlat(c.trous[0].g)), m1 = P(T[0].green);
+  ok(C.dist2(g1, m1) < 0.5, 'le green estimé est centré sur le drapeau');
+  const d1 = C.distancesTrou(c, 0, P(T[0].dep));
+  ok(d1 && Math.abs(d1.milieu - 150) <= 1 && Math.abs(d1.entree - 136) <= 1 && Math.abs(d1.fond - 164) <= 1, 'par 3 depuis le départ : ' + JSON.stringify(d1));
+  const d7 = C.distancesTrou(c, 6, P(T[6].dep));
+  ok(d7 && Math.abs(d7.milieu - C.dist2(P(T[6].dep), P(T[6].green))) <= 1 && d7.fond - d7.entree === 28, 'tracé à l\'envers remis dans le bon sens : ' + JSON.stringify(d7));
+  const sans = C.construireCarte(D.golfDrapeaux({ sansDrapeau: [4] }), 'osm');
+  ok(sans.bilan.estimes === 18 && C.dist2(C.centrePoly(C.dePlat(sans.carte.trous[3].g)), C.projeter(sans.carte.o, ...C.deprojeter(D.O, T[3].green[0], T[3].green[1]))) < 0.5, 'sans drapeau : green estimé au bout du tracé');
+  const a = C.assainirCarte(JSON.parse(JSON.stringify(c)));
+  ok(JSON.stringify(a) === JSON.stringify(c), 'la marque « estimé » survit au stockage');
+  C.poserReleve(c, 1, [0, 0], [0, 30]);
+  ok(!c.trous[0].est && c.trous[0].rel && c.trous[1].est === 1, 'un relevé sur place remplace le green estimé');
+  C.numeroterGreen(c, 0, 2);
+  ok(c.trous[1].est === 1 && c.libres.length === 1 && c.libres[0].est === 1, 'numéroter un green estimé garde la marque');
+}
+
+/* --- Recherche par Nominatim et téléchargement par l'API d'OpenStreetMap --- */
+{
+  const u = C.urlRechercheGolf('Jonchère');
+  ok(/^https:\/\/nominatim\.openstreetmap\.org\/search\?format=jsonv2&addressdetails=1/.test(u) && /&q=golf%20Jonch%C3%A8re$/.test(u), 'recherche par nom : ' + u);
+  ok(/&q=Golf%20de%20la%20Jonch%C3%A8re$/.test(C.urlRechercheGolf('Golf de la Jonchère')) && /&q=Jonch%C3%A8re$/.test(C.urlRechercheGolf('Jonchère', true)), 'pas de « golf » en double');
+  ok(C.urlRechercheGolf('le') === null && C.urlRechercheGolf('golf') === null, 'nom trop court');
+  ok(/&bounded=1&viewbox=2\.1200,46\.2700,2\.3600,46\.1100&q=golf$/.test(C.urlGolfsAutour(46.19, 2.24)), 'recherche autour de moi : ' + C.urlGolfsAutour(46.19, 2.24));
+  const l = C.lireNominatim(D.nominatimTest());
+  ok(l.length === 2 && l[0].nom === 'Golf de la Jonchère' && l[0].lieu === 'Gouzon, Creuse' && l[1].lieu === 'Montluçon, Auvergne-Rhône-Alpes' && l[0].bornes[0] < l[0].bornes[2] && l[0].bornes[1] < l[0].bornes[3], 'golfs lus dans Nominatim : ' + JSON.stringify(l.map(x => [x.nom, x.lieu])));
+  const pres = C.lireNominatim(D.nominatimTest(), [46.4, 2.6]);
+  ok(pres[0].nom === 'Golf des Jonchères', 'autour de moi : le plus proche en premier');
+  ok(C.lireNominatim(null).length === 0 && C.lireNominatim([{ category: 'leisure', type: 'golf_course', boundingbox: ['x'] }]).length === 0, 'réponse Nominatim vide ou abîmée');
+  const uo = C.urlCarteOSM([46.2048538, 2.2541593, 46.2110429, 2.2688742]);
+  ok(uo === 'https://api.openstreetmap.org/api/0.6/map.json?bbox=2.252959,46.203654,2.270074,46.212243', 'téléchargement du parcours : ' + uo);
 }
 
 /* --- Contrôle du stockage --- */

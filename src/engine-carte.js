@@ -9,6 +9,7 @@ var CARTE_MAX_TROUS = 27;
 var CARTE_GREEN_MAX = 60;       /* un green rattaché à un trou est à moins de 60 m du bout de son tracé */
 var CARTE_SEUILS = { b: 50, e: 60, f: 35, d: 30 };  /* bunkers, eau, fairways, départs : distance maximale à l'axe du trou */
 var CARTE_AUTOUR = 90;          /* sans tracé : ce qui est à moins de 90 m du centre du green */
+var CARTE_ESTIME = [14, 11];     /* green estimé autour du drapeau : 28 m de profondeur, 22 m de large */
 var CARTE_FRANCE = [41.2, -5.6, 51.3, 9.8];
 var CARTE_MOTS_VIDES = ["golf", "club", "country", "de", "du", "des", "la", "le", "les", "l", "d", "et", "international", "parcours"];
 var CARTE_ACCENTS = { a: "a|à|â|ä", e: "e|é|è|ê|ë", i: "i|î|ï", o: "o|ô|ö", u: "u|ù|û|ü", c: "c|ç", y: "y|ÿ" };
@@ -149,6 +150,7 @@ function genreOSM(tags) {
   if (tags.sport === "miniature_golf" || tags.leisure === "miniature_golf") return null;
   if (g === "green") return "green";
   if (g === "hole") return "trou";
+  if (g === "pin") return "pin";
   if (g === "tee") return "d";
   if (g === "bunker") return "b";
   if (g === "fairway") return "f";
@@ -164,16 +166,24 @@ function genreOSM(tags) {
 function construireCarte(data, src, maj) {
   var objets = lireOSM(data).map(function (x) { return { genre: genreOSM(x.tags), tags: x.tags, ll: x.pts, ferme: x.ferme }; }).filter(function (x) { return x.genre; });
   var greensLL = objets.filter(function (x) { return x.genre === "green" && x.ferme && x.ll.length >= 4; });
-  if (!greensLL.length) return null;
-  /* Origine : milieu des greens. */
+  var pinsLL = objets.filter(function (x) { return x.genre === "pin" && x.ll.length === 1; });
+  var lignesLL = objets.filter(function (x) { return x.genre === "trou" && !x.ferme && x.ll.length >= 2; });
+  /* Sans green dessiné, les drapeaux et les tracés des trous suffisent : le green est alors estimé. */
+  if (!greensLL.length && !pinsLL.length && !lignesLL.length) return null;
+  /* Origine : milieu des greens (ou des drapeaux et des tracés). */
   var la = 0, lo = 0, n = 0;
-  greensLL.forEach(function (g) { g.ll.forEach(function (q) { la += q[0]; lo += q[1]; n++; }); });
+  (greensLL.length ? greensLL : pinsLL.concat(lignesLL)).forEach(function (g) { g.ll.forEach(function (q) { la += q[0]; lo += q[1]; n++; }); });
   var o = [Math.round(la / n * 1e6) / 1e6, Math.round(lo / n * 1e6) / 1e6];
   objets.forEach(function (x) {
     x.pts = x.ll.map(function (q) { return projeter(o, q[0], q[1]); });
     if (x.ferme) x.pts = x.pts.slice(0, -1);
   });
   var greens = greensLL.map(function (x) { return { pts: x.pts, c: centrePoly(x.pts), pris: false }; });
+  /* Un drapeau posé sur un green dessiné n'apporte rien de plus. */
+  var pins = pinsLL.map(function (x) { return { q: x.pts[0], pris: false }; }).filter(function (p) {
+    return !greens.some(function (g) { return pointDansPoly(p.q, g.pts) || distLigne(p.q, g.pts, true) < 5; });
+  });
+  var presPin = function (q) { var b = null; pins.forEach(function (p) { if (p.pris) return; var d = dist2(q, p.q); if (!b || d < b.d) b = { p: p, d: d }; }); return b; };
   var nom = "";
   objets.forEach(function (x) { if (x.genre === "golf" && !nom && typeof x.tags.name === "string") nom = x.tags.name.slice(0, 60); });
   /* Tracés des trous : du départ vers le green, numérotés par ref. */
@@ -190,6 +200,18 @@ function construireCarte(data, src, maj) {
     var t = { l: pts, par: par >= 3 && par <= 6 ? par : 0, g: null };
     if (fin && fin.d <= CARTE_GREEN_MAX && !fin.g.pris) { fin.g.pris = true; t.g = fin.g; }
     trous[num - 1] = t;
+  });
+  /* Trous sans green dessiné : green estimé autour du drapeau, ou au bout du tracé. */
+  trous.forEach(function (t) {
+    if (!t || t.g) return;
+    var pts = t.l, fin = presPin(pts[pts.length - 1]), deb = presPin(pts[0]);
+    if (deb && (!fin || deb.d < fin.d) && deb.d <= CARTE_GREEN_MAX && (!fin || fin.d > CARTE_GREEN_MAX)) { pts = t.l = pts.slice().reverse(); fin = deb; }
+    var c = pts[pts.length - 1];
+    if (fin && fin.d <= CARTE_GREEN_MAX) { fin.p.pris = true; c = fin.p.q; }
+    var av = null;
+    for (var k = pts.length - 1; k >= 0 && !av; k--) if (dist2(pts[k], c) > 3) av = pts[k];
+    var g = greenEstime(c, av ? Math.atan2(c[1] - av[1], c[0] - av[0]) : Math.PI / 2);
+    t.g = { pts: g, c: c, pris: true }; t.est = true;
   });
   var formes = { b: [], e: [], f: [], d: [] };
   objets.forEach(function (x) { if (formes[x.genre] && x.ferme && x.pts.length >= 3) formes[x.genre].push({ pts: x.pts, c: centrePoly(x.pts) }); });
@@ -212,14 +234,19 @@ function construireCarte(data, src, maj) {
   var encoder = function (t) {
     if (!t || !t.g) return null;
     var f = autour(t);
-    return { g: aPlat(simplifier(t.g.pts.concat([t.g.pts[0]]), 0.3).slice(0, -1)), l: t.l ? aPlat(t.l) : null, par: t.par || 0, b: f.b, e: f.e, f: f.f, d: f.d };
+    var r = { g: aPlat(t.est ? t.g.pts : simplifier(t.g.pts.concat([t.g.pts[0]]), 0.3).slice(0, -1)), l: t.l ? aPlat(t.l) : null, par: t.par || 0, b: f.b, e: f.e, f: f.f, d: f.d };
+    if (t.est) r.est = 1;
+    return r;
   };
   /* Un green sans numéro garde ce qui l'entoure : il servira tel quel une fois numéroté à la main. */
-  var encoderLibre = function (g) { var x = encoder({ g: g, l: null, par: 0 }); return { g: x.g, b: x.b, e: x.e, f: x.f, d: x.d }; };
+  var encoderLibre = function (g) { var x = encoder({ g: g, l: null, par: 0, est: g.est }); var r = { g: x.g, b: x.b, e: x.e, f: x.f, d: x.d }; if (x.est) r.est = 1; return r; };
   var carte = { src: src || "osm", nom: nom, maj: maj || null, o: o, trous: [], libres: [] };
   for (var i = 0; i < trous.length; i++) carte.trous.push(encoder(trous[i]));
-  greens.filter(function (g) { return !g.pris; }).slice(0, 30).forEach(function (g) { carte.libres.push(encoderLibre(g)); });
-  var bilan = { nom: nom, greens: greens.length, numerotes: carte.trous.filter(Boolean).length, libres: carte.libres.length, traces: trous.filter(Boolean).length,
+  var restes = greens.filter(function (g) { return !g.pris; });
+  pins.forEach(function (p) { if (!p.pris) restes.push({ pts: greenEstime(p.q, Math.PI / 2), c: p.q, est: true }); });
+  restes.slice(0, 30).forEach(function (g) { carte.libres.push(encoderLibre(g)); });
+  var estimes = carte.trous.filter(function (t) { return t && t.est; }).length;
+  var bilan = { nom: nom, greens: greens.length, estimes: estimes, drapeaux: pinsLL.length, numerotes: carte.trous.filter(Boolean).length, libres: carte.libres.length, traces: trous.filter(Boolean).length,
     bunkers: formes.b.length, eaux: formes.e.length, fairways: formes.f.length, doublons: doublons, pars: trous.map(function (t) { return t ? t.par : 0; }) };
   return { carte: carte, bilan: bilan };
 }
@@ -230,9 +257,10 @@ function numeroterGreen(carte, iLibre, num) {
   while (carte.trous.length < num) carte.trous.push(null);
   var ancien = carte.trous[num - 1];
   carte.libres.splice(iLibre, 1);
-  if (ancien && ancien.g && !ancien.rel) carte.libres.push({ g: ancien.g, b: ancien.b, e: ancien.e, f: ancien.f, d: ancien.d });
+  if (ancien && ancien.g && !ancien.rel) { var lb = { g: ancien.g, b: ancien.b, e: ancien.e, f: ancien.f, d: ancien.d }; if (ancien.est) lb.est = 1; carte.libres.push(lb); }
   /* Le tracé du trou, s'il existe, reste : seul le green change. */
   carte.trous[num - 1] = { g: x.g, l: ancien ? ancien.l : null, par: ancien ? ancien.par : 0, b: x.b || [], e: x.e || [], f: x.f || [], d: x.d || [] };
+  if (x.est) carte.trous[num - 1].est = 1;
   return true;
 }
 /* Green relevé sur place : deux positions, l'entrée et le fond. Le green est dessiné comme un ovale entre les deux. */
@@ -245,12 +273,21 @@ function greenReleve(entree, fond) {
   }
   return pts;
 }
+/* Green estimé : un ovale centré sur le drapeau, allongé dans l'axe du jeu (ang). */
+function greenEstime(c, ang) {
+  var a = CARTE_ESTIME[0], b = CARTE_ESTIME[1], pts = [];
+  for (var i = 0; i < 16; i++) {
+    var t = 2 * Math.PI * i / 16, x = a * Math.cos(t), y = b * Math.sin(t);
+    pts.push([c[0] + x * Math.cos(ang) - y * Math.sin(ang), c[1] + x * Math.sin(ang) + y * Math.cos(ang)]);
+  }
+  return pts;
+}
 function carteVide(lat, lon, maj) { return { src: "releve", nom: "", maj: maj || null, o: [Math.round(lat * 1e6) / 1e6, Math.round(lon * 1e6) / 1e6], trous: [], libres: [] }; }
 function poserReleve(carte, num, entree, fond) {
   if (!(num >= 1 && num <= CARTE_MAX_TROUS)) return false;
   while (carte.trous.length < num) carte.trous.push(null);
   var t = carte.trous[num - 1] || { g: null, l: null, par: 0, b: [], e: [], f: [], d: [] };
-  t.g = aPlat(greenReleve(entree, fond)); t.rel = aPlat([entree, fond]);
+  t.g = aPlat(greenReleve(entree, fond)); t.rel = aPlat([entree, fond]); delete t.est;
   carte.trous[num - 1] = t;
   return true;
 }
@@ -316,6 +353,44 @@ function requeteGolf(b) {
   return '[out:json][timeout:60];(nwr["golf"](' + bb + ');way["natural"="water"](' + bb + ');relation["natural"="water"](' + bb + '););out body geom;';
 }
 /* Golfs d'une réponse de recherche : nom et bornes [sud, ouest, nord, est]. */
+/* Recherche par nom ou autour d'un point : Nominatim, le moteur de recherche d'OpenStreetMap. */
+var CARTE_NOMINATIM = "https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=10&accept-language=fr";
+function urlRechercheGolf(nom, sansGolf) {
+  if (!motifNom(nom)) return null;
+  var q = String(nom).trim().slice(0, 60);
+  if (!sansGolf && !/golf/i.test(q)) q = "golf " + q;
+  return CARTE_NOMINATIM + "&q=" + encodeURIComponent(q);
+}
+function urlGolfsAutour(lat, lon) {
+  var b = [(lon - 0.12).toFixed(4), (lat + 0.08).toFixed(4), (lon + 0.12).toFixed(4), (lat - 0.08).toFixed(4)];
+  return CARTE_NOMINATIM + "&bounded=1&viewbox=" + b.join(",") + "&q=golf";
+}
+function lireNominatim(liste, pres) {
+  var out = [], vus = {};
+  (Array.isArray(liste) ? liste : []).forEach(function (e) {
+    if (!e || (e.category || e["class"]) !== "leisure" || e.type !== "golf_course" || !Array.isArray(e.boundingbox)) return;
+    var bb = e.boundingbox.map(Number), b = [bb[0], bb[2], bb[1], bb[3]];
+    if (!b.every(carteNb) || b[2] < b[0] || b[3] < b[1] || b[2] - b[0] > 0.2 || b[3] - b[1] > 0.3) return;
+    var nom = typeof e.name === "string" && e.name.trim() ? e.name.trim().slice(0, 60) : typeof e.display_name === "string" ? e.display_name.split(",")[0].trim().slice(0, 60) : "";
+    nom = nom || "Golf sans nom";
+    var cle = nom + "|" + b[0].toFixed(2) + "|" + b[1].toFixed(2);
+    if (vus[cle]) return; vus[cle] = true;
+    var ad = e.address && typeof e.address === "object" ? e.address : {};
+    var ville = ad.village || ad.town || ad.city || ad.municipality || ad.hamlet || "", dep = ad.county || ad.state || "";
+    var lieu = [ville, dep && dep !== ville ? dep : ""].filter(Boolean).join(", ").slice(0, 60);
+    out.push({ nom: nom, bornes: b, c: [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2], lieu: lieu });
+  });
+  if (pres) {
+    var o = [pres[0], pres[1]];
+    out.sort(function (x, y) { return dist2(projeter(o, x.c[0], x.c[1]), [0, 0]) - dist2(projeter(o, y.c[0], y.c[1]), [0, 0]); });
+  }
+  return out;
+}
+/* Données du golf : l'API d'OpenStreetMap, tout ce qui est dans le rectangle du golf (avec une marge). */
+function urlCarteOSM(b) {
+  var m = 0.0012;
+  return "https://api.openstreetmap.org/api/0.6/map.json?bbox=" + [b[1] - m, b[0] - m, b[3] + m, b[2] + m].map(function (v) { return v.toFixed(6); }).join(",");
+}
 function lireGolfs(data) {
   var out = [], vus = {};
   ((data && data.elements) || []).forEach(function (e) {
@@ -344,13 +419,13 @@ function assainirCarte(c) {
     maj: typeof c.maj === "string" ? c.maj.slice(0, 30) : null, o: [c.o[0], c.o[1]], trous: [], libres: [] };
   (Array.isArray(c.libres) ? c.libres : []).slice(0, 30).forEach(function (x) {
     var g = x && typeof x === "object" ? assainirForme(x.g) : null;
-    if (g) r.libres.push({ g: g, b: formes(x.b), e: formes(x.e), f: formes(x.f), d: formes(x.d) });
+    if (g) { var lb = { g: g, b: formes(x.b), e: formes(x.e), f: formes(x.f), d: formes(x.d) }; if (x.est) lb.est = 1; r.libres.push(lb); }
   });
   (Array.isArray(c.trous) ? c.trous : []).slice(0, CARTE_MAX_TROUS).forEach(function (t) {
     var g = t && typeof t === "object" ? assainirForme(t.g) : null;
     if (!g) { r.trous.push(null); return; }
     var x = { g: g, l: assainirForme(t.l, 4), par: t.par >= 3 && t.par <= 6 ? t.par : 0, b: formes(t.b), e: formes(t.e), f: formes(t.f), d: formes(t.d) };
-    var rel = assainirForme(t.rel, 4); if (rel && rel.length === 4) x.rel = rel;
+    var rel = assainirForme(t.rel, 4); if (rel && rel.length === 4) x.rel = rel; else if (t.est) x.est = 1;
     r.trous.push(x);
   });
   return r;
@@ -359,5 +434,6 @@ function assainirCarte(c) {
 if (typeof module !== "undefined") {
   module.exports = { projeter, deprojeter, dist2, centrePoly, airePoly, pointDansPoly, distSegment, distLigne, longueurLigne, simplifier, aPlat, dePlat, anneaux, lireOSM, genreOSM,
     construireCarte, numeroterGreen, greenReleve, carteVide, poserReleve, distancesGreen, trouCarte, distancesTrou, longueurTrouCarte, repereTrou, versVue, depuisVue,
-    motsNom, motifNom, requeteNom, requeteAutour, requeteGolf, lireGolfs, assainirForme, assainirCarte, CARTE_MAX_TROUS };
+    motsNom, motifNom, requeteNom, requeteAutour, requeteGolf, lireGolfs, assainirForme, assainirCarte, CARTE_MAX_TROUS,
+    greenEstime, urlRechercheGolf, urlGolfsAutour, lireNominatim, urlCarteOSM };
 }

@@ -1401,6 +1401,7 @@ main.entree { animation: entreeVue .22s ease-out; }
 .cp .cp-bunker { fill: #E8D5A4; }
 .cp .cp-depart { fill: #7FBF86; }
 .cp .cp-green { fill: #9BE0A5; stroke: #F2FFF3; stroke-width: 1.5; }
+.cp .cp-green.est { fill-opacity: .7; stroke-dasharray: 4 3; }
 .cp .cp-ligne { fill: none; stroke: rgba(255, 255, 255, .5); stroke-width: 1.5; stroke-dasharray: 5 5; }
 .cp .cp-milieu { fill: #0B1610; }
 .cp .cp-cercle { fill: none; stroke: rgba(255, 255, 255, .22); stroke-width: 1; }

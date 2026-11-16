@@ -74,13 +74,13 @@
   function emfEtat(x, pos, d) {
     if (!x.trou) return gpsPossible() ? "Green à relever sur place" : "Green absent de la carte";
     if (d && d.sur) return "Tu es sur le green";
-    if (pos && pos.gps) return "GPS ± " + pos.pr + " m";
+    if (pos && pos.gps) return (x.trou.est ? "Green estimé · " : "") + "GPS ± " + pos.pr + " m";
     if (pos) return "Position posée à la main";
     if (gpsPossible()) return POS.ll ? "Tu es loin de ce trou" : "Recherche du GPS…";
     return "Touche pour te placer";
   }
   function emfAria(x, pos, d) {
-    return (d ? "Green : entrée à " + d.entree + " mètres, milieu à " + d.milieu + ", fond à " + d.fond + ". " : "") + emfEtat(x, pos, d) + ". Ouvrir la carte du trou";
+    return (d ? "Green" + (x.trou && x.trou.est ? " estimé" : "") + " : entrée à " + d.entree + " mètres, milieu à " + d.milieu + ", fond à " + d.fond + ". " : "") + emfEtat(x, pos, d) + ". Ouvrir la carte du trou";
   }
   function emfLigneHTML() {
     var x = ctxCarte(); if (!x || !x.pc) return "";
@@ -138,7 +138,7 @@
     var h = '<svg class="cp" viewBox="0 0 ' + W + ' ' + H + '" data-k="' + k.toFixed(4) + '" role="img" aria-label="' + at("Carte du trou, le jeu vers le haut. " + emfAria(x, pos, d).replace(". Ouvrir la carte du trou", "")) + '">' +
       '<clipPath id="cp-cadre"><rect width="' + W + '" height="' + H + '" rx="16"/></clipPath><g clip-path="url(#cp-cadre)">' +
       '<rect class="cp-fond" width="' + W + '" height="' + H + '"/>' + formes(fw, "cp-fairway") + formes(eau, "cp-eau") + formes(dp, "cp-depart") + formes(bk, "cp-bunker") +
-      '<path class="cp-green" d="' + chemin(g.map(S)) + '"/>';
+      '<path class="cp-green' + (tr.est ? " est" : "") + '" d="' + chemin(g.map(S)) + '"/>';
     /* Cercles de distance au milieu du green, tous les 50 m. */
     if (!zoom) for (var rc = 50; rc * k < Math.max(W, H) && rc <= 500; rc += 50) {
       var cc = S([0, 0]), ly = cc[1] + rc * k - 3;
@@ -185,9 +185,9 @@
   }
   /* Relevé sur place : deux positions GPS, l'entrée puis le fond du green. */
   function releveHTML(x) {
-    if (!gpsPossible() || (x.trou && !x.trou.rel)) return "";
+    if (!gpsPossible() || (x.trou && !x.trou.rel && !x.trou.est)) return "";
     var R = ui.releve && ui.releve.pc === x.pc.id && ui.releve.h === x.h ? ui.releve : {};
-    return '<div class="carte-releve"><h4>' + t(x.trou ? "Refaire le relevé du green" : "Relever ce green") + '</h4>' +
+    return '<div class="carte-releve"><h4>' + t(x.trou && x.trou.est ? "Green estimé : le relever" : x.trou ? "Refaire le relevé du green" : "Relever ce green") + '</h4>' +
       '<p class="aide">' + t("Marche jusqu'à l'entrée du green et marque-la, puis fais de même au fond. Deux touchers, une fois pour toutes.") + '</p>' +
       '<div class="carte-releve-b"><button class="btn" type="button" data-a="carte-releve" data-v="e" aria-pressed="' + !!R.e + '">' + t(R.e ? "Entrée marquée ✓" : "Je suis à l'entrée") + '</button>' +
       '<button class="btn" type="button" data-a="carte-releve" data-v="f" aria-pressed="' + !!R.f + '">' + t(R.f ? "Fond marqué ✓" : "Je suis au fond") + '</button></div>' +
@@ -270,23 +270,31 @@
   ACTIONS["sjc-carte"] = function () { var s = etatSjc(); s.brut = null; rePanneau('[data-a="sjc-brut"][data-d="1"]'); };
 
   /* ---------- Fiche « Carte GPS » d'un parcours (ou d'un golf à ajouter) ---------- */
+  /* Lecture d'une adresse JSON, abandonnée au bout de ms millisecondes. */
+  function chargerJSON(url, ms, opt) {
+    var ctl = typeof AbortController === "function" ? new AbortController() : null, tm = ctl ? setTimeout(function () { ctl.abort(); }, ms) : null;
+    var o = opt || {}; if (ctl) o.signal = ctl.signal;
+    return fetch(url, o).then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
+      .then(function (d) { if (tm) clearTimeout(tm); return d; }, function (e) { if (tm) clearTimeout(tm); throw e; });
+  }
+  function attendre(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); }
+  /* Overpass ne sert plus que de secours : ses serveurs publics sont souvent saturés. */
   function overpass(q, i) {
     i = i || 0;
-    var ctl = typeof AbortController === "function" ? new AbortController() : null, tm = ctl ? setTimeout(function () { ctl.abort(); }, 60000) : null;
-    return fetch(OVERPASS[i], { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" }, body: "data=" + encodeURIComponent(q), signal: ctl ? ctl.signal : undefined })
-      .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
-      .then(function (d) { if (tm) clearTimeout(tm); return d; }, function (e) { if (tm) clearTimeout(tm); if (i + 1 < OVERPASS.length) return overpass(q, i + 1); throw e; });
+    return chargerJSON(OVERPASS[i], 15000, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" }, body: "data=" + encodeURIComponent(q) })
+      .then(null, function (e) { if (i + 1 < OVERPASS.length) return overpass(q, i + 1); throw e; });
   }
   function resumeCarte(c, pc) {
-    var n = pc ? pc.pars.length : c.trous.length, ok = 0;
-    for (var i = 0; i < n; i++) if (trouCarte(c, i)) ok++;
-    return { n: n, ok: ok, libres: c.libres.length, texte: (c.src === "releve" ? "Relevé sur place" : c.src === "fichier" ? "Fichier importé" : "OpenStreetMap") + " : " + ok + " green" + (ok > 1 ? "s" : "") + " sur " + n + (c.maj ? ", le " + dateCourte(c.maj).replace(/\.$/, "") : "") + "." };
+    var n = pc ? pc.pars.length : c.trous.length, ok = 0, est = 0;
+    for (var i = 0; i < n; i++) { var tr = trouCarte(c, i); if (tr) { ok++; if (tr.est) est++; } }
+    return { n: n, ok: ok, est: est, libres: c.libres.length, texte: (c.src === "releve" ? "Relevé sur place" : c.src === "fichier" ? "Fichier importé" : "OpenStreetMap") + " : " + ok + " green" + (ok > 1 ? "s" : "") + " sur " + n + (c.maj ? ", le " + dateCourte(c.maj).replace(/\.$/, "") : "") + "." +
+      (est ? " " + (est === ok ? "Tous estimés" : est + " estimé" + (est > 1 ? "s" : "")) + " d'après les drapeaux : le milieu correspond au drapeau, l'entrée et le fond sont approchés." : "") };
   }
   /* Vue d'ensemble, nord en haut : greens numérotés, greens sans numéro à toucher. */
   function carteApercuHTML(c) {
     var gs = [], x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-    c.trous.forEach(function (tr, i) { if (tr && tr.g) gs.push({ p: dePlat(tr.g), n: i + 1 }); });
-    c.libres.forEach(function (x, i) { gs.push({ p: dePlat(x.g), libre: i }); });
+    c.trous.forEach(function (tr, i) { if (tr && tr.g) gs.push({ p: dePlat(tr.g), n: i + 1, est: tr.est }); });
+    c.libres.forEach(function (x, i) { gs.push({ p: dePlat(x.g), libre: i, est: x.est }); });
     if (!gs.length) return "";
     gs.forEach(function (g) { g.c = centrePoly(g.p); g.p.forEach(function (q) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }); });
     x0 -= 40; x1 += 40; y0 -= 40; y1 += 40;
@@ -296,7 +304,7 @@
       '<rect class="cp-fond" width="' + W + '" height="' + H + '" rx="16"/>';
     gs.forEach(function (g) {
       var s = S(g.c), sel = g.libre != null && ui.carteNum === g.libre;
-      h += '<g' + (g.libre != null ? ' class="cp-libre' + (sel ? " sel" : "") + '" data-a="carte-num" data-v="' + g.libre + '"' : '') + '><path class="cp-green" d="' + chemin(g.p.map(S)) + '"/>' +
+      h += '<g' + (g.libre != null ? ' class="cp-libre' + (sel ? " sel" : "") + '" data-a="carte-num" data-v="' + g.libre + '"' : '') + '><path class="cp-green' + (g.est ? " est" : "") + '" d="' + chemin(g.p.map(S)) + '"/>' +
         '<circle class="cp-pastille" cx="' + s[0].toFixed(1) + '" cy="' + s[1].toFixed(1) + '" r="10"/><text x="' + s[0].toFixed(1) + '" y="' + (s[1] + 4).toFixed(1) + '" text-anchor="middle">' + (g.n || "?") + '</text></g>';
     });
     return h + '</svg>';
@@ -315,12 +323,12 @@
     }).join("") + '</ul>';
     else if (R.etat) h += '<p class="erreur" role="alert">' + t(R.etat === "court" ? "Donne au moins trois lettres du nom du golf, par exemple « Jonchère »."
       : R.etat === "vide" ? "Aucun golf trouvé sous ce nom. Essaie un seul mot du nom, ou la recherche autour de toi une fois sur place."
-      : R.etat === "sansgreen" ? "Ce golf est sur OpenStreetMap, mais ses greens n'y sont pas dessinés. Tu peux les relever toi-même sur place, deux touchers par green."
+      : R.etat === "sansgreen" ? "Ce golf est sur OpenStreetMap, mais ni ses greens ni ses trous n'y sont dessinés. Tu peux relever les greens toi-même sur place, deux touchers par green."
       : R.etat === "plein" ? "Tu as déjà 20 parcours. Supprimes-en un pour ajouter celui-ci."
       : R.etat === "place" ? "Le téléphone n'a plus de place pour enregistrer la carte."
       : R.etat === "fichier" ? "Ce fichier n'est pas un export OpenStreetMap lisible (JSON ou GeoJSON)."
       : R.etat === "position" ? "Position introuvable. Cherche plutôt par le nom du golf."
-      : "Le téléchargement a échoué. Vérifie le réseau et réessaie dans un instant.") + '</p>';
+      : "Les serveurs d'OpenStreetMap n'ont pas répondu. Vérifie le réseau et réessaie dans quelques minutes.") + '</p>';
     return h;
   }
   function carteFeuilleHTML(id) {
@@ -337,6 +345,7 @@
           return '<button type="button" data-a="carte-num-ok" data-v="' + (i + 1) + '"' + (trouCarte(c, i) ? ' class="pris"' : '') + '>' + (i + 1) + '</button>';
         }).join("") + '</div>';
       }
+      if (rs.est && gpsPossible()) h += '<p class="aide">' + t("Pour des distances exactes, relève un green estimé pendant la partie : carte du trou, puis « Je suis à l'entrée » et « Je suis au fond ».") + '</p>';
     } else if (pc) h += '<p>' + t("Ce parcours n'a pas encore de carte. Avec elle, le pavé affiche la distance à l'entrée, au milieu et au fond du green.") + '</p>';
     else h += '<p>' + t("Cherche ton golf : l'appli crée le parcours et télécharge ses greens. La carte reste ensuite dans le téléphone, même sans réseau.") + '</p>';
     h += '<h3 class="titre-bloc">' + t(c ? "Mettre à jour depuis OpenStreetMap" : "Trouver le golf sur OpenStreetMap") + '</h3>' + carteRechercheHTML(pc) +
@@ -345,7 +354,7 @@
     if (pc && !c && gpsPossible()) h += '<h3 class="titre-bloc">Sans OpenStreetMap</h3><p>' + t("Tu peux relever chaque green sur place : pendant la partie, ouvre la carte du trou, marque l'entrée puis le fond du green.") + '</p>' +
       '<button class="btn large" type="button" data-a="carte-vide" data-id="' + pc.id + '">Relever les greens moi-même</button>';
     if (c) h += '<p style="margin-top:16px"><button class="btn danger large" type="button" data-a="carte-suppr" data-id="' + pc.id + '">Supprimer cette carte</button></p>';
-    return h + '<p class="carte-credit">' + t("Données cartographiques : © les contributeurs d'OpenStreetMap, sous licence ODbL.") + '</p></section>';
+    return h + '<p class="carte-credit">' + t("Données cartographiques : © les contributeurs d'OpenStreetMap, sous licence ODbL. Recherche : Nominatim.") + '</p></section>';
   }
   function majFeuilleCarte(sel) {
     if (!ui.feuille || !ui.feuille.carte) return;
@@ -358,29 +367,41 @@
   }
   ACTIONS["carte-feuille"] = function (el) { var id = el.getAttribute("data-id"); if (id === "nouveau" || parcoursDe(id)) ouvrirCarteFeuille(id, el); };
   ACTIONS["carte-nouveau"] = function (el) { ouvrirCarteFeuille("nouveau", el); };
-  function chercherGolfs(req, q) {
+  /* Recherche : Nominatim d'abord (rapide), Overpass en secours. s = { urls, pres, req }. */
+  function chercherGolfs(s, q) {
     ui.carteRech = { etat: "cherche", q: q }; majFeuilleCarte();
-    overpass(req).then(function (data) { var l = lireGolfs(data); ui.carteRech = l.length ? { etat: "liste", l: l, q: q } : { etat: "vide", q: q }; },
-      function () { ui.carteRech = { etat: "erreur", q: q }; }).then(function () { majFeuilleCarte(ui.carteRech.etat === "liste" ? '[data-a="carte-choisir"]' : "#carte-q"); });
+    var essai = function (i) {
+      return chargerJSON(s.urls[i], 12000).then(function (d) {
+        var l = lireNominatim(d, s.pres);
+        /* Nominatim demande au plus une requête par seconde. */
+        return l.length || i + 1 >= s.urls.length ? l : attendre(1100).then(function () { return essai(i + 1); });
+      });
+    };
+    essai(0).then(null, function () { return overpass(s.req).then(function (d) { return lireGolfs(d); }); })
+      .then(function (l) { ui.carteRech = l.length ? { etat: "liste", l: l, q: q } : { etat: "vide", q: q }; }, function () { ui.carteRech = { etat: "erreur", q: q }; })
+      .then(function () { if (ui.carteRech.q === q) majFeuilleCarte(ui.carteRech.etat === "liste" ? '[data-a="carte-choisir"]' : "#carte-q"); });
   }
   FORMULAIRES["carte-chercher"] = function () {
-    var inp = document.getElementById("carte-q"), q = texteCourt(inp ? inp.value : "", 40), req = requeteNom(q);
-    if (!req) { ui.carteRech = { etat: "court", q: q }; majFeuilleCarte("#carte-q"); return; }
-    chercherGolfs(req, q);
+    var inp = document.getElementById("carte-q"), q = texteCourt(inp ? inp.value : "", 40), u = urlRechercheGolf(q);
+    if (!u) { ui.carteRech = { etat: "court", q: q }; majFeuilleCarte("#carte-q"); return; }
+    var urls = [u], u2 = urlRechercheGolf(q, true); if (u2 !== u) urls.push(u2);
+    chercherGolfs({ urls: urls, req: requeteNom(q) }, q);
   };
   ACTIONS["carte-autour"] = function () {
     var inp = document.getElementById("carte-q"), q = inp ? inp.value : "";
     ui.carteRech = { etat: "cherche", q: q }; majFeuilleCarte();
     prendrePosition(function (ll) {
       if (!ll) { ui.carteRech = { etat: "position", q: q }; majFeuilleCarte("#carte-q"); return; }
-      chercherGolfs(requeteAutour(ll[0], ll[1]), q);
+      chercherGolfs({ urls: [urlGolfsAutour(ll[0], ll[1])], pres: ll, req: requeteAutour(ll[0], ll[1]) }, q);
     });
   };
   ACTIONS["carte-choisir"] = function (el) {
     var R = ui.carteRech, g = R && R.l ? R.l[parseInt(el.getAttribute("data-v"), 10)] : null; if (!g) return;
     ui.carteRech = { etat: "charge", nom: g.nom, q: R.q }; majFeuilleCarte();
-    overpass(requeteGolf(g.bornes)).then(function (data) { installerCarte(construireCarte(data, "osm", auj()), g.nom); },
-      function () { ui.carteRech = { etat: "erreur", q: R.q }; majFeuilleCarte("#carte-q"); });
+    /* L'API d'OpenStreetMap d'abord, Overpass en secours. */
+    var lire = function (data) { var r = construireCarte(data, "osm", auj()); if (!r && !(data && data.elements && data.elements.length)) throw new Error("vide"); return r; };
+    chargerJSON(urlCarteOSM(g.bornes), 20000).then(lire).then(null, function () { return overpass(requeteGolf(g.bornes)).then(lire); })
+      .then(function (r) { installerCarte(r, g.nom); }, function () { ui.carteRech = { etat: "erreur", q: R.q }; majFeuilleCarte("#carte-q"); });
   };
   function creerParcoursCarte(r, nom) {
     if (etat.parcours.length >= 20) return null;

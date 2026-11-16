@@ -51,6 +51,32 @@ function rechercheTest() {
     { type: 'way', id: 1, tags: { leisure: 'golf_course', name: 'Golf de la Jonchère', 'addr:city': 'Gouzon' }, bounds: { minlat: a[0], minlon: a[1], maxlat: b[0], maxlon: b[1] } },
     { type: 'node', id: 2, lat: 46.4, lon: 2.6, tags: { leisure: 'golf_course', name: 'Golf des Jonchères' } }] };
 }
+/* Golf dessiné comme La Jonchère sur OpenStreetMap : drapeaux et tracés des trous, sans green.
+   Format de l'API d'OpenStreetMap (map.json) : nœuds à part, voies qui listent leurs nœuds. */
+function golfDrapeaux(opts) {
+  opts = opts || {};
+  let id = 5000;
+  const el = [], noeud = (q, tags) => { const ll = C.deprojeter(O, q[0], q[1]); const n = { type: 'node', id: id++, lat: ll[0], lon: ll[1] }; if (tags) n.tags = tags; el.push(n); return n.id; };
+  trous().forEach(t => {
+    let l = [t.dep, t.green].map(q => noeud(q));
+    if (t.n === 7) l = l.slice().reverse();      /* tracé dessiné à l'envers */
+    el.push({ type: 'way', id: id++, nodes: l, tags: { golf: 'hole', ref: String(t.n) } });
+    if (!(opts.sansDrapeau || []).includes(t.n)) noeud(t.green, { golf: 'pin' });
+  });
+  noeud([380, -700], { golf: 'pin' });             /* drapeau du putting green, sans tracé */
+  const c = [[-450, -900], [450, -900], [450, 900], [-450, 900]].map(q => noeud(q));
+  el.push({ type: 'way', id: id++, nodes: c.concat([c[0]]), tags: { leisure: 'golf_course', name: 'Golf de la Jonchère' } });
+  return { version: '0.6', elements: el };
+}
+/* Réponse de Nominatim (format jsonv2) à une recherche de golf. */
+function nominatimTest() {
+  const a = C.deprojeter(O, -450, -900), b = C.deprojeter(O, 450, 900);
+  return [
+    { osm_type: 'way', osm_id: 1, category: 'leisure', type: 'golf_course', name: 'Golf de la Jonchère', display_name: 'Golf de la Jonchère, Gouzon, Creuse, France',
+      boundingbox: [String(a[0]), String(b[0]), String(a[1]), String(b[1])], address: { leisure: 'Golf de la Jonchère', village: 'Gouzon', county: 'Creuse', country: 'France' } },
+    { osm_type: 'way', osm_id: 2, category: 'highway', type: 'residential', name: 'Rue du Golf', boundingbox: ['46.1', '46.11', '2.1', '2.11'] },
+    { osm_type: 'way', osm_id: 3, category: 'leisure', type: 'golf_course', name: 'Golf des Jonchères', boundingbox: ['46.39', '46.41', '2.59', '2.61'], address: { town: 'Montluçon', state: 'Auvergne-Rhône-Alpes' } }];
+}
 /* Position en degrés d'un point donné en mètres. */
 const position = (x, y) => { const ll = C.deprojeter(O, x, y); return { latitude: ll[0], longitude: ll[1] }; };
-module.exports = { O, PARS, LONG, trous, golfTest, rechercheTest, position };
+module.exports = { O, PARS, LONG, trous, golfTest, rechercheTest, golfDrapeaux, nominatimTest, position };
