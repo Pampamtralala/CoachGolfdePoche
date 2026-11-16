@@ -1,0 +1,19 @@
+{
+  "name": "Coach de golf de poche",
+  "short_name": "Coach de poche",
+  "description": "Ton coach de golf : parties, carte GPS des greens, sac, programme d'entraînement et statistiques.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F3EC",
+  "theme_color": "#1F4A35",
+  "categories": ["sports"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

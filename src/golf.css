@@ -1,0 +1,131 @@
+/* ---------- Accueil en paysage de golf ----------
+   Jour en clair, soirée après 17 h, nuit en mode sombre. Les couleurs du dessin sont des variables. */
+.golf {
+  --g-ciel-1: #9FD3EE; --g-ciel-2: #D6EEF4; --g-ciel-3: #EEF6E8;
+  --g-astre: #FFE08A; --g-halo: #FFE7A3; --g-halo-o: .75; --g-croissant: 0; --g-etoiles: 0; --g-nuage: #FFFFFF; --g-nuage-o: .9;
+  --g-colline-1: #BEDDB2; --g-arbre-1: #93C48D; --g-colline-2: #A3D293; --g-arbre-2: #5F9F63; --g-tronc: #7A5A40; --g-reflet: rgba(255, 255, 255, .18);
+  --g-mur: #F6F1E7; --g-toit: #A9553E; --g-toit-arete: #8A4331; --g-fenetre: #A8D0E6; --g-porte: #6B4F3A; --g-mat: #FFFFFF; --g-fanion: #1F2D4D;
+  --g-frange: #8CCB80; --g-green: #AEE29C; --g-sable: #EFE2B8; --g-sable-bord: #D8C78F; --g-trou: #1B3524; --g-drapeau: #F2C94C;
+  --g-colline-3: #8DC77F; --g-eau: #84C7E2; --g-eau-bord: #5FA6C4; --g-eau-reflet: #FFFFFF;
+  --g-fairway: #A8DB96; --g-range: #A2D690; --g-marque: #FFFFFF; --g-marque-txt: #1F2D4D; --g-abri: #2B3C63; --g-abri-bord: #1F2D4D; --g-tapis: #3E7D4F;
+  --g-rough: #7DBB70; --g-depart: #B6E3A4; --g-depart-ombre: #6FAE63; --g-touffe: #5E9E57; --g-balle: #FFFFFF;
+  --g-titre: #16211A; --g-titre-ombre: rgba(255, 255, 255, .7);
+  --g-etiq: rgba(255, 255, 255, .94); --g-etiq-texte: #16211A; --g-etiq-2: #56635B; --g-etiq-lieu: #2A6243;
+  position: relative; width: 100%; aspect-ratio: 2 / 3; overflow: hidden; border-radius: var(--rayon); box-shadow: var(--ombre);
+  isolation: isolate; -webkit-tap-highlight-color: transparent;
+}
+.golf.soir { --g-ciel-1: #6F93C9; --g-ciel-2: #F1BE95; --g-ciel-3: #F7E1C0; --g-astre: #FFB566; --g-halo: #FFC98A; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .golf {
+    --g-ciel-1: #0B1630; --g-ciel-2: #172A4B; --g-ciel-3: #2A4468;
+    --g-astre: #F4F1DE; --g-halo: #DDE6FF; --g-halo-o: .3; --g-croissant: 1; --g-etoiles: .85; --g-nuage: #9AA8C4; --g-nuage-o: .3;
+    --g-colline-1: #27463A; --g-arbre-1: #1E3A2F; --g-colline-2: #2B4E37; --g-arbre-2: #1F3F2A; --g-tronc: #3B2C22; --g-reflet: rgba(255, 255, 255, .06);
+    --g-mur: #C9C3B6; --g-toit: #6E3A2D; --g-toit-arete: #57291E; --g-fenetre: #FFD36E; --g-porte: #3B2C22; --g-mat: #DDE3EE; --g-fanion: #9FB0D8;
+    --g-frange: #2F5A3A; --g-green: #3B6E45; --g-sable: #8E8360; --g-sable-bord: #6E6448; --g-trou: #0C1A11; --g-drapeau: #E8C045;
+    --g-colline-3: #2C5235; --g-eau: #24496A; --g-eau-bord: #1A3650; --g-eau-reflet: #BFD4F0;
+    --g-fairway: #346140; --g-range: #335F3E; --g-marque: #C9D6CC; --g-marque-txt: #12301E; --g-abri: #1B2744; --g-abri-bord: #121B30; --g-tapis: #24563A;
+    --g-rough: #264A2F; --g-depart: #3A6A44; --g-depart-ombre: #1F3B26; --g-touffe: #3E6E46; --g-balle: #E8EEE8;
+    --g-titre: #F2F5F0; --g-titre-ombre: rgba(0, 0, 0, .45);
+    --g-etiq: rgba(22, 32, 25, .9); --g-etiq-texte: #E8EFE6; --g-etiq-2: #A3B2A7; --g-etiq-lieu: #8CCAA3;
+  }
+}
+.golf-fond { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.g-ciel-1 { stop-color: var(--g-ciel-1); } .g-ciel-2 { stop-color: var(--g-ciel-2); } .g-ciel-3 { stop-color: var(--g-ciel-3); }
+.g-halo-1 { stop-color: var(--g-halo); stop-opacity: var(--g-halo-o); } .g-halo-2 { stop-color: var(--g-halo); stop-opacity: 0; }
+.g-astre { fill: var(--g-astre); } .g-croissant { fill: var(--g-ciel-1); opacity: var(--g-croissant); }
+.g-etoiles { fill: #FFFFFF; opacity: var(--g-etoiles); }
+.g-nuage { fill: var(--g-nuage); opacity: var(--g-nuage-o); }
+.g-colline-1 { fill: var(--g-colline-1); } .g-arbre-1 { fill: var(--g-arbre-1); }
+.g-colline-2 { fill: var(--g-colline-2); } .g-arbre-2 { fill: var(--g-arbre-2); } .g-tronc { fill: var(--g-tronc); } .g-reflet { fill: var(--g-reflet); }
+.g-mur { fill: var(--g-mur); } .g-mur-ombre { fill: #000; opacity: .08; } .g-toit { fill: var(--g-toit); } .g-toit-arete { fill: var(--g-toit-arete); }
+.g-fenetre { fill: var(--g-fenetre); } .g-porte { fill: var(--g-porte); }
+.g-mat, .g-mat-drapeau { stroke: var(--g-mat); stroke-width: 1.8; stroke-linecap: round; fill: none; }
+.g-fanion { fill: var(--g-fanion); } .g-drapeau { fill: var(--g-drapeau); }
+.g-frange { fill: var(--g-frange); } .g-green { fill: var(--g-green); }
+.g-green-raie { fill: none; stroke: #FFFFFF; stroke-opacity: .28; stroke-width: 3; }
+.g-sable { fill: var(--g-sable); } .g-sable-bord { fill: var(--g-sable-bord); } .g-trou { fill: var(--g-trou); }
+.g-colline-3 { fill: var(--g-colline-3); }
+.g-eau { fill: var(--g-eau); } .g-eau-bord { fill: var(--g-eau-bord); }
+.g-eau-reflet { fill: none; stroke: var(--g-eau-reflet); stroke-width: 1.6; stroke-linecap: round; opacity: .6; }
+.g-fairway { fill: var(--g-fairway); } .g-fairway-raie, .g-range-raie { fill: #FFFFFF; opacity: .14; }
+.g-range { fill: var(--g-range); }
+.g-cible { fill: none; stroke: var(--g-marque); stroke-width: 1.3; }
+.g-panneau { stroke: var(--g-marque); stroke-width: 1.3; fill: var(--g-marque); }
+.g-panneau-txt { font: 700 6.2px/1 "Barlow Condensed", "Arial Narrow", sans-serif; fill: var(--g-marque-txt); text-anchor: middle; }
+.g-balles { fill: var(--g-balle); }
+.g-abri { fill: var(--g-abri); } .g-abri-bord { fill: var(--g-abri-bord); } .g-abri-ombre { fill: #000; opacity: .12; }
+.g-poteau { stroke: var(--g-abri-bord); stroke-width: 2.2; }
+.g-tapis { fill: var(--g-tapis); }
+.g-rough { fill: var(--g-rough); }
+.g-depart { fill: var(--g-depart); } .g-depart-ombre { fill: var(--g-depart-ombre); }
+.g-depart-raie { fill: none; stroke: #FFFFFF; stroke-opacity: .28; stroke-width: 4; }
+.g-boule { fill: var(--g-balle); stroke: #000; stroke-opacity: .15; }
+.g-tee { fill: #E9EDF5; } .g-balle { fill: var(--g-balle); stroke: #9AA4B1; stroke-width: .6; }
+.g-touffe { fill: none; stroke: var(--g-touffe); stroke-width: 1.4; stroke-linecap: round; }
+
+/* Vie du paysage : nuages, drapeaux au rythme du vent noté, reflets sur l'eau. */
+.g-nuage.n1 { animation: g-nuage 24s ease-in-out infinite alternate; }
+.g-nuage.n2 { animation: g-nuage 30s ease-in-out infinite alternate-reverse; }
+@keyframes g-nuage { to { transform: translateX(18px); } }
+.g-drapeau, .g-fanion { transform-box: fill-box; transform-origin: 0 50%; animation: g-drapeau var(--vent, 2.2s) ease-in-out infinite alternate; }
+@keyframes g-drapeau { to { transform: scaleX(.8) skewY(7deg); } }
+.g-eau-reflet { animation: g-reflet 3.4s ease-in-out infinite alternate; }
+@keyframes g-reflet { to { opacity: .2; transform: translateX(3px); } }
+@media (prefers-reduced-motion: reduce) { .g-nuage, .g-drapeau, .g-fanion, .g-eau-reflet { animation: none; } }
+
+/* Titre posé dans le ciel */
+.golf-titre { position: absolute; left: 5%; top: 3.6%; right: 26%; z-index: 2; color: var(--g-titre); text-shadow: 0 1px 8px var(--g-titre-ombre); pointer-events: none; }
+.golf-titre .surtitre { margin: 0 0 2px; color: inherit; opacity: .78; }
+.golf-titre h1 { margin: 0; font-size: clamp(23px, 7cqw, 34px); line-height: 1.1; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.golf { container-type: inline-size; }
+
+/* Le sac, debout sur le départ */
+.golf-sac { position: absolute; left: 60%; top: 61.2%; width: 30%; z-index: 1; pointer-events: none; }
+.golf-sac .s3d { max-width: none; }
+
+/* Zones invisibles sur les lieux, et étiquettes */
+.golf-zone { position: absolute; z-index: 3; padding: 0; border: 0; border-radius: 18px; background: transparent; cursor: pointer; }
+.z-club { left: 12%; top: 24.7%; width: 26.5%; height: 10.3%; }
+.z-parcours { left: 59%; top: 32%; width: 31.5%; height: 13%; }
+.z-practice { left: 1%; top: 48.3%; width: 43.5%; height: 22.7%; }
+.z-sac { left: 60%; top: 60%; width: 31%; height: 26%; }
+.golf-etiq {
+  --qx: 50%;
+  position: absolute; z-index: 4; display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  max-width: 54%; min-height: 44px; padding: 7px 12px 8px; border: 0; border-radius: 14px; text-align: left;
+  background: var(--g-etiq); color: var(--g-etiq-texte); box-shadow: 0 2px 4px rgba(10, 20, 14, .1), 0 8px 22px rgba(10, 20, 14, .16);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  transition: transform .18s ease, box-shadow .18s ease; cursor: pointer;
+}
+.golf-etiq::after {
+  content: ""; position: absolute; left: var(--qx); top: 100%; width: 12px; height: 12px; margin: -6px 0 0 -6px;
+  background: inherit; border-radius: 0 0 3px 0; transform: rotate(45deg);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.golf-etiq.haut::after { top: auto; bottom: 100%; margin: 0 0 -6px -6px; border-radius: 3px 0 0 0; }
+.ge-lieu { display: flex; align-items: center; gap: 5px; font: 700 12px/1.2 var(--f-titre); letter-spacing: .08em; text-transform: uppercase; color: var(--g-etiq-lieu); }
+.ge-lieu .ico { width: 15px; height: 15px; }
+.golf-etiq b { font-size: 16px; line-height: 1.2; }
+.golf-etiq small { font-size: 13px; line-height: 1.25; color: var(--g-etiq-2); }
+.golf-etiq:focus-visible, .golf-zone:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+@media (hover: hover) {
+  .golf-etiq:hover, .golf-zone:hover + .golf-etiq { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(10, 20, 14, .12), 0 14px 30px rgba(10, 20, 14, .22); }
+}
+.golf-etiq:active, .golf-zone:active + .golf-etiq { transform: scale(.97); }
+/* Partie en cours : l'étiquette du parcours passe au vert, avec un point qui bat. */
+.golf-etiq.vif { background: var(--action); color: var(--sur-action); }
+.golf-etiq.vif .ge-lieu, .golf-etiq.vif small { color: var(--sur-action); opacity: .9; }
+.golf-etiq.vif .ge-lieu::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #F2C94C; animation: g-pouls 1.4s ease-in-out infinite; }
+@keyframes g-pouls { 50% { transform: scale(1.5); opacity: .6; } }
+.e-club { left: 4%; top: 15.6%; --qx: 58%; }
+.e-parcours { right: 3%; top: 19.4%; --qx: 62%; }
+.e-practice { left: 4%; top: 41.5%; --qx: 46%; }
+.e-sac { right: 4%; top: 86%; --qx: 58%; }
+
+/* Sous le paysage : l'essentiel du jour */
+.accueil-grille { display: grid; gap: 4px; padding-top: 12px; }
+.accueil-grille .titre-bref { margin-top: 14px; }
+@media (min-width: 900px) {
+  .accueil-grille { grid-template-columns: minmax(0, 520px) minmax(260px, 1fr); gap: 28px; align-items: start; padding-top: 18px; }
+  .accueil-grille .titre-bref { margin-top: 0; }
+}

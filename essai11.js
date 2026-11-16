@@ -1,0 +1,240 @@
+/* Stratégie et analyse : point posé sur l'ellipse (série et coup), fourchette jouable, se joue comme, visée anti-pénalité,
+   erreurs évitables, notes sur 100, priorité de la semaine, objectif d'index. */
+const { chromium } = require('playwright');
+const fs = require('fs');
+const { allerVue, menuAction, saisirTrou } = require('./nav-essai');
+const S = require('./src/engine-strategie.js');
+const A = require('./src/engine-analyse.js');
+const F = '/home/claude/polices/node_modules/@fontsource/';
+const face = (fam, file, w) => `@font-face{font-family:"${fam}";font-weight:${w};src:url(data:font/woff2;base64,${fs.readFileSync(F + file).toString('base64')}) format("woff2");}`;
+const POLICES = [face('Barlow Condensed', 'barlow-condensed/files/barlow-condensed-latin-600-normal.woff2', 600), face('Barlow Condensed', 'barlow-condensed/files/barlow-condensed-latin-700-normal.woff2', 700),
+  face('Atkinson Hyperlegible', 'atkinson-hyperlegible/files/atkinson-hyperlegible-latin-400-normal.woff2', 400), face('Atkinson Hyperlegible', 'atkinson-hyperlegible/files/atkinson-hyperlegible-latin-700-normal.woff2', 700), face('Manrope', 'manrope/files/manrope-latin-700-normal.woff2', 700), face('Manrope', 'manrope/files/manrope-latin-800-normal.woff2', 800)].join('\n');
+const CLE = 'coachgolf.v1';
+const ELL = { W: 320, H: 236, cx: 160, cy: 108, dx: 138, dy: 88 };
+/* Parties anciennes notées avec le pavé (11 cases) : putting fragile, quelques doubles approches. */
+function partiePave(g, pars) {
+  let s0 = g; const alea = () => (s0 = (s0 * 16807) % 2147483647) / 2147483647;
+  return pars.map((par, k) => {
+    const gir = alea() < 0.3 ? 1 : 0, p1 = gir ? (alea() < 0.5 ? 4 : 3) : (alea() < 0.5 ? 2 : 3), putts = alea() < 0.22 ? 3 : alea() < 0.2 ? 1 : 2;
+    const dbl = !gir && alea() < 0.15 ? 1 : 0, pen = k % 7 === 3 && alea() < 0.6 ? 1 : 0, bk = !gir && alea() < 0.15 ? (alea() < 0.4 ? 1 : 2) : 0;
+    const s = par - 2 + (gir ? 0 : 1) + putts + pen + dbl;
+    return [pen ? 0 : 1, s - putts <= par - 2 ? 1 : 0, putts, pen, s, par, pen ? 1 : 0, par === 3 ? 0 : 1, p1, dbl ? 2 : 0, bk];
+  });
+}
+
+(async () => {
+  const D = 'shots11'; fs.mkdirSync(D, { recursive: true });
+  const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
+  const res = {}, errs = [], ko = [];
+  const verifie = (c, m) => { if (!c) ko.push(m); };
+  for (const [w, sombre] of [[390, false], [360, true]]) {
+    const nom = w + (sombre ? 's' : ''), r = res[nom] = {};
+    const ctx = await browser.newContext({ viewport: { width: w, height: 844 }, deviceScaleFactor: 2, colorScheme: sombre ? 'dark' : 'light', hasTouch: true, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => errs.push(nom + ' PAGEERROR ' + e.message));
+    page.on('console', m => { if (m.type() === 'error' && !/fonts\.g|ERR_|Failed to load resource/.test(m.text())) errs.push(nom + ' CONSOLE ' + m.text()); });
+    const vue = n => page.screenshot({ path: `${D}/${nom}-${n}.png` });
+    const lire = () => page.evaluate(k => JSON.parse(localStorage.getItem(k)), CLE);
+    const ecrire = e => page.evaluate(([k, e]) => localStorage.setItem(k, JSON.stringify(e)), [CLE, e]);
+    const recharger = async () => { await page.reload(); await page.addStyleTag({ content: POLICES }); await page.evaluate(() => document.fonts.ready); };
+    /* Toucher l'ellipse à l (latéral) et dd (profondeur) mètres. */
+    const poser = async (ctxe, l, dd) => {
+      const b = page.locator(`.ell-cible[data-ctx="${ctxe}"]`);
+      const rx = +(await b.getAttribute('data-rx')), ry = +(await b.getAttribute('data-ry'));
+      const bb = await b.locator('svg').boundingBox();
+      const x = (ELL.cx + l / rx * ELL.dx) / ELL.W * bb.width, y = (ELL.cy - dd / ry * ELL.dy) / ELL.H * bb.height;
+      await b.click({ position: { x: x + (bb.x - (await b.boundingBox()).x), y: y + (bb.y - (await b.boundingBox()).y) } });
+    };
+    await page.goto('file://' + __dirname + '/dist/index.html'); await page.addStyleTag({ content: POLICES }); await page.evaluate(() => document.fonts.ready);
+    await page.click('[data-a="commencer"]'); await page.fill('#q-prenom', 'Benjamin'); await page.fill('#q-index', '18'); await page.click('[data-a="q-suite"]');
+    await page.click('[data-k="objectif"][data-v="score"]'); await page.click('[data-a="q-suite"]');
+    for (const l of ['practice', 'putting', 'parcours']) await page.click(`[data-a="lieu"][data-v="${l}"]`);
+    for (let i = 0; i < 8 && await page.locator('[data-a="q-suite"]').count(); i++) await page.click('[data-a="q-suite"]');
+    await page.waitForSelector('.tete');
+    /* Distances des autres clubs du sac */
+    let e = await lire();
+    Object.assign(e.carnet.clubs, { dr: [215, 220, 205, 225, 210], b3: [195, 200], b5: [182, 186], f4: [168], f5: [160, 163], f6: [152, 155, 158, 150, 157], f8: [134, 136, 131, 138, 135], f9: [124, 122], pw: [110, 112], sw: [86, 90, 88] });
+    e.maj += 1; await ecrire(e); await recharger();
+
+    /* ---- 1. Série au fer 7 : la direction se pose sur l'ellipse ---- */
+    await menuAction(page, 'serie-ouvrir'); await page.waitForSelector('#feuille .serie-saisie');
+    await page.click('#feuille [data-a="serie-club"][data-id="f7"]');
+    r.ellipseVide = await page.locator('#serie-poseur .ell-zone').count();
+    const balles = [[4, 2], [-6, -3], [9, 1], [2, 4], [-3, -1], [12, 5], [0, -6], [6, 3], [-8, 0], [3, 2]];
+    let premiere = null;
+    for (const [l, dd] of balles) {
+      await poser('serie', l, dd);
+      if (premiere == null) premiere = { val: await page.inputValue('#serie-val'), lib: await page.textContent('#serie-poseur .ell-reglage b') };
+      await page.click('#feuille .serie-saisie button[type="submit"]');
+    }
+    r.premiereBalle = premiere;
+    verifie(/m à droite/.test(premiere.lib) && +premiere.val > 100, nom + ' le point remplit la direction et la distance : ' + JSON.stringify(premiere));
+    /* Une balle tapée au clavier, direction réglée aux boutons */
+    await page.fill('#serie-val', '120'); await page.click('#serie-poseur [data-a="ell-l"][data-d="-1"]'); await page.click('#serie-poseur [data-a="ell-l"][data-d="-1"]');
+    r.reglageBoutons = await page.textContent('#serie-poseur .ell-reglage b');
+    await page.click('#feuille .serie-saisie button[type="submit"]');
+    r.pointsSerie = await page.$$eval('#serie-poseur .ell-balle', l => l.length);
+    await page.waitForTimeout(100); await vue('01-serie-ellipse');
+    await page.click('#feuille [data-a="serie-fin"]');
+    e = await lire();
+    const se = e.carnet.series[0];
+    r.serie = JSON.stringify({ v: se.v, l: se.l });
+    verifie(se.v.length === 11 && se.l.length === 11 && se.l[10] === -2 && se.l.filter(x => x != null).length === 11, nom + ' série avec directions : ' + r.serie);
+    verifie(Math.abs(se.l[0] - 4) <= 1, nom + ' direction de la première balle ≈ 4 m à droite : ' + se.l[0]);
+
+    /* ---- 2. Sac : fourchette et ellipse, points touchables ---- */
+    await allerVue(page, 'sac');
+    const toucher = async id => { const b = page.locator(`#sac-scene [data-id="${id}"]`); const bb = await b.boundingBox(); await b.click({ position: { x: bb.width * 0.68, y: bb.height * 0.3 } }); };
+    await toucher('f7'); await page.waitForTimeout(250);
+    const fo = S.fourchette(e.carnet.clubs.f7);
+    r.bulle = await page.$eval('#sac-scene .c3d.sel .c3d-bulle', x => x.textContent);
+    verifie(r.bulle.includes(fo.bas + '–' + fo.haut), nom + ' bulle avec la fourchette ' + fo.bas + '–' + fo.haut + ' : ' + r.bulle);
+    r.info = await page.$eval('.sac-info', x => x.textContent.replace(/\s+/g, ' ').trim());
+    await vue('02-sac-fourchette');
+    await toucher('f7'); await page.waitForSelector('#feuille .sac-ellipse');
+    r.fourchetteFiche = await page.textContent('#feuille .ell-fourchette');
+    r.pointsFiche = await page.$$eval('#feuille .sac-ellipse .ell-pt', l => l.length);
+    verifie(r.pointsFiche === 11, nom + ' onze points sur l\'ellipse : ' + r.pointsFiche);
+    const el = S.ellipseClub(e.carnet.clubs.f7, se.l, 18);
+    r.ellipseCalc = JSON.stringify({ d: el.d, cx: el.cx, rx: el.rx, ry: el.ry, estL: el.estimeeL });
+    r.chiffres = await page.$eval('#feuille .sac-ellipse .disp-chiffres', x => x.textContent.replace(/\s+/g, ' ').trim());
+    verifie(r.chiffres.includes('±' + el.rx), nom + ' latéral affiché = calculé (±' + el.rx + ') : ' + r.chiffres);
+    await page.click('#feuille .sac-ellipse .ell-pt[data-v="0"]', { force: true });
+    r.legendePoint = await page.textContent('#ell-legende');
+    verifie(/Balle de série/.test(r.legendePoint) && /droite/.test(r.legendePoint), nom + ' point touché : ' + r.legendePoint);
+    await page.evaluate(() => document.querySelector('#feuille .sac-ellipse').scrollIntoView({ block: 'start' })); await page.waitForTimeout(100);
+    await vue('03-fiche-ellipse');
+    await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' });
+
+    /* ---- 3. Parcours : se joue comme, visée, coup posé sur l'ellipse, erreurs ---- */
+    await menuAction(page, 'partie-rapide'); await page.fill('#dp-nom', 'Golf de Test'); await page.click('[data-a="pt-nouvelle"]');
+    await page.waitForSelector('#calque-partie .pave');
+    r.ligneSansDistance = await page.textContent('.pv-sjc');
+    await page.click('[data-a="pv-par"]'); await page.click('[data-a="pv-par"]'); /* par 3 */
+    await page.click('[data-a="pv-long"]'); await page.fill('#pv-long', '145'); await page.press('#pv-long', 'Enter');
+    r.ligne = await page.textContent('.pv-sjc');
+    verifie(/145 m/.test(r.ligne), nom + ' ligne du pavé : ' + r.ligne);
+    await page.click('.pv-sjc'); await page.waitForSelector('.pv-panneau.sjc');
+    await page.click('[data-a="sjc-vent"][data-v="face"]'); await page.click('[data-a="sjc-force"][data-v="2"]');
+    for (let i = 0; i < 5; i++) await page.click('[data-a="sjc-pente"][data-d="1"]');
+    await page.click('[data-a="sjc-temp"][data-v="froid"]');
+    const att = S.seJoueComme(145, { vent: 'face', force: 2, pente: 5, temp: 'froid' });
+    r.seJoue = await page.textContent('.sjc-resultat .main');
+    verifie(+r.seJoue === att.d, nom + ' se joue comme ' + att.d + ' : ' + r.seJoue);
+    e = await lire();
+    const clubs = ['dr', 'b3', 'b5', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'pw', 'sw'].map(id => ({ id, f: S.fourchette(e.carnet.clubs[id] || []) }));
+    const conseil = S.clubPour(att.d, clubs);
+    r.conseil = await page.textContent('.sjc-conseil');
+    r.clubSurligne = await page.$$eval('.sjc-clubs li.conseil b', l => l.map(x => x.textContent).join(''));
+    r.sacSurligne = await page.$$eval('.sjc-sac .c3d.sel', l => l.length);
+    verifie(r.clubSurligne === { f5: '5', f6: '6', f4: '4', b5: '5' }[conseil.id] || r.clubSurligne.includes(conseil.id.slice(1)), nom + ' club conseillé ' + conseil.id + ' : ' + r.conseil + ' / ' + r.clubSurligne);
+    verifie(r.sacSurligne === 1, nom + ' club sorti du petit sac');
+    await vue('04-se-joue-comme');
+    await page.evaluate(() => { const p = document.querySelector('.pv-panneau'); p.scrollTop = p.scrollHeight; }); await vue('04b-se-joue-comme-bas');
+    /* Visée : eau à gauche, drapeau à gauche */
+    await page.click('[data-a="strat-ouvrir"]'); await page.waitForSelector('.pv-panneau.strat');
+    r.conseilSansDanger = await page.textContent('.strat-conseil b');
+    await page.click('[data-a="strat-danger"][data-k="g"]'); await page.click('[data-a="strat-danger"][data-k="g"]');
+    await page.click('.strat-zone[data-p="milieu"][data-c="gauche"]', { force: true });
+    r.conseilEau = await page.textContent('.strat-conseil');
+    verifie(/à droite du drapeau/.test(r.conseilEau) && /% de ta dispersion reste en sécurité/.test(r.conseilEau), nom + ' visée loin de l\'eau : ' + r.conseilEau);
+    r.coteGauche = await page.textContent('.strat-cote.g');
+    await page.click('[data-a="strat-green"][data-v="p"]');
+    r.conseilPetit = await page.textContent('.strat-conseil b');
+    await vue('05-visee');
+    await page.evaluate(() => { const p = document.querySelector('.pv-panneau'); p.scrollTop = p.scrollHeight; }); await vue('05b-visee-bas');
+    e = await lire();
+    r.dangersMemo = JSON.stringify({ d: e.parcours[0].dangers[0], g: e.parcours[0].greens[0] });
+    verifie(e.parcours[0].dangers[0] && e.parcours[0].dangers[0].g === 'eau' && e.parcours[0].greens[0] === 'p', nom + ' dangers retenus pour le trou : ' + r.dangersMemo);
+    /* Noter le coup avec le club conseillé, direction posée sur l'ellipse */
+    await page.click('[data-a="strat-noter"]'); await page.waitForSelector('.pv-panneau .ell-cible[data-ctx="coup"]');
+    r.clubCoup = await page.$eval('.pv-clubs [aria-pressed="true"]', b => b.getAttribute('data-id'));
+    await poser('coup', 7, -4);
+    r.coupApresPoint = (await page.inputValue('#pv-dist')) + ' m · ' + await page.textContent('.pv-panneau .ell-reglage b');
+    verifie(/[6-8]\s*m à droite/.test(r.coupApresPoint), nom + ' coup posé : ' + r.coupApresPoint);
+    await vue('06-coup-ellipse');
+    await page.click('#pv-coup-ok');
+    r.coupListe = await page.textContent('.pv-coups-liste');
+    /* Erreurs évitables : 3 putts depuis 2 à 5 m, bunker */
+    await page.click('[data-a="pv-putts"][data-d="1"]');
+    r.chip3putts = await page.$eval('[data-a="pv-evit"][data-v="4"]', b => b.getAttribute('aria-pressed') + (b.disabled ? ' désactivé' : ''));
+    if (!(await page.locator('.pv-plus[open]').count())) await page.click('.pv-plus summary');
+    await page.click('[data-a="pt-set"][data-k="8"][data-v="3"]');
+    r.chip3auto = await page.$eval('[data-a="pv-evit"][data-v="4"]', b => b.getAttribute('aria-pressed') + (b.disabled ? ' désactivé' : '') + ' · ' + b.querySelector('small').textContent);
+    verifie(/^true désactivé/.test(r.chip3auto), nom + ' trois-putts court déduit : ' + r.chip3auto);
+    await page.click('[data-a="pt-set"][data-k="10"][data-v="1"]');
+    await page.evaluate(() => document.querySelector('.pv-evit').scrollIntoView({ block: 'center' })); await page.waitForTimeout(80);
+    await vue('07-erreurs');
+    await page.click('#pt-suiv');
+    /* Trou 2 : double approche d'un toucher */
+    await page.click('[data-a="pv-evit"][data-v="2"]');
+    r.chipDouble = await page.$eval('[data-a="pv-evit"][data-v="2"]', b => b.getAttribute('aria-pressed'));
+    await page.click('#pt-suiv');
+    e = await lire();
+    r.trous = JSON.stringify(e.partie.trous.slice(0, 2));
+    verifie(e.partie.trous[0].length === 11 && e.partie.trous[0][8] === 3 && e.partie.trous[0][10] === 1 && e.partie.trous[1][9] === 2, nom + ' trous à 11 cases : ' + r.trous);
+    verifie(e.partie.coups[0][0].l != null && Math.abs(e.partie.coups[0][0].l - 7) <= 1, nom + ' direction du coup enregistrée : ' + JSON.stringify(e.partie.coups[0]));
+    for (let i = 2; i < 18; i++) await saisirTrou(page, [1, 0, 2, i === 5 ? 1 : 0, 5 + (i === 5 ? 1 : 0), 4, 0, 1, 0, 0, 0]);
+    await page.waitForSelector('.partie.express');
+    r.expressErreurs = await page.textContent('.evit-partie');
+    verifie(/3 erreurs évitables/.test(r.expressErreurs.replace(/\s+/g, ' ')) && /trou 1/.test(r.expressErreurs) && /trou 2/.test(r.expressErreurs), nom + ' erreurs du bilan express : ' + r.expressErreurs);
+    await page.evaluate(() => document.querySelector('.evit-partie').scrollIntoView({ block: 'center' })); await page.waitForTimeout(80);
+    await vue('08-express-erreurs');
+    await page.click('[data-a="pt-express-chiffres"]'); await page.waitForSelector('.partie.bilan');
+    r.bilanErreurs = await page.textContent('.partie.bilan .evit-partie');
+    await page.click('[data-a="pt-bilan-fermer"]');
+
+    /* ---- 4. Bilan : notes sur 100, priorité, objectif d'index, erreurs évitables ---- */
+    e = await lire();
+    const pars = e.parties[0].trous.map(t => t[5]), jours = n => new Date(Date.now() - n * 864e5).toISOString();
+    e.parties = [3, 5, 7].map((g, i) => ({ d: jours(20 - i * 5), trous: partiePave(g, pars), pc: e.parcours[0].id, o: 0 })).concat(e.parties);
+    e.maj += 1; await ecrire(e); await recharger();
+    e = await lire();
+    await allerVue(page, 'bilan');
+    if (!(await page.$eval('#notes', x => x.classList.contains('ouvert')))) await page.click('[data-a="pli"][data-v="notes"]');
+    const no = A.notesSecteurs(e.parties), pr = A.prioriteSemaine(e.parties, 15);
+    r.jauges = await page.$$eval('#notes .jn', l => l.map(x => x.getAttribute('aria-label')));
+    r.notesCalc = no.secteurs.map(s => s.id + '=' + s.note).join(' ');
+    verifie(r.jauges.length === 4 && no.secteurs.every((s, i) => s.note == null || r.jauges[i].includes(s.note + ' sur 100')), nom + ' jauges = notes calculées : ' + r.notesCalc + ' / ' + r.jauges.join(' | '));
+    r.priorite = await page.textContent('#notes .prio-semaine .une-titre');
+    verifie(pr.priorite && r.priorite === pr.priorite.nom, nom + ' priorité de la semaine : ' + r.priorite + ' (calculée ' + (pr.priorite && pr.priorite.nom) + ')');
+    await page.evaluate(() => document.getElementById('notes').scrollIntoView()); await page.waitForTimeout(80);
+    await vue('09-notes');
+    if (!(await page.$eval('#sg', x => x.classList.contains('ouvert')))) await page.click('[data-a="pli"][data-v="sg"]');
+    r.deuxSecteurs = await page.$$eval('#sg .deux-secteurs li', l => l.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
+    verifie(r.deuxSecteurs.length === Math.min(2, pr.deux.length), nom + ' deux secteurs face à l\'objectif : ' + r.deuxSecteurs.join(' | '));
+    r.reperesPlus = await page.$$eval('#sg .titre-bloc + .defile tbody tr', l => l.map(x => x.textContent.replace(/\s+/g, ' ').trim())).catch(() => []);
+    await page.evaluate(() => document.querySelector('#sg .deux-secteurs').scrollIntoView()); await page.waitForTimeout(80);
+    await vue('10-objectif');
+    if (await page.locator('#evitables').count()) {
+      if (!(await page.$eval('#evitables', x => x.classList.contains('ouvert')))) await page.click('[data-a="pli"][data-v="evitables"]');
+      r.evitables = await page.$eval('#evitables .evit-total', x => x.textContent);
+      const ee = A.erreursEvitables(e.parties, 90);
+      verifie(r.evitables.includes(String(ee.erreurs).replace('.', ',')), nom + ' erreurs évitables par partie : ' + r.evitables + ' / ' + ee.erreurs);
+      await page.evaluate(() => document.getElementById('evitables').scrollIntoView()); await page.waitForTimeout(80);
+      await vue('11-evitables');
+    } else verifie(false, nom + ' encart des erreurs évitables absent');
+    /* Accueil : la carte « Ton jeu sur 100 » */
+    await allerVue(page, 'accueil');
+    r.accueilNotes = await page.locator('.notes-accueil .jn').count();
+    verifie(r.accueilNotes === 4, nom + ' jauges sur l\'accueil');
+    await page.evaluate(() => document.querySelector('.notes-accueil').scrollIntoView({ block: 'center' })); await page.waitForTimeout(80);
+    await vue('12-accueil-notes');
+    /* Profil : objectif d'index */
+    await allerVue(page, 'profil');
+    await page.click('[data-a="index-vise"][data-v="10"]');
+    e = await lire();
+    verifie(e.profil.indexVise === 10, nom + ' objectif d\'index enregistré');
+    await page.evaluate(() => document.querySelector('.index-vise').scrollIntoView({ block: 'center' })); await page.waitForTimeout(80);
+    await vue('13-profil-objectif');
+    await allerVue(page, 'bilan');
+    if (!(await page.$eval('#sg', x => x.classList.contains('ouvert')))) await page.click('[data-a="pli"][data-v="sg"]');
+    r.cibleBilan = await page.textContent('#sg .cible .main');
+    verifie(r.cibleBilan === '10', nom + ' bilan face à l\'index 10 : ' + r.cibleBilan);
+    r.largeur = await page.evaluate(() => document.documentElement.scrollWidth);
+    verifie(r.largeur <= w, nom + ' pas de débordement : ' + r.largeur);
+    await ctx.close();
+  }
+  console.log(JSON.stringify({ res, ko, errs }, null, 1));
+  await browser.close();
+})().catch(e => { console.error('ECHEC', String(e.stack || e.message).split('\n').filter(l => !/retrying|waiting|scrolling|stable/.test(l)).slice(0, 12).join('\n')); process.exit(1); });

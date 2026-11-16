@@ -1,0 +1,73 @@
+/* ---------- Sac de golf en perspective (fausse 3D) ----------
+   Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
+   --s3-bulle, --s3-bulle-texte, --s3-chiffre, --s3-focus. */
+.s3d {
+  --s3-lueur: #5EDB93; --s3-alerte: #E8772E; --s3-bulle: #FFFFFF; --s3-bulle-texte: #16211A; --s3-chiffre: #1E3EC2; --s3-focus: #1C5639;
+  position: relative; container-type: inline-size; width: 100%; max-width: 440px; margin: 0 auto; aspect-ratio: 400 / 500;
+  -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+}
+.s3d > svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; overflow: visible; }
+.s3d-arriere { z-index: 0; }
+.s3d-clubs { position: absolute; inset: 0; z-index: 1; }
+.s3d-avant { z-index: 2; pointer-events: none; filter: drop-shadow(0 6px 10px rgba(10, 16, 30, .18)); }
+
+/* Un club : posé sur son pivot dans l'ouverture, incliné en éventail. */
+.c3d {
+  position: absolute; z-index: var(--z);
+  left: calc(var(--x) * 100% / 400); top: calc(var(--y) * 100% / 500);
+  width: calc(var(--w) * 100% / 400); height: calc(var(--h) * 100% / 500);
+  transform-origin: calc(var(--hx) * 100%) 100%; transform: rotate(var(--r));
+  transition: transform .45s cubic-bezier(.2, .85, .25, 1.15), opacity .3s ease, filter .3s ease;
+  pointer-events: none;
+}
+.c3d-tige {
+  position: absolute; left: calc(var(--hx) * 100%); bottom: 0; top: calc((var(--hh) - 3) * 100% / var(--h));
+  width: max(2px, .8cqw); transform: translateX(-50%); border-radius: 2px;
+  background: linear-gradient(90deg, #6F7986, #F0F3F6 45%, #8A949F);
+  -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent);
+}
+.c3d-tete {
+  position: absolute; left: 0; top: 0; width: 100%; height: calc(var(--hh) * 100% / var(--h));
+  display: block; padding: 0; border: 0; border-radius: 28%; background: none; color: inherit; cursor: pointer; pointer-events: auto;
+}
+.c3d-tete svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 2px 2px rgba(10, 16, 30, .25)); transition: filter .3s ease, opacity .3s ease; }
+.c3d-tete:focus-visible { outline: 3px solid var(--s3-focus); outline-offset: 2px; }
+@media (hover: hover) { .c3d:hover:not(.sel) { transform: rotate(var(--r)) translateY(-4%); } }
+
+/* Club sorti du sac : il monte, grandit un peu, s'illumine ; les autres s'effacent. */
+.c3d.sel { z-index: 60; transform: rotate(var(--r)) translateY(var(--monte, -12%)) scale(1.08); }
+.s3d.choix .c3d:not(.sel) { opacity: .4; filter: saturate(.3); }
+.c3d.sel .c3d-tete svg { filter: drop-shadow(0 0 1px #FFFFFF) drop-shadow(0 0 1.2cqw var(--s3-lueur)) drop-shadow(0 0 3cqw var(--s3-lueur)); }
+.c3d.vide .c3d-tete svg { opacity: .62; }
+
+/* Écart hors de la zone idéale : halo orange et pastille « ! ». */
+.c3d.alerte:not(.sel) .c3d-tete svg { filter: drop-shadow(0 0 1.6cqw var(--s3-alerte)); }
+.c3d-pastille {
+  position: absolute; top: -6%; right: -8%; display: none; place-items: center;
+  width: 5.2cqw; height: 5.2cqw; border-radius: 50%; background: var(--s3-alerte); color: #FFFFFF;
+  font: 800 3.4cqw/1 system-ui, sans-serif; box-shadow: 0 0 0 .5cqw #FFFFFF;
+}
+.c3d.alerte .c3d-pastille { display: grid; }
+
+/* Bulle de distance, au-dessus de la tête, toujours droite. */
+.c3d-bulle {
+  position: absolute; left: 50%; bottom: calc(100% + 2.2cqw); z-index: 2;
+  display: flex; flex-direction: column; align-items: center; gap: .4cqw; padding: 1.4cqw 3cqw 1.6cqw;
+  border-radius: 2.8cqw; background: var(--s3-bulle); color: var(--s3-bulle-texte); white-space: nowrap; line-height: 1;
+  box-shadow: 0 1cqw 4cqw rgba(10, 16, 30, .28);
+  transform-origin: 50% 100%; transform: translateX(-50%) rotate(calc(-1 * var(--r))) scale(.4); opacity: 0; pointer-events: none;
+  transition: transform .4s cubic-bezier(.2, .85, .25, 1.2), opacity .25s ease;
+}
+.c3d-bulle::after { content: ""; position: absolute; left: 50%; top: 100%; width: 2.6cqw; height: 2.6cqw; background: inherit; transform: translate(-50%, -55%) rotate(45deg); border-radius: 0 0 .5cqw 0; }
+.c3d-bulle b { font: 700 3.3cqw/1 "Barlow Condensed", "Arial Narrow", sans-serif; letter-spacing: .06em; text-transform: uppercase; opacity: .75; }
+.c3d-bulle > span { font: 700 8cqw/1 "Barlow Condensed", "Arial Narrow", sans-serif; color: var(--s3-chiffre); font-variant-numeric: tabular-nums; }
+.c3d-bulle small { font-size: 4.2cqw; margin-left: .4cqw; color: var(--s3-bulle-texte); opacity: .7; }
+.c3d.sel .c3d-bulle { opacity: 1; transform: translateX(-50%) rotate(calc(-1 * var(--r))) scale(1); }
+
+/* Vignette : simple illustration. */
+.s3d-mini .c3d-tete { cursor: inherit; pointer-events: none; }
+.s3d-mini .c3d-pastille { box-shadow: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .c3d, .c3d-bulle, .c3d-tete svg { transition: none; }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "coach-golf-de-poche",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Coach de golf de poche : parties, carte GPS des greens, sac, programme d'entraînement et statistiques.",
+  "scripts": {
+    "build": "node build.js",
+    "test": "node test.js && node test-plus.js && node test-strategie.js && node test-carte.js"
+  }
+}
