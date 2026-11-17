@@ -505,6 +505,22 @@ function defiFinSeance(defi, D) {
    Les coups pleins mesurés alimentent les distances du sac ; un wedge joué à une amplitude alimente la matrice. */
 const COUPS_MAX = 15;
 const AMPLITUDES_COUP = ["plein", "a1", "a2", "a3"];
+function coupPlein(c) { return !!c && !c.t && LIES_HORS_SAC.indexOf(c.p) < 0; }
+/* Positions de jeu et types de coup notés : nombre de coups par position, recentrages par partie. */
+function bilanLies(parties) {
+  var r = { coups: 0, notes: 0, lies: {}, types: {}, parties: 0 };
+  (parties || []).forEach(function (p) {
+    if (!p || !Array.isArray(p.coups)) return;
+    var vu = false;
+    p.coups.forEach(function (l) { (l || []).forEach(function (c) {
+      if (!c) return; r.coups++;
+      if (c.p) { r.lies[c.p] = (r.lies[c.p] || 0) + 1; r.notes++; vu = true; }
+      if (c.t) { r.types[c.t] = (r.types[c.t] || 0) + 1; vu = true; }
+    }); });
+    if (vu) r.parties++;
+  });
+  return r;
+}
 function mesuresParcours(parties) {
   var clubs = {}, wedges = {};
   (parties || []).forEach(function (p) {
@@ -512,6 +528,8 @@ function mesuresParcours(parties) {
     p.coups.forEach(function (l) {
       (l || []).forEach(function (c) {
         if (!c || !estNombre(c.d) || !CLUB[c.c]) return;
+        /* Recentrage, sécurité, approche, bunker, arbres : la distance ne dit rien de la portée du club. */
+        if (!coupPlein(c)) return;
         if (!c.a || c.a === "plein") (clubs[c.c] = clubs[c.c] || []).push(c.d);
         else if (CLUB[c.c].fam === "w") { var w = wedges[c.c] = wedges[c.c] || {}; (w[c.a] = w[c.a] || []).push(c.d); }
       });
@@ -608,5 +626,5 @@ function scoreJoueur(scores, pars) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { COUPS_MAX, AMPLITUDES_COUP, mesuresParcours, fusionMesures, fusionWedges, distanceGPS, quantile, dispersion, pointsCles, topFlopTrous, scoreJoueur, DEFI, CLUB, CLUBS, WEDGES, WEDGES_BASE, LOFT_MIN, LOFT_MAX, definirWedges, wedgeAuLoft, estNombre, statsClub, SAC_ECART, analyseCarnet, analyseWedges, trouNote, scoreSuggere, scoreMini, statsTrous, cumulParties, indicateursParties, scorePartie, repereSG, puttsAttendus, cibleAuto, coupsGagnes, valeursStats, objectifs, statsFenetre, etatObjectif, differentiel, indexEstime, analyseParcours, causesTrou, coteDominant, releveDetail, defiNeuf, niveauVise, cibleDefi, defiCoup, defiFinSeance };
+  module.exports = { coupPlein, bilanLies, COUPS_MAX, AMPLITUDES_COUP, mesuresParcours, fusionMesures, fusionWedges, distanceGPS, quantile, dispersion, pointsCles, topFlopTrous, scoreJoueur, DEFI, CLUB, CLUBS, WEDGES, WEDGES_BASE, LOFT_MIN, LOFT_MAX, definirWedges, wedgeAuLoft, estNombre, statsClub, SAC_ECART, analyseCarnet, analyseWedges, trouNote, scoreSuggere, scoreMini, statsTrous, cumulParties, indicateursParties, scorePartie, repereSG, puttsAttendus, cibleAuto, coupsGagnes, valeursStats, objectifs, statsFenetre, etatObjectif, differentiel, indexEstime, analyseParcours, causesTrou, coteDominant, releveDetail, defiNeuf, niveauVise, cibleDefi, defiCoup, defiFinSeance };
 }

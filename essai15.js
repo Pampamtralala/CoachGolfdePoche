@@ -16,6 +16,7 @@ const geo = (x, y, pr) => Object.assign(D.position(x, y), { accuracy: pr || 5 })
 const net = s => String(s == null ? '' : s).replace(/[\u00a0\u202f]/g, ' ');
 /* Toucher la carte à (dx, dy) mètres du milieu du green, dans le repère de la vue (dy vers le haut de l'écran). */
 async function toucherCarte(page, dx, dy) {
+  await page.evaluate(() => document.querySelector('.carte-plan svg').scrollIntoView({ block: 'center' })); await page.waitForTimeout(80);
   const v = await page.evaluate(() => {
     const s = document.querySelector('.carte-plan svg'), r = s.getBoundingClientRect(), vb = s.viewBox.baseVal, c = document.querySelector('.cp-milieu');
     return { x: r.left, y: r.top, w: r.width, h: r.height, W: vb.width, H: vb.height, cx: +c.getAttribute('cx'), cy: +c.getAttribute('cy'), k: +s.getAttribute('data-k') };

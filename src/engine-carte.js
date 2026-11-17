@@ -294,6 +294,90 @@ function poserReleve(carte, num, entree, fond) {
   return true;
 }
 
+/* ---------- Précision du GPS ----------
+   Points GPS bruts : [{ ll: [lat, lon], pr: précision en m, t: ms }].
+   lisserGPS : la position affichée. À l'arrêt, les points des 6 dernières secondes qui s'accordent avec le dernier
+   sont moyennés (pondérés par la précision) : le bruit baisse. En marche, les anciens points sont trop loin et seul
+   le dernier compte. Un point beaucoup moins précis que les autres récents est ignoré.
+   moyenneGPS : pour un relevé ou un coup, la moyenne des points, après avoir écarté les aberrants. */
+function lisserGPS(hist, maintenant) {
+  var l = (hist || []).filter(function (x) { return maintenant - x.t <= 10000; });
+  if (!l.length) return null;
+  var best = Math.min.apply(null, l.map(function (x) { return x.pr; }));
+  var der = l[l.length - 1];
+  /* Saut de précision (passage sous les arbres, perte de satellites) : on garde le meilleur point récent. */
+  if (der.pr > Math.max(15, best * 2.5)) {
+    var bon = l.filter(function (x) { return x.pr <= best * 1.5; }).pop();
+    if (bon && maintenant - bon.t <= 5000) der = bon;
+  }
+  var recents = l.filter(function (x) { return maintenant - x.t <= 6000 && x.pr <= Math.max(15, best * 2.5); }), garde = [der];
+  if (recents.length >= 2) {
+    /* Immobile ou en marche ? On compare la moyenne des points anciens et celle des récents. */
+    var moy = function (t) { var a = 0, b = 0; t.forEach(function (x) { a += x.ll[0]; b += x.ll[1]; }); return [a / t.length, b / t.length]; };
+    var mi = recents.length >> 1, A = moy(recents.slice(0, Math.max(1, mi))), B = moy(recents.slice(Math.max(1, mi)));
+    if (dist2(projeter(A, B[0], B[1]), [0, 0]) <= Math.max(3, best)) {
+      var m = moy(recents);
+      garde = recents.filter(function (x) { return dist2(projeter(m, x.ll[0], x.ll[1]), [0, 0]) <= Math.max(4, 2 * x.pr); });
+      if (!garde.length) garde = [der];
+    }
+  }
+  var w = 0, la = 0, lo = 0, mp = Infinity;
+  garde.forEach(function (x) { var k = 1 / (x.pr * x.pr); w += k; la += x.ll[0] * k; lo += x.ll[1] * k; mp = Math.min(mp, x.pr); });
+  return { ll: [la / w, lo / w], pr: Math.max(3, Math.round(mp / Math.sqrt(garde.length))), n: garde.length, t: der.t };
+}
+function moyenneGPS(pts) {
+  if (!pts || !pts.length) return null;
+  var best = Math.min.apply(null, pts.map(function (x) { return x.pr; }));
+  var l = pts.filter(function (x) { return x.pr <= Math.max(best * 1.5, best + 3); });
+  /* Écarter les points loin de la médiane (reflets sur les arbres, bâtiments). */
+  if (l.length >= 3) {
+    var m = [mediane(l.map(function (x) { return x.ll[0]; })), mediane(l.map(function (x) { return x.ll[1]; }))];
+    var proches = l.filter(function (x) { return dist2(projeter(m, x.ll[0], x.ll[1]), [0, 0]) <= Math.max(4, 2 * x.pr); });
+    if (proches.length >= 2) l = proches;
+  }
+  var w = 0, la = 0, lo = 0;
+  l.forEach(function (x) { var k = 1 / (x.pr * x.pr); w += k; la += x.ll[0] * k; lo += x.ll[1] * k; });
+  return { ll: [Math.round(la / w * 1e6) / 1e6, Math.round(lo / w * 1e6) / 1e6], pr: Math.max(3, Math.round(best / Math.sqrt(l.length))), n: l.length };
+}
+
+/* ---------- Depuis la balle : dangers devant, cône de dispersion ----------
+   pos : la balle ; cible : où le joueur vise (milieu du green ou point touché). Repère local en mètres, nord en haut. */
+function axeTir(pos, cible) {
+  var ax = cible[0] - pos[0], ay = cible[1] - pos[1], L = Math.sqrt(ax * ax + ay * ay) || 1;
+  return { u: [ax / L, ay / L], d: [ay / L, -ax / L], L: L };   /* u : vers la cible ; d : vers la droite */
+}
+/* Bunkers et eau devant la balle (à moins de 45° de l'axe, à moins de 350 m) : distance pour les atteindre, pour les passer. */
+function dangersDepuis(pos, cible, trou) {
+  if (!pos || !cible || !trou) return [];
+  var A = axeTir(pos, cible), out = [];
+  [["b", "Bunker"], ["e", "Eau"]].forEach(function (k) {
+    (trou[k[0]] || []).forEach(function (f) {
+      var p = dePlat(f); if (p.length < 3) return;
+      var c = centrePoly(p), dx = c[0] - pos[0], dy = c[1] - pos[1];
+      var av = dx * A.u[0] + dy * A.u[1], lat = dx * A.d[0] + dy * A.d[1];
+      var dedans = pointDansPoly(pos, p);
+      if (!dedans && (av <= 0 || Math.abs(lat) > av)) return;
+      var at = dedans ? 0 : Math.round(distLigne(pos, p, true)), pa = 0;
+      p.forEach(function (q) { pa = Math.max(pa, dist2(pos, q)); });
+      if (at > 350) return;
+      out.push({ nom: k[1], cote: Math.abs(lat) < 8 ? "dans l'axe" : lat > 0 ? "à droite" : "à gauche", atteindre: at, passer: Math.round(pa) });
+    });
+  });
+  return out.sort(function (a, b) { return a.atteindre - b.atteindre; }).slice(0, 5);
+}
+/* Cône de dispersion d'un club : e = { d, cx, rx, ry } (distance médiane, biais à droite, demi-largeur, demi-profondeur). */
+function coneTir(pos, cible, e) {
+  if (!pos || !cible || !e || !(e.d > 0)) return null;
+  var A = axeTir(pos, cible), cx = e.cx || 0;
+  var c = [pos[0] + A.u[0] * e.d + A.d[0] * cx, pos[1] + A.u[1] * e.d + A.d[1] * cx], pts = [];
+  for (var i = 0; i < 24; i++) {
+    var t = 2 * Math.PI * i / 24, a = e.rx * Math.cos(t), b = e.ry * Math.sin(t);
+    pts.push([c[0] + A.d[0] * a + A.u[0] * b, c[1] + A.d[1] * a + A.u[1] * b]);
+  }
+  return { c: c, pts: pts, gauche: [c[0] - A.d[0] * e.rx, c[1] - A.d[1] * e.rx], droite: [c[0] + A.d[0] * e.rx, c[1] + A.d[1] * e.rx],
+    court: Math.round(e.d - e.ry), long: Math.round(e.d + e.ry), reste: Math.round(A.L - e.d) };
+}
+
 /* ---------- Apprentissage au fil des parties ----------
    Fin de trou : le joueur est au drapeau du jour. Les drapeaux changent de place sur le green d'une partie à l'autre :
    leur nuage dessine le green. Premier coup du trou : le joueur est au départ.
@@ -554,5 +638,5 @@ if (typeof module !== "undefined") {
   module.exports = { projeter, deprojeter, dist2, centrePoly, airePoly, pointDansPoly, distSegment, distLigne, longueurLigne, simplifier, aPlat, dePlat, anneaux, lireOSM, genreOSM,
     construireCarte, numeroterGreen, greenReleve, carteVide, poserReleve, distancesGreen, trouCarte, distancesTrou, longueurTrouCarte, repereTrou, versVue, depuisVue,
     motsNom, motifNom, requeteNom, requeteAutour, requeteGolf, lireGolfs, assainirForme, assainirCarte, CARTE_MAX_TROUS,
-    greenEstime, urlRechercheGolf, urlGolfsAutour, lireNominatim, urlCarteOSM, tuileXY, tuileLL, urlTuile, photoPossible, zoomPhoto, tuilesPour, tuilesParcours, noterFinTrou, noterDepart, ellipseNuage, joursDistincts, CARTE_APPRIS };
+    greenEstime, urlRechercheGolf, urlGolfsAutour, lireNominatim, urlCarteOSM, tuileXY, tuileLL, urlTuile, photoPossible, zoomPhoto, tuilesPour, tuilesParcours, noterFinTrou, noterDepart, ellipseNuage, joursDistincts, CARTE_APPRIS, axeTir, dangersDepuis, coneTir, lisserGPS, moyenneGPS };
 }

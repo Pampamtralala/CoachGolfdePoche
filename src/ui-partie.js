@@ -192,6 +192,18 @@
     var pr = etat.profil; if (!pr || pr.sansIndex || !nombre(pr.index)) return null;
     return coupsRecusPartie(pt, parcoursDe(pt.pc), pr.index);
   }
+  /* Coups joués hors du fairway et coups de recentrage, quand la position de la balle a été notée. */
+  function liesResume(b) {
+    var l = [];
+    ["ro", "bk", "ar"].forEach(function (k) { if (b.lies[k]) l.push(b.lies[k] + " " + LIES.filter(function (x) { return x.id === k; })[0].nom.toLowerCase()); });
+    ["rec", "sec", "app"].forEach(function (k) { if (b.types[k]) l.push(pluriel(b.types[k], TYPES_COUP.filter(function (x) { return x.id === k; })[0].nom.toLowerCase())); });
+    return l.join(", ");
+  }
+  function liesChiffre(pt, chiffre) {
+    var b = bilanLies([pt]); if (!b.notes && !Object.keys(b.types).length) return "";
+    var hors = (b.lies.ro || 0) + (b.lies.bk || 0) + (b.lies.ar || 0);
+    return chiffre("Hors fairway", hors, liesResume(b));
+  }
   function stablefordChiffre(pt, chiffre) {
     var r = recusPartie(pt); if (!r || !r.notes) return "";
     return chiffre("Stableford", r.points + " pts", "net " + r.net + ", " + pluriel(r.H, "coup") + " reçu" + (r.H > 1 ? "s" : "") + (r.hcpConnus && r.exact ? "" : " (approximatif)"));
@@ -207,7 +219,7 @@
       '<h2 id="pt-titre">Ta partie en chiffres' + (recordPartie(pt) ? ' <span class="tampon">record ' + TRAIT + '</span>' : '') + '</h2><dl class="cinq">' +
       chiffre("Score", sc.complet ? sc.coups : "–", sc.complet ? (sc.ecart ? ecartLib(sc.ecart) + " par rapport au par" : "dans le par") : "") +
       chiffre("Mises en jeu jouables", s.J, "sur " + s.T) + chiffre("Greens en régulation", s.G, "sur " + s.T) +
-      chiffre("Putts", s.P, s.P3 ? s.P3 + " fois 3 putts ou plus" : "") + chiffre("Coups de pénalité", s.X, "") + stablefordChiffre(pt, chiffre) + '</dl>' +
+      chiffre("Putts", s.P, s.P3 ? s.P3 + " fois 3 putts ou plus" : "") + chiffre("Coups de pénalité", s.X, "") + stablefordChiffre(pt, chiffre) + liesChiffre(pt, chiffre) + '</dl>' +
       '<p>' + t((sc.complet && s.C ? pluriel(s.C, "trou") + " à triple bogey ou pire. " : "") + "Ton bilan est à jour. Il s'appuie sur " + (cu.n > 1 ? "tes " + cu.n + " dernières parties, soit " + cu.T + " trous." : "cette partie.")) + '</p>';
     if (r) {
       var pire = r.secteurs.filter(function (x) { return x.sg != null; }).sort(function (x, y) { return x.sg - y.sg; })[0];

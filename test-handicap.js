@@ -49,5 +49,12 @@ ok(L.reps.map(r => r.n + ':' + r.sss + '/' + r.slope).join(' ') === 'Jaune · Me
 ok(L.pars && L.pars.join('') === '435443454435443454' && L.hcp && L.hcp.join() === HCP.join(), 'pars et handicap sur deux lignes, totaux ignorés');
 ok(H.lireCarteScore('bonjour', 18).reps.length === 0 && H.lireCarteScore('', 9).pars === null, 'texte sans carte');
 ok(H.lireHcp('5 9 1 3 7 2 8 4 6', 9).join() === '5,9,1,3,7,2,8,4,6' && H.lireHcp('1 1 2 3 4 5 6 7 8', 9) === null && H.lireHcp('1 2 3', 9) === null && H.lireHcp('0 1 2 3 4 5 6 7 8', 9) === null, 'handicap saisi à la main');
+/* Position de la balle et type de coup : les distances du sac ne prennent que les coups pleins */
+const parties = [{ coups: [[{ c: 'f7', d: 150, a: 'plein', p: 'fw' }, { c: 'f7', d: 60, a: 'plein', t: 'rec', p: 'ar' }, { c: 'f7', d: 120, a: 'plein', p: 'bk' }, { c: 'f7', d: 145, a: 'plein', p: 'ro' }, { c: 'sw', d: 20, a: 'plein', t: 'app', p: 'fr' }]] }];
+const m = E.mesuresParcours(parties);
+ok(m.clubs.f7.join() === '150,145' && !m.clubs.sw, 'distances du sac : recentrage, bunker et approche écartés, rough gardé : ' + JSON.stringify(m.clubs));
+const bl = E.bilanLies(parties);
+ok(bl.coups === 5 && bl.notes === 5 && bl.lies.ar === 1 && bl.types.rec === 1 && bl.types.app === 1 && bl.parties === 1, 'bilan des positions de jeu');
+ok(E.coupPlein({ c: 'f7' }) && !E.coupPlein({ c: 'f7', t: 'sec' }) && !E.coupPlein({ c: 'f7', p: 'bk' }) && E.coupPlein({ c: 'f7', p: 'ro' }), 'coup plein ou non');
 console.log(n + ' vérifications · ' + ko + ' échec' + (ko > 1 ? 's' : ''));
 process.exit(ko ? 1 : 0);

@@ -24,7 +24,7 @@
   function effacerCartes() { GEO.cartes = {}; try { localStorage.removeItem(CLE_GEO); } catch (e) { /* rien */ } }
 
   /* ---------- Position suivie pendant la partie ---------- */
-  var POS = { veille: null, ll: null, pr: null, t: 0, main: null, abonnes: [] };
+  var POS = { veille: null, ll: null, pr: null, t: 0, main: null, abonnes: [], hist: [] };
   function suiviVoulu() { return ui.partie === "saisie" && !!etat.partie && gpsPossible() && document.visibilityState !== "hidden"; }
   function arreterSuivi() { if (POS.veille != null) { try { navigator.geolocation.clearWatch(POS.veille); } catch (e) { /* rien */ } POS.veille = null; } }
   function majSuivi() {
@@ -39,9 +39,14 @@
   function surPosition(p) {
     var ll = [p.coords.latitude, p.coords.longitude], now = Date.now();
     if (!nombre(ll[0]) || !nombre(ll[1])) return;
-    POS.abonnes.slice().forEach(function (f) { f(ll, Math.max(1, Math.round(p.coords.accuracy || 0))); });
-    if (POS.ll && now - POS.t < 900 && dist2(projeter(POS.ll, ll[0], ll[1]), [0, 0]) < 2) return;
-    POS.ll = ll; POS.pr = Math.max(1, Math.round(p.coords.accuracy || 0)); POS.t = now;
+    var pr = Math.max(1, Math.round(p.coords.accuracy || 0));
+    POS.abonnes.slice().forEach(function (f) { f(ll, pr); });
+    /* Position lissée : moyenne des points récents quand le joueur est immobile. */
+    POS.hist.push({ ll: ll, pr: pr, t: now });
+    POS.hist = POS.hist.filter(function (x) { return now - x.t <= 10000; }).slice(-12);
+    var L = lisserGPS(POS.hist, now); if (!L) return;
+    if (POS.ll && now - POS.t < 900 && dist2(projeter(POS.ll, L.ll[0], L.ll[1]), [0, 0]) < 1 && L.pr >= POS.pr) return;
+    POS.ll = L.ll; POS.pr = L.pr; POS.t = now;
     majCarteDirect();
   }
   document.addEventListener("visibilitychange", majSuivi);
@@ -57,12 +62,9 @@
       if (tm) clearTimeout(tm);
       POS.abonnes = POS.abonnes.filter(function (f) { return f !== recevoir; });
       if (!pts.length) { fin(null, null, err); return; }
-      /* Moyenne des meilleurs points, pondérée par la précision. */
-      var best = Math.min.apply(null, pts.map(function (q) { return q.pr; })), garde = pts.filter(function (q) { return q.pr <= Math.max(best * 1.5, best + 3); });
-      var w = 0, la = 0, lo = 0;
-      garde.forEach(function (q) { var k = 1 / (q.pr * q.pr); w += k; la += q.ll[0] * k; lo += q.ll[1] * k; });
-      var pr = Math.max(1, Math.round(best / Math.sqrt(garde.length)));
-      fin([Math.round(la / w * 1e6) / 1e6, Math.round(lo / w * 1e6) / 1e6], pr, null);
+      /* Moyenne des meilleurs points, points aberrants écartés. */
+      var M = moyenneGPS(pts);
+      fin(M.ll, M.pr, null);
     };
     var recevoir = function (ll, pr) {
       if (fini) return;
@@ -105,15 +107,18 @@
     return { p: p, pc: pc, h: h, carte: c, trou: c ? trouCarte(c, h) : null };
   }
   /* Position du joueur dans le repère de la carte : le GPS s'il est sur le trou, sinon le point posé du doigt sur ce trou. */
+  /* Position GPS utilisable pour ce trou : moins de 20 secondes (le joueur a pu marcher), à moins de 1 500 m du green. */
+  function positionGPS(x) {
+    if (!x || !x.carte || !POS.ll || Date.now() - POS.t >= 20000) return null;
+    var q = projeter(x.carte.o, POS.ll[0], POS.ll[1]);
+    return !x.trou || dist2(q, centrePoly(dePlat(x.trou.g))) <= 1500 ? { q: q, gps: true, pr: POS.pr, age: Math.round((Date.now() - POS.t) / 1000) } : null;
+  }
+  /* Position de la balle : posée à la main (« Placer la balle »), sinon le GPS, sinon le dernier point posé. */
   function positionJoueur(x) {
     if (!x || !x.carte) return null;
-    /* Une position de plus de 20 secondes ne sert plus aux distances : le joueur a pu marcher. */
-    if (POS.ll && Date.now() - POS.t < 20000) {
-      var q = projeter(x.carte.o, POS.ll[0], POS.ll[1]);
-      if (!x.trou || dist2(q, centrePoly(dePlat(x.trou.g))) <= 1500) return { q: q, gps: true, pr: POS.pr, age: Math.round((Date.now() - POS.t) / 1000) };
-    }
-    var m = POS.main;
-    return m && x.pc && m.pc === x.pc.id && m.h === x.h ? { q: m.q, gps: false, pr: null } : null;
+    var m = POS.main, main = m && x.pc && m.pc === x.pc.id && m.h === x.h ? { q: m.q, gps: false, pr: null } : null;
+    if (main && ui.carteMode === "position") return main;
+    return positionGPS(x) || main;
   }
   function distancesCourantes() {
     var x = ctxCarte(), pos = positionJoueur(x);
@@ -178,6 +183,39 @@
       return '<image href="' + at(t.url) + '" width="1" height="1" preserveAspectRatio="none" transform="matrix(' + [sx, 0, 0, -sy, t.x0, t.y1].map(n).join(" ") + ')"/>';
     }).join("") + '</g>';
   }
+  /* ---------- Depuis la balle : cône de dispersion du club et dangers devant ---------- */
+  function clubsCone() {
+    return clubsFourchettes().filter(function (c) { return c.f; }).sort(function (a, b) { return b.f.med - a.f.med; }).map(function (c) { return c.id; });
+  }
+  /* Cible : le point touché, sinon le milieu du green. Club : choisi par le joueur, sinon celui de la distance. */
+  function coneCourant(x, pos) {
+    if (!x || !x.trou || !pos) return null;
+    var M = ui.carteMesure, aPoint = M && M.pc === x.pc.id && M.h === x.h, cib = aPoint ? M.q : centrePoly(dePlat(x.trou.g));
+    var dist = dist2(pos.q, cib); if (dist < 25) return null;
+    var l = clubsCone(), id = ui.carteClub && l.indexOf(ui.carteClub) >= 0 ? ui.carteClub : null, auto = !id;
+    if (!id) { var cp = clubPour(dist, clubsFourchettes()); id = cp ? cp.id : null; }
+    var e = id ? ellipseDe(id) : null; if (!e) return null;
+    var cn = coneTir(pos.q, cib, e);
+    return cn ? { id: id, auto: auto, e: e, cn: cn, cible: cib, dist: Math.round(dist), point: aPoint } : null;
+  }
+  function coneHTML(x, pos) {
+    if (!x || !x.trou || !pos) return "";
+    var C = coneCourant(x, pos), dg = dangersDepuis(pos.q, C ? C.cible : centrePoly(dePlat(x.trou.g)), x.trou), h = '<div class="carte-cone">';
+    if (C) {
+      var e = C.e, cn = C.cn, l = clubsCone(), i = l.indexOf(C.id);
+      h += '<div class="cone-club"><button class="btn petit" type="button" data-a="carte-club" data-v="long"' + (i <= 0 ? " disabled" : "") + ' aria-label="Club plus long">‹</button>' +
+        '<p><b>' + t(nomClub(C.id)) + '</b><small>' + t(C.auto ? "choisi pour " + C.dist + " m" : "choisi par toi") + '</small></p>' +
+        '<button class="btn petit" type="button" data-a="carte-club" data-v="court"' + (i < 0 || i >= l.length - 1 ? " disabled" : "") + ' aria-label="Club plus court">›</button></div>' +
+        '<p class="aide">' + t("La balle tombe le plus souvent entre " + cn.court + " et " + cn.long + " m, sur " + (2 * e.rx) + " m de large" + (e.cx ? ", " + Math.abs(e.cx) + " m à " + (e.cx > 0 ? "droite" : "gauche") + " de la visée" : "") + ". " +
+          (cn.reste > 3 ? "Il reste environ " + cn.reste + " m jusqu'" + (C.point ? "à ton point" : "au milieu du green") + "." : cn.reste < -3 ? "Ça dépasse " + (C.point ? "ton point" : "le milieu du green") + " de " + (-cn.reste) + " m." : "Pile sur " + (C.point ? "ton point" : "le milieu du green") + ".") +
+          (e.estimeeL || e.estimeeP ? " Largeur estimée d'après ton index : note la direction de tes coups pour l'affiner." : "")) + '</p>' +
+        (C.auto ? "" : '<button class="lien" type="button" data-a="carte-club" data-v="auto">Laisser l’appli choisir le club</button>');
+    } else if (!clubsCone().length) h += '<p class="aide">' + t("Note des distances avec tes clubs (pendant les parties ou au practice) : la carte dessinera ton cône de dispersion.") + '</p>';
+    if (dg.length) h += '<ul class="cone-dangers">' + dg.map(function (d) {
+      return '<li><b>' + t(d.nom + " " + d.cote) + '</b> ' + t(d.atteindre ? d.atteindre + " m pour l'atteindre, " + d.passer + " m pour le passer" : "tu es dedans") + '</li>';
+    }).join("") + '</ul>';
+    return h + '</div>';
+  }
   function cartePlanHTML() {
     var x = ctxCarte(), tr = x.trou, pos = positionJoueur(x);
     if (!tr) { VUE = null; return '<p class="carte-vide">' + t("Ce trou n'a pas encore de green sur la carte.") + '</p>'; }
@@ -232,6 +270,14 @@
       h += '<line class="cp-axe" x1="' + pm[0].toFixed(1) + '" y1="' + pm[1].toFixed(1) + '" x2="' + pf[0].toFixed(1) + '" y2="' + pf[1].toFixed(1) + '"/>' +
         '<circle class="cp-bord" cx="' + pe[0].toFixed(1) + '" cy="' + pe[1].toFixed(1) + '" r="4"/><circle class="cp-bord" cx="' + pf[0].toFixed(1) + '" cy="' + pf[1].toFixed(1) + '" r="4"/>';
     }
+    /* Cône de dispersion du club, de la balle vers la cible. */
+    var CN = moi && !zoom && !(d && d.sur) ? coneCourant(x, pos) : null;
+    if (CN) {
+      var sb = S(moi), sg = S(V(CN.cn.gauche)), sdr = S(V(CN.cn.droite)), sc = S(V(CN.cn.c));
+      h += '<path class="cp-cone" d="M' + sb[0].toFixed(1) + ' ' + sb[1].toFixed(1) + 'L' + sg[0].toFixed(1) + ' ' + sg[1].toFixed(1) + 'L' + sdr[0].toFixed(1) + ' ' + sdr[1].toFixed(1) + 'Z"/>' +
+        '<path class="cp-ellipse-tir" d="' + chemin(CN.cn.pts.map(function (q) { return S(V(q)); })) + '"/>' +
+        '<text class="cp-cone-lib" x="' + sc[0].toFixed(1) + '" y="' + (sc[1] + 4).toFixed(1) + '" text-anchor="middle">' + t(courtSac(CLUB[CN.id]).replace(/^(\d)$/, "Fer $1")) + '</text>';
+    }
     if (mes) {
       var sm = S(mes);
       if (moi) { var s0 = S(moi); h += '<line class="cp-fil" x1="' + s0[0].toFixed(1) + '" y1="' + s0[1].toFixed(1) + '" x2="' + sm[0].toFixed(1) + '" y2="' + sm[1].toFixed(1) + '"/>'; }
@@ -258,8 +304,9 @@
       var reste = Math.round(dist2(M.q, centrePoly(dePlat(x.trou.g))));
       return pos ? "Point touché : à " + Math.round(dist2(pos.q, M.q)) + " m de toi, puis " + reste + " m jusqu'au milieu du green." : "Point touché : à " + reste + " m du milieu du green.";
     }
-    if (pos && pos.gps) return "Touche la carte pour mesurer un point : un bunker à passer, un endroit où poser la balle.";
-    return ui.carteMode === "mesure" ? "Touche la carte pour mesurer un point." : "Touche la carte là où tu es : les trois distances partent de ce point.";
+    if (ui.carteMode === "position") return "Touche la carte là où est ta balle : les distances et le cône partent de ce point.";
+    if (pos && pos.gps) return "Touche la carte pour mesurer un point : un bunker à passer, un endroit où poser la balle. Le cône vise ce point.";
+    return ui.carteMode === "mesure" ? "Touche la carte pour mesurer un point." : "Touche la carte là où est ta balle : les distances et le cône partent de ce point.";
   }
   /* Relevé sur place : deux positions GPS, l'entrée puis le fond du green. */
   function releveHTML(x) {
@@ -269,15 +316,17 @@
       '<p class="aide">' + t("Marche jusqu'à l'entrée du green et marque-la, puis fais de même au fond. Deux touchers, une fois pour toutes.") + '</p>' +
       '<div class="carte-releve-b"><button class="btn" type="button" data-a="carte-releve" data-v="e" aria-pressed="' + !!R.e + '"' + (R.attente ? " disabled" : "") + '>' + t(R.attente === "e" ? "Mesure GPS…" : R.e ? "Entrée marquée ✓" : "Je suis à l'entrée") + '</button>' +
       '<button class="btn" type="button" data-a="carte-releve" data-v="f" aria-pressed="' + !!R.f + '"' + (R.attente ? " disabled" : "") + '>' + t(R.attente === "f" ? "Mesure GPS…" : R.f ? "Fond marqué ✓" : "Je suis au fond") + '</button></div>' +
-      (R.attente ? '<p class="aide" role="status">' + t("Reste immobile quelques secondes : l'appli prend trois points GPS et en fait la moyenne.") + '</p>' : '') +
+      (R.attente ? '<p class="aide" role="status">' + t("Reste immobile, téléphone à plat devant toi : l'appli prend jusqu'à cinq points GPS en dix secondes et en fait la moyenne.") + '</p>' : '') +
       (R.msg ? '<p class="erreur" role="alert">' + t(R.msg) + '</p>' : '') + '</div>';
   }
   function carteReglagesHTML() {
-    var x = ctxCarte(), pos = positionJoueur(x), h = "";
+    var x = ctxCarte(), pos = positionJoueur(x), h = coneHTML(x, pos);
     if (x.trou) {
       h += '<div class="carte-reglages">' + choixLigne("carte-zoom", [{ v: "trou", t: "Trou entier" }, { v: "green", t: "Green" }], ui.carteZoom === "green" ? "green" : "trou");
-      if (!(pos && pos.gps)) h += choixLigne("carte-mode", [{ v: "position", t: "Me placer" }, { v: "mesure", t: "Mesurer" }], ui.carteMode === "mesure" ? "mesure" : "position");
+      if (positionGPS(x)) h += choixLigne("carte-mode", [{ v: "mesure", t: "Mesurer un point" }, { v: "position", t: "Placer la balle" }], ui.carteMode === "position" ? "position" : "mesure");
+      else h += choixLigne("carte-mode", [{ v: "position", t: "Placer la balle" }, { v: "mesure", t: "Mesurer" }], ui.carteMode === "mesure" ? "mesure" : "position");
       h += '</div>';
+      if (positionGPS(x) && pos && !pos.gps) h += '<button class="btn large" type="button" data-a="carte-gps">' + icone("position") + t(" Revenir à ma position GPS") + '</button>';
     }
     if (x.carte && !dansCadre() && photoPossible(x.carte.o)) {
       h += '<div class="carte-reglages">' + choixLigne("carte-fond", [{ v: "plan", t: "Plan" }, { v: "photo", t: "Photo aérienne" }], etat.cartePhoto !== false ? "photo" : "plan") + '</div>';
@@ -325,6 +374,19 @@
   };
   ACTIONS["carte-zoom"] = function (el) { ui.carteZoom = el.getAttribute("data-v") === "green" ? "green" : "trou"; majCartePanneau(); };
   ACTIONS["carte-mode"] = function (el) { ui.carteMode = el.getAttribute("data-v") === "mesure" ? "mesure" : "position"; majCartePanneau(); };
+  /* Retour à la position GPS après avoir posé la balle à la main. */
+  ACTIONS["carte-gps"] = function () { POS.main = null; ui.carteMode = "mesure"; majCartePanneau(); };
+  /* Club du cône : plus long, plus court, ou choisi par l'appli d'après la distance. */
+  ACTIONS["carte-club"] = function (el) {
+    var x = ctxCarte(), cn = coneCourant(x, positionJoueur(x)), l = clubsCone();
+    var v = el.getAttribute("data-v");
+    if (v === "auto") ui.carteClub = null;
+    else if (cn && l.length) {
+      var i = l.indexOf(cn.id), j = Math.max(0, Math.min(l.length - 1, (i < 0 ? 0 : i) + (v === "long" ? -1 : 1)));
+      ui.carteClub = l[j];
+    }
+    majCartePanneau();
+  };
   ACTIONS["carte-toucher"] = function (el, ev) {
     var svg = el.querySelector("svg"), x = ctxCarte();
     var De = ui.carteDessin && x && ui.carteDessin.pc === x.pc.id && ui.carteDessin.h === x.h ? ui.carteDessin : null;
@@ -342,8 +404,9 @@
       message(poserCarte(x.pc.id, x.carte) ? "Green du trou " + (x.h + 1) + " dessiné." : "Le téléphone n'a plus de place pour enregistrer la carte.");
       rendrePartie(); focusPartie('[data-a="carte-dessin"]'); return;
     }
-    if ((pos && pos.gps) || ui.carteMode === "mesure") ui.carteMesure = { pc: x.pc.id, h: x.h, q: q };
-    else { POS.main = { pc: x.pc.id, h: x.h, q: q }; ui.carteMesure = null; }
+    var placer = ui.carteMode === "position" || (!positionGPS(x) && ui.carteMode !== "mesure");
+    if (placer) { POS.main = { pc: x.pc.id, h: x.h, q: q }; ui.carteMode = "position"; }
+    else ui.carteMesure = { pc: x.pc.id, h: x.h, q: q };
     majCartePanneau();
   };
   ACTIONS["carte-releve"] = function (el) {
@@ -370,7 +433,7 @@
     /* Trois points GPS (celui de l'instant du toucher, puis les suivants), moyennés : jamais une position de plus de 2 secondes. */
     R.attente = k; R.msg = "";
     if (ui.pvPanneau === "carte") { rendrePartie(); focusPartie(sel); }
-    positionFraiche(function (ll, pr) { R.attente = null; poser(ll, pr); }, { age: 2000, n: 3, prMax: 25, attente: 6000 });
+    positionFraiche(function (ll, pr) { R.attente = null; poser(ll, pr); }, { age: 2000, n: 5, prMax: 8, attente: 10000 });
   };
   ACTIONS["sjc-carte"] = function () { var s = etatSjc(); s.brut = null; rePanneau('[data-a="sjc-brut"][data-d="1"]'); };
 

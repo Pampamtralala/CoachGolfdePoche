@@ -153,6 +153,15 @@ const SG_SECTEURS = [
    Rangs des réponses facultatives d'un trou : 0 = non noté. */
 const COTES = ["", "À gauche", "Courte", "À droite"];
 const CLUBS_DEPART = ["", "Driver", "Bois", "Hybride", "Fer"];
+/* Position de la balle et type de coup, notés avec chaque coup. Un coup qui n'est pas plein (recentrage, sécurité,
+   approche) ou joué du bunker ou des arbres ne compte pas dans les distances du sac. */
+const LIES = [
+  { id: "dep", nom: "Départ" }, { id: "fw", nom: "Fairway" }, { id: "ro", nom: "Rough" },
+  { id: "bk", nom: "Bunker" }, { id: "ar", nom: "Arbres" }, { id: "fr", nom: "Avant-green" }];
+const TYPES_COUP = [
+  { id: "", nom: "Plein coup" }, { id: "rec", nom: "Recentrage", aide: "Pour revenir en jeu après un mauvais coup" },
+  { id: "sec", nom: "Sécurité", aide: "Volontairement court ou à côté d'un danger" }, { id: "app", nom: "Approche", aide: "Chip, pitch ou lob autour du green" }];
+const LIES_HORS_SAC = ["bk", "ar"];
 const PUTT1 = ["", "< 1 m", "1 à 3 m", "3 à 8 m", "> 8 m"];
 
 /* Statistiques suivies face au joueur cible. besoin "score" : demande un score par trou. */
@@ -175,5 +184,5 @@ const NOIR_PASSAGES = 2;
 const NOIR_SURCOUT = 0.5;
 
 if (typeof module !== "undefined") {
-  module.exports = { CLUBS, WEDGES, AMPLITUDES, WEDGE_FENETRE, WEDGE_TROU, DEFIS, SG_INDEX, SG_REPERES, SG_PUTT1, SG_CIBLES, SG_RECENTRAGE, SG_SECTEURS, COTES, CLUBS_DEPART, PUTT1, OBJ_STATS, WHS_BAREME, NOIR_PASSAGES, NOIR_SURCOUT };
+  module.exports = { LIES, TYPES_COUP, LIES_HORS_SAC, CLUBS, WEDGES, AMPLITUDES, WEDGE_FENETRE, WEDGE_TROU, DEFIS, SG_INDEX, SG_REPERES, SG_PUTT1, SG_CIBLES, SG_RECENTRAGE, SG_SECTEURS, COTES, CLUBS_DEPART, PUTT1, OBJ_STATS, WHS_BAREME, NOIR_PASSAGES, NOIR_SURCOUT };
 }

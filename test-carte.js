@@ -197,6 +197,44 @@ const T = D.trous().map(t => Object.assign({}, t, { dep: P(t.dep), green: P(t.gr
   ok(C.zoomPhoto(o, 2) === 19 && C.zoomPhoto(o, 0.05) === 14, 'niveau de zoom borné');
 }
 
+/* --- Depuis la balle : cône et dangers --- */
+{
+  const e = { d: 150, cx: 4, rx: 12, ry: 10 };
+  const cn = C.coneTir([0, 0], [0, 200], e);
+  ok(Math.abs(cn.c[0] - 4) < 1e-9 && Math.abs(cn.c[1] - 150) < 1e-9 && cn.court === 140 && cn.long === 160 && cn.reste === 50, 'cône : centre à 150 m, 4 m à droite, reste 50 m');
+  ok(Math.abs(cn.gauche[0] + 8) < 1e-9 && Math.abs(cn.droite[0] - 16) < 1e-9 && cn.pts.length === 24, 'cône : bords gauche et droit');
+  const cn2 = C.coneTir([0, 0], [100, 0], { d: 120, cx: 0, rx: 10, ry: 8 });
+  ok(Math.abs(cn2.c[0] - 120) < 1e-9 && Math.abs(cn2.c[1]) < 1e-9 && cn2.reste === -20 && Math.abs(cn2.droite[1] + 10) < 1e-9, 'cône vers l\'est : la droite est au sud ; dépasse de 20 m');
+  ok(C.coneTir([0, 0], [0, 100], null) === null, 'sans ellipse, pas de cône');
+  const carre = (x, y, r) => C.aPlat([[x - r, y - r], [x + r, y - r], [x + r, y + r], [x - r, y + r]]);
+  const trou = { b: [carre(-20, 180, 8), carre(0, -50, 5)], e: [carre(30, 120, 10)] };
+  const dg = C.dangersDepuis([0, 0], [0, 250], trou);
+  ok(dg.length === 2 && dg[0].nom === 'Eau' && dg[0].cote === 'à droite' && dg[0].atteindre === 112 && dg[1].nom === 'Bunker' && dg[1].cote === 'à gauche', 'dangers devant, pas derrière : ' + JSON.stringify(dg));
+  ok(dg[1].passer === Math.round(Math.hypot(28, 188)), 'distance pour passer le bunker');
+  ok(C.dangersDepuis([0, -50], [0, 250], trou)[0].atteindre === 0, 'balle dans le bunker');
+}
+
+/* --- Précision du GPS --- */
+{
+  const O = [46.2, 2.25], pt = (x, y, pr, t) => ({ ll: C.deprojeter(O, x, y), pr, t });
+  /* Immobile : 6 points bruités de ± 4 m autour de (0, 0) */
+  const bruit = [[3, -2], [-4, 1], [2, 3], [-1, -4], [4, 2], [-3, -1]];
+  const h = bruit.map((b, i) => pt(b[0], b[1], 5, 1000 * i));
+  const L = C.lisserGPS(h, 5000), q = C.projeter(O, L.ll[0], L.ll[1]);
+  ok(C.dist2(q, [0, 0]) < 1.5 && L.n === 6 && L.pr === 3, 'immobile : moyenne des points (' + C.dist2(q, [0, 0]).toFixed(1) + ' m du vrai point, ± ' + L.pr + ' m)');
+  /* En marche : 1,3 m/s, seul le dernier point compte */
+  const m = [0, 1, 2, 3, 4].map(i => pt(0, 1.3 * i * 4, 4, 4000 * i));
+  const Lm = C.lisserGPS(m, 16000), qm = C.projeter(O, Lm.ll[0], Lm.ll[1]);
+  ok(Math.abs(qm[1] - 20.8) < 0.5 && Lm.n === 1, 'en marche : le dernier point');
+  /* Saut de précision : un point à ± 40 m est ignoré */
+  const s = h.concat([pt(30, 30, 40, 5500)]), Ls = C.lisserGPS(s, 5600), qs = C.projeter(O, Ls.ll[0], Ls.ll[1]);
+  ok(C.dist2(qs, [0, 0]) < 3, 'point imprécis ignoré');
+  /* Moyenne d'un relevé : un reflet à 25 m est écarté */
+  const r = C.moyenneGPS([pt(1, 0, 4, 0), pt(-1, 1, 4, 1), pt(0, -1, 5, 2), pt(25, 0, 5, 3), pt(0, 1, 4, 4)]), qr = C.projeter(O, r.ll[0], r.ll[1]);
+  ok(C.dist2(qr, [0, 0]) < 1 && r.n === 4, 'relevé : point aberrant écarté (' + C.dist2(qr, [0, 0]).toFixed(1) + ' m)');
+  ok(C.moyenneGPS([]) === null && C.lisserGPS([], 0) === null, 'sans point');
+}
+
 /* --- Contrôle du stockage --- */
 {
   const a = C.assainirCarte(JSON.parse(JSON.stringify(carte)));

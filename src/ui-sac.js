@@ -23,6 +23,13 @@
     if (etat.carnet.sac) return etat.carnet.sac.slice();
     return CLUBS.filter(function (c) { return SAC_DEFAUT.indexOf(c.id) >= 0 || etat.carnet.clubs[c.id]; }).map(function (c) { return c.id; }).slice(0, SAC_MAX);
   }
+  /* Clubs proposés pendant la partie : le sac composé ; sinon les clubs déjà mesurés (au moins trois) ; sinon le sac type. */
+  function sacJeu() {
+    if (etat.carnet.sac) return etat.carnet.sac.slice();
+    var m = mesuresTout(), mes = CLUBS.filter(function (c) { return m[c.id] && m[c.id].length; }).map(function (c) { return c.id; });
+    return mes.length >= 3 ? mes.slice(0, SAC_MAX) : sacActuel();
+  }
+  function sacCompose() { return !!etat.carnet.sac; }
   function fixerSac(ids) {
     etat.carnet.sac = CLUBS.filter(function (c) { return ids.indexOf(c.id) >= 0; }).map(function (c) { return c.id; }).slice(0, SAC_MAX);
   }

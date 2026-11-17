@@ -15,7 +15,7 @@
     pts.forEach(function (pt) {
       (pt.coups || []).forEach(function (cs, k) {
         (cs || []).forEach(function (c) {
-          if (c && c.c === id && (!c.a || c.a === "plein") && c.d != null && c.l != null) l.push({ d: c.d, l: c.l, src: "parcours", date: pt.d, trou: numeroTrou(pt, k) });
+          if (c && c.c === id && (!c.a || c.a === "plein") && coupPlein(c) && c.d != null && c.l != null) l.push({ d: c.d, l: c.l, src: "parcours", date: pt.d, trou: numeroTrou(pt, k) });
         });
       });
     });

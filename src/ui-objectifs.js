@@ -85,6 +85,14 @@
       if (mieux) tc += " Sur les trous étroits, " + (mieux === 3 ? "l'hybride" : "le " + CLUBS_DEPART[mieux].toLowerCase()) + " te garde plus souvent en jeu que le driver.";
       l.push({ t: tc, alerte: !!mieux });
     }
+    /* Positions de jeu notées avec les coups : rough, bunker, arbres, recentrages. */
+    var bl = bilanLies(etat.parties.slice(-10));
+    if (bl.notes >= 10) {
+      var pc = function (k) { return Math.round(100 * (bl.lies[k] || 0) / bl.notes); }, rec = bl.types.rec || 0;
+      l.push({ t: "Coups notés sur tes dernières parties : " + pc("fw") + " % du fairway, " + pc("ro") + " % du rough, " + pc("bk") + " % du bunker, " + pc("ar") + " % des arbres." +
+        (rec ? " " + pluriel(rec, "recentrage") + " en " + pluriel(bl.parties, "partie") + " : " + (Math.round(rec / Math.max(1, bl.parties) * 10) / 10).toString().replace(".", ",") + " par partie, autant de coups perdus." : ""),
+        alerte: rec / Math.max(1, bl.parties) >= 2 });
+    }
     /* Premier putt : ce qu'il dit de l'approche, puis du putting. */
     if (r.nApp >= 5) l.push({ t: "Petit jeu : après un green manqué, ton premier putt fait moins de 3 m " + (r.app[1] + r.app[2]) + " fois sur " + r.nApp + "." });
     if (r.p1[2][0] >= 5) l.push({ t: "Putting : " + r.p1[2][1] + " premiers putts de 1 à 3 m rentrés sur " + r.p1[2][0] + "." });

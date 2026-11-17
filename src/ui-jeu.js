@@ -50,8 +50,9 @@
   /* Une position, tout de suite : la dernière du suivi si elle a moins de cinq secondes, sinon une demande au téléphone ;
      si la demande n'aboutit pas, la dernière position connue (moins de deux minutes) sert de repli. */
   /* Position du joueur au moment du toucher : un point reçu dans les 3 dernières secondes, sinon le prochain.
+     Trois points de moins de 10 m de précision en six secondes au plus, moyennés : la distance du coup gagne en justesse.
      Plus de repli sur une position ancienne : sans point frais, la mesure échoue et le dit. */
-  function prendrePosition(fin) { positionFraiche(fin, { age: 3000, n: 1, prMax: 30, attente: 12000 }); }
+  function prendrePosition(fin) { positionFraiche(fin, { age: 2000, n: 3, prMax: 10, attente: 6000 }); }
 
   /* ---------- Données du trou ---------- */
   function coupsDuTrou(p, k) { if (!p.coups) p.coups = []; return p.coups[k] || []; }
@@ -71,7 +72,9 @@
     p.trous[p.i] = v;
     return v;
   }
-  function libCoup(c, n) { return n + " · " + nomClub(c.c) + (c.a && c.a !== "plein" ? " " + AMPLITUDES.filter(function (x) { return x.id === c.a; })[0].nom : "") + (c.d ? " · " + c.d + " m" : "") + (c.l != null ? " · " + libLat(c.l).toLowerCase() : ""); }
+  function nomLie(id) { var x = LIES.filter(function (l) { return l.id === id; })[0]; return x ? x.nom : ""; }
+  function nomType(id) { var x = TYPES_COUP.filter(function (l) { return l.id === id; })[0]; return x && id ? x.nom : ""; }
+  function libCoup(c, n) { return n + " · " + (c.t ? nomType(c.t).toLowerCase() + " · " : "") + (c.p && c.p !== "dep" ? nomLie(c.p).toLowerCase() + " · " : "") + nomClub(c.c) + (c.a && c.a !== "plein" ? " " + AMPLITUDES.filter(function (x) { return x.id === c.a; })[0].nom : "") + (c.d ? " · " + c.d + " m" : "") + (c.l != null ? " · " + libLat(c.l).toLowerCase() : ""); }
   /* Résumé du trou en cours, pour le bandeau : « Trou 7 · par 4 · 5 + 2 putts ». */
   function resumeTrou(p) {
     var x = p.trous[p.i], par = x ? x[5] : trouCourant()[5];
@@ -161,15 +164,36 @@
     return h + '</section>';
   }
 
+  /* Club de départ des détails du trou (1 driver, 2 bois, 3 hybride, 4 fer ou wedge) d'après un club du sac. */
+  function clubDepartDe(id) { return id === "dr" ? 1 : /^b/.test(id) ? 2 : /^h/.test(id) ? 3 : CLUB[id] ? 4 : 0; }
+  /* Position de la balle d'après la carte GPS : bunker ou fairway, quand le départ du coup est marqué dedans. */
+  function lieDepuisCarte(g) {
+    var x = ctxCarte(); if (!g || g[0] == null || !x || !x.trou) return null;
+    var q = projeter(x.carte.o, g[0], g[1]), dans = function (k) { return (x.trou[k] || []).some(function (f) { return pointDansPoly(q, dePlat(f)); }); };
+    return dans("b") ? "bk" : dans("f") ? "fw" : null;
+  }
+
   /* ---------- Panneau d'un coup ---------- */
   function coupPanneauHTML() {
     var p = etat.partie, C = ui.pvCoup, n = C.i < 0 ? coupsDuTrou(p, p.i).length + 1 : C.i + 1, club = CLUB[C.c], gps = gpsPossible();
     var h = '<div class="pv-voile" aria-hidden="true"></div><div class="pv-panneau" role="dialog" aria-modal="true" aria-labelledby="pv-coup-titre">' +
       '<h3 id="pv-coup-titre">' + t("Coup " + n + " · trou " + numeroTrou(p, p.i)) + '</h3>' +
-      '<div class="pv-clubs" role="group" aria-label="Club joué">' + sacActuel().map(function (id) {
+      '<p class="pv-etiq">Balle</p><div class="pv-choix" role="group" aria-label="Position de la balle">' + LIES.map(function (x) {
+        return '<button type="button" data-a="pv-lie" data-v="' + x.id + '" aria-pressed="' + (C.p === x.id) + '">' + t(x.nom) + '</button>';
+      }).join("") + '</div>' +
+      '<p class="pv-etiq">Coup</p><div class="pv-choix" role="group" aria-label="Type de coup">' + TYPES_COUP.map(function (x) {
+        return '<button type="button" data-a="pv-type" data-v="' + x.id + '" aria-pressed="' + ((C.t || "") === x.id) + '"' + (x.aide ? ' title="' + at(x.aide) + '"' : '') + '>' + t(x.nom) + '</button>';
+      }).join("") + '</div>' +
+      (C.t || LIES_HORS_SAC.indexOf(C.p) >= 0 ? '<p class="aide">' + t("Ce coup ne compte pas dans les distances de ton sac.") + '</p>' : '');
+    var sac = sacJeu(), autres = CLUBS.filter(function (c) { return sac.indexOf(c.id) < 0; }).map(function (c) { return c.id; });
+    h += '<p class="pv-etiq">Club</p><div class="pv-clubs" role="group" aria-label="Club joué">' + sac.map(function (id) {
         var fo = fourchetteDe(id);
         return '<button type="button" data-a="pv-club" data-id="' + id + '" aria-pressed="' + (C.c === id) + '" aria-label="' + at(nomClub(id) + (fo ? ", " + libFourchette(fo) : "")) + '">' + t(courtSac(CLUB[id]).replace(/^(\d)$/, "Fer $1")) + (fo ? '<small>' + t(libFourchette(fo).replace(" m", "")) + '</small>' : '') + '</button>';
       }).join("") + '</div>';
+    /* Les autres clubs restent accessibles, repliés : un club absent du sac s'y ajoute quand on le joue. */
+    if (autres.length) h += '<details class="pv-autres"' + (C.autres || autres.indexOf(C.c) >= 0 ? " open" : "") + '><summary data-a="pv-autres">' + t(sacCompose() ? "Un club qui n'est pas dans ton sac" : "Autres clubs") + '</summary><div class="pv-clubs petit" role="group" aria-label="Autres clubs">' +
+      autres.map(function (id) { return '<button type="button" data-a="pv-club" data-id="' + id + '" aria-pressed="' + (C.c === id) + '">' + t(courtSac(CLUB[id]).replace(/^(\d)$/, "Fer $1")) + '</button>'; }).join("") + '</div>' +
+      (sacCompose() ? "" : '<p class="aide">' + t("La liste du haut : les clubs que tu as déjà mesurés. Compose ton sac dans « Mon sac » pour la fixer.") + '</p>') + '</details>';
     if (club && club.fam === "w") {
       h += '<div class="pv-amplitudes" role="group" aria-label="Amplitude du swing">' + [{ id: "plein", nom: "Plein" }].concat(AMPLITUDES.slice().reverse()).map(function (am) {
         return '<button type="button" data-a="pv-amplitude" data-v="' + am.id + '" aria-pressed="' + ((C.a || "plein") === am.id) + '">' + t(am.nom) + '</button>';
@@ -266,7 +290,8 @@
     var prec = i < 0 ? l[l.length - 1] : l[i - 1];
     /* Le départ d'un coup reprend l'arrivée du coup précédent, quand elle a été marquée. */
     var g = c && c.g ? c.g.slice() : (prec && prec.g && prec.g[2] != null ? [prec.g[2], prec.g[3], null, null] : null);
-    ui.pvCoup = c ? { i: i, c: c.c, d: c.d, a: c.a, g: g, l: c.l != null ? c.l : null } : { i: -1, c: null, d: null, a: "plein", g: g, l: null };
+    ui.pvCoup = c ? { i: i, c: c.c, d: c.d, a: c.a, g: g, l: c.l != null ? c.l : null, p: c.p || null, t: c.t || "" }
+      : { i: -1, c: null, d: null, a: "plein", g: g, l: null, p: l.length ? lieDepuisCarte(g) : "dep", t: "" };
     ui.pvRetour = i >= 0 ? '[data-a="pv-coup"][data-v="' + i + '"]' : '[data-a="pv-coup"][data-v="-1"]';
     rendrePartie();
     focusPartie(ui.pvCoup.c ? '[data-a="pv-club"][aria-pressed="true"]' : '[data-a="pv-club"]');
@@ -276,6 +301,17 @@
     rendrePartie(); focusPartie(sel + ", #pt-suiv");
   }
   ACTIONS["pv-coup-annuler"] = fermerCoup;
+  ACTIONS["pv-lie"] = function (el) {
+    var C = ui.pvCoup, v = el.getAttribute("data-v"); if (!C) return;
+    C.p = C.p === v ? null : v;
+    rendrePartie(); focusPartie('[data-a="pv-lie"][data-v="' + v + '"]');
+  };
+  ACTIONS["pv-type"] = function (el) {
+    var C = ui.pvCoup, v = el.getAttribute("data-v") || ""; if (!C) return;
+    C.t = v;
+    rendrePartie(); focusPartie('[data-a="pv-type"][data-v="' + v + '"]');
+  };
+  ACTIONS["pv-autres"] = function () { var C = ui.pvCoup; if (C) C.autres = !C.autres; };
   ACTIONS["pv-club"] = function (el) {
     var C = ui.pvCoup, id = el.getAttribute("data-id"); if (!C || !CLUB[id]) return;
     var avant = C.c; C.c = id;
@@ -300,7 +336,7 @@
   };
   ACTIONS["pv-gps"] = function (el) {
     var C = ui.pvCoup, k = el.getAttribute("data-v"); if (!C) return;
-    C.gpsMsg = "Position en cours…"; var e = document.getElementById("pv-gps-etat"); if (e) e.textContent = C.gpsMsg;
+    C.gpsMsg = "Mesure GPS : reste immobile quelques secondes…"; var e = document.getElementById("pv-gps-etat"); if (e) e.textContent = C.gpsMsg;
     prendrePosition(function (pos, prec, err) {
       if (ui.pvCoup !== C) return;
       if (!pos) { C.gpsMsg = GPS.refuse ? "Position refusée : saisis la distance." : "Position introuvable pour l'instant. Réessaie à découvert."; rendrePartie(); focusPartie('[data-a="pv-gps"][data-v="' + k + '"], #pv-dist'); return; }
@@ -322,15 +358,27 @@
     if (C.d != null && !(C.d >= 1 && C.d <= 400)) { if (err) { err.textContent = "Distance entre 1 et 400 m, ou laisse vide."; err.hidden = false; } focusPartie("#pv-dist"); return; }
     var coup = { c: C.c, d: C.d || null, a: C.a || "plein", g: C.g && C.g[0] != null && C.g[2] != null ? C.g.slice() : null };
     if (C.l != null) coup.l = C.l;
+    if (C.p) coup.p = C.p;
+    if (C.t) coup.t = C.t;
+    /* Un club joué qui n'est pas dans le sac composé y entre (dans la limite de la règle). */
+    var ajoute = sacCompose() && sacActuel().indexOf(C.c) < 0 && sacActuel().length < 13;
+    if (ajoute) fixerSac(sacActuel().concat([C.c]));
     if (!p.coups) p.coups = [];
     var l = (p.coups[p.i] || []).slice();
     if (C.i >= 0) l[C.i] = coup; else l.push(coup);
     p.coups[p.i] = l.slice(0, 15);
     var n = C.i >= 0 ? C.i + 1 : l.length;
     if (n === 1 && coup.g) apprendreDepart([coup.g[0], coup.g[1]]);
+    /* Club de départ (détails du trou) : déduit du premier coup, pour ne pas le noter deux fois. */
+    if (n === 1 && (!coup.p || coup.p === "dep")) {
+      var v = trouCourant().slice(), fam = clubDepartDe(coup.c);
+      if (v[5] >= 4 && fam && v[7] !== fam) { v[7] = fam; poserTrou(v); }
+    }
     ui.pvCoup = null; ui.pvRetour = null;
     sauver(); rendrePartie(); focusPartie('[data-a="pv-coup"][data-v="-1"]');
-    if (coup.d) message(nomClub(coup.c) + " : " + coup.d + " m notés. Ton sac est à jour.");
+    if (ajoute) message(nomClub(coup.c) + " ajouté à ton sac.");
+    else if (coup.d && coupPlein(coup)) message(nomClub(coup.c) + " : " + coup.d + " m notés. Ton sac est à jour.");
+    else if (coup.d) message("Coup noté. Il ne compte pas dans les distances du sac.");
   };
   ACTIONS["pv-coup-suppr"] = function () {
     var p = etat.partie, C = ui.pvCoup; if (!p || !C || C.i < 0) return;

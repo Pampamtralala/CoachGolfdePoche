@@ -1470,3 +1470,23 @@ main.entree { animation: entreeVue .22s ease-out; }
 .cp .cp-tee text { font: 700 9px var(--f-titre); fill: #0B1610; }
 .cp .cp-bord.dessin { fill: #FFFFFF; }
 .carte-photos { margin: 12px 0; }
+
+/* Panneau d'un coup : position de la balle, type de coup, autres clubs */
+.pv-etiq { margin: 10px 0 4px; font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--encre-2); }
+.pv-choix { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv-choix button { min-height: 40px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--filet-fort); background: transparent; color: inherit; font: inherit; font-size: .9rem; }
+.pv-choix button[aria-pressed="true"] { background: var(--action); border-color: var(--action); color: var(--sur-action); }
+.pv-autres { margin-top: 8px; }
+.pv-autres summary { cursor: pointer; font-size: .9rem; color: var(--encre-2); padding: 6px 0; }
+
+/* Cône de dispersion depuis la balle */
+.cp .cp-cone { fill: rgba(255, 214, 102, .18); stroke: rgba(255, 214, 102, .85); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.cp .cp-ellipse-tir { fill: rgba(255, 214, 102, .32); stroke: #FFD666; stroke-width: 1.6; }
+.cp .cp-cone-lib { font: 700 10px var(--f-titre); fill: #0B1610; paint-order: stroke; stroke: rgba(255,255,255,.85); stroke-width: 3px; }
+.carte-cone { margin: 10px 0; padding: 10px 12px; border-radius: 14px; background: var(--papier-2); }
+.carte-cone:empty { display: none; }
+.cone-club { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; text-align: center; }
+.cone-club p { margin: 0; }
+.cone-club b { display: block; font-size: 1.05rem; }
+.cone-club small { color: var(--encre-2); }
+.cone-dangers { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: .92rem; }

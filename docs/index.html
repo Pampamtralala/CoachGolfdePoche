@@ -1488,6 +1488,26 @@ main.entree { animation: entreeVue .22s ease-out; }
 .cp .cp-bord.dessin { fill: #FFFFFF; }
 .carte-photos { margin: 12px 0; }
 
+/* Panneau d'un coup : position de la balle, type de coup, autres clubs */
+.pv-etiq { margin: 10px 0 4px; font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--encre-2); }
+.pv-choix { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv-choix button { min-height: 40px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--filet-fort); background: transparent; color: inherit; font: inherit; font-size: .9rem; }
+.pv-choix button[aria-pressed="true"] { background: var(--action); border-color: var(--action); color: var(--sur-action); }
+.pv-autres { margin-top: 8px; }
+.pv-autres summary { cursor: pointer; font-size: .9rem; color: var(--encre-2); padding: 6px 0; }
+
+/* Cône de dispersion depuis la balle */
+.cp .cp-cone { fill: rgba(255, 214, 102, .18); stroke: rgba(255, 214, 102, .85); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.cp .cp-ellipse-tir { fill: rgba(255, 214, 102, .32); stroke: #FFD666; stroke-width: 1.6; }
+.cp .cp-cone-lib { font: 700 10px var(--f-titre); fill: #0B1610; paint-order: stroke; stroke: rgba(255,255,255,.85); stroke-width: 3px; }
+.carte-cone { margin: 10px 0; padding: 10px 12px; border-radius: 14px; background: var(--papier-2); }
+.carte-cone:empty { display: none; }
+.cone-club { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; text-align: center; }
+.cone-club p { margin: 0; }
+.cone-club b { display: block; font-size: 1.05rem; }
+.cone-club small { color: var(--encre-2); }
+.cone-dangers { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: .92rem; }
+
 /* ---------- Sac de golf en perspective (fausse 3D) ----------
    Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
    --s3-bulle, --s3-bulle-texte, --s3-chiffre, --s3-focus. */
@@ -3996,6 +4016,15 @@ const SG_SECTEURS = [
    Rangs des réponses facultatives d'un trou : 0 = non noté. */
 const COTES = ["", "À gauche", "Courte", "À droite"];
 const CLUBS_DEPART = ["", "Driver", "Bois", "Hybride", "Fer"];
+/* Position de la balle et type de coup, notés avec chaque coup. Un coup qui n'est pas plein (recentrage, sécurité,
+   approche) ou joué du bunker ou des arbres ne compte pas dans les distances du sac. */
+const LIES = [
+  { id: "dep", nom: "Départ" }, { id: "fw", nom: "Fairway" }, { id: "ro", nom: "Rough" },
+  { id: "bk", nom: "Bunker" }, { id: "ar", nom: "Arbres" }, { id: "fr", nom: "Avant-green" }];
+const TYPES_COUP = [
+  { id: "", nom: "Plein coup" }, { id: "rec", nom: "Recentrage", aide: "Pour revenir en jeu après un mauvais coup" },
+  { id: "sec", nom: "Sécurité", aide: "Volontairement court ou à côté d'un danger" }, { id: "app", nom: "Approche", aide: "Chip, pitch ou lob autour du green" }];
+const LIES_HORS_SAC = ["bk", "ar"];
 const PUTT1 = ["", "< 1 m", "1 à 3 m", "3 à 8 m", "> 8 m"];
 
 /* Statistiques suivies face au joueur cible. besoin "score" : demande un score par trou. */
@@ -4616,6 +4645,22 @@ function defiFinSeance(defi, D) {
    Les coups pleins mesurés alimentent les distances du sac ; un wedge joué à une amplitude alimente la matrice. */
 const COUPS_MAX = 15;
 const AMPLITUDES_COUP = ["plein", "a1", "a2", "a3"];
+function coupPlein(c) { return !!c && !c.t && LIES_HORS_SAC.indexOf(c.p) < 0; }
+/* Positions de jeu et types de coup notés : nombre de coups par position, recentrages par partie. */
+function bilanLies(parties) {
+  var r = { coups: 0, notes: 0, lies: {}, types: {}, parties: 0 };
+  (parties || []).forEach(function (p) {
+    if (!p || !Array.isArray(p.coups)) return;
+    var vu = false;
+    p.coups.forEach(function (l) { (l || []).forEach(function (c) {
+      if (!c) return; r.coups++;
+      if (c.p) { r.lies[c.p] = (r.lies[c.p] || 0) + 1; r.notes++; vu = true; }
+      if (c.t) { r.types[c.t] = (r.types[c.t] || 0) + 1; vu = true; }
+    }); });
+    if (vu) r.parties++;
+  });
+  return r;
+}
 function mesuresParcours(parties) {
   var clubs = {}, wedges = {};
   (parties || []).forEach(function (p) {
@@ -4623,6 +4668,8 @@ function mesuresParcours(parties) {
     p.coups.forEach(function (l) {
       (l || []).forEach(function (c) {
         if (!c || !estNombre(c.d) || !CLUB[c.c]) return;
+        /* Recentrage, sécurité, approche, bunker, arbres : la distance ne dit rien de la portée du club. */
+        if (!coupPlein(c)) return;
         if (!c.a || c.a === "plein") (clubs[c.c] = clubs[c.c] || []).push(c.d);
         else if (CLUB[c.c].fam === "w") { var w = wedges[c.c] = wedges[c.c] || {}; (w[c.a] = w[c.a] || []).push(c.d); }
       });
@@ -5365,6 +5412,90 @@ function poserReleve(carte, num, entree, fond) {
   return true;
 }
 
+/* ---------- Précision du GPS ----------
+   Points GPS bruts : [{ ll: [lat, lon], pr: précision en m, t: ms }].
+   lisserGPS : la position affichée. À l'arrêt, les points des 6 dernières secondes qui s'accordent avec le dernier
+   sont moyennés (pondérés par la précision) : le bruit baisse. En marche, les anciens points sont trop loin et seul
+   le dernier compte. Un point beaucoup moins précis que les autres récents est ignoré.
+   moyenneGPS : pour un relevé ou un coup, la moyenne des points, après avoir écarté les aberrants. */
+function lisserGPS(hist, maintenant) {
+  var l = (hist || []).filter(function (x) { return maintenant - x.t <= 10000; });
+  if (!l.length) return null;
+  var best = Math.min.apply(null, l.map(function (x) { return x.pr; }));
+  var der = l[l.length - 1];
+  /* Saut de précision (passage sous les arbres, perte de satellites) : on garde le meilleur point récent. */
+  if (der.pr > Math.max(15, best * 2.5)) {
+    var bon = l.filter(function (x) { return x.pr <= best * 1.5; }).pop();
+    if (bon && maintenant - bon.t <= 5000) der = bon;
+  }
+  var recents = l.filter(function (x) { return maintenant - x.t <= 6000 && x.pr <= Math.max(15, best * 2.5); }), garde = [der];
+  if (recents.length >= 2) {
+    /* Immobile ou en marche ? On compare la moyenne des points anciens et celle des récents. */
+    var moy = function (t) { var a = 0, b = 0; t.forEach(function (x) { a += x.ll[0]; b += x.ll[1]; }); return [a / t.length, b / t.length]; };
+    var mi = recents.length >> 1, A = moy(recents.slice(0, Math.max(1, mi))), B = moy(recents.slice(Math.max(1, mi)));
+    if (dist2(projeter(A, B[0], B[1]), [0, 0]) <= Math.max(3, best)) {
+      var m = moy(recents);
+      garde = recents.filter(function (x) { return dist2(projeter(m, x.ll[0], x.ll[1]), [0, 0]) <= Math.max(4, 2 * x.pr); });
+      if (!garde.length) garde = [der];
+    }
+  }
+  var w = 0, la = 0, lo = 0, mp = Infinity;
+  garde.forEach(function (x) { var k = 1 / (x.pr * x.pr); w += k; la += x.ll[0] * k; lo += x.ll[1] * k; mp = Math.min(mp, x.pr); });
+  return { ll: [la / w, lo / w], pr: Math.max(3, Math.round(mp / Math.sqrt(garde.length))), n: garde.length, t: der.t };
+}
+function moyenneGPS(pts) {
+  if (!pts || !pts.length) return null;
+  var best = Math.min.apply(null, pts.map(function (x) { return x.pr; }));
+  var l = pts.filter(function (x) { return x.pr <= Math.max(best * 1.5, best + 3); });
+  /* Écarter les points loin de la médiane (reflets sur les arbres, bâtiments). */
+  if (l.length >= 3) {
+    var m = [mediane(l.map(function (x) { return x.ll[0]; })), mediane(l.map(function (x) { return x.ll[1]; }))];
+    var proches = l.filter(function (x) { return dist2(projeter(m, x.ll[0], x.ll[1]), [0, 0]) <= Math.max(4, 2 * x.pr); });
+    if (proches.length >= 2) l = proches;
+  }
+  var w = 0, la = 0, lo = 0;
+  l.forEach(function (x) { var k = 1 / (x.pr * x.pr); w += k; la += x.ll[0] * k; lo += x.ll[1] * k; });
+  return { ll: [Math.round(la / w * 1e6) / 1e6, Math.round(lo / w * 1e6) / 1e6], pr: Math.max(3, Math.round(best / Math.sqrt(l.length))), n: l.length };
+}
+
+/* ---------- Depuis la balle : dangers devant, cône de dispersion ----------
+   pos : la balle ; cible : où le joueur vise (milieu du green ou point touché). Repère local en mètres, nord en haut. */
+function axeTir(pos, cible) {
+  var ax = cible[0] - pos[0], ay = cible[1] - pos[1], L = Math.sqrt(ax * ax + ay * ay) || 1;
+  return { u: [ax / L, ay / L], d: [ay / L, -ax / L], L: L };   /* u : vers la cible ; d : vers la droite */
+}
+/* Bunkers et eau devant la balle (à moins de 45° de l'axe, à moins de 350 m) : distance pour les atteindre, pour les passer. */
+function dangersDepuis(pos, cible, trou) {
+  if (!pos || !cible || !trou) return [];
+  var A = axeTir(pos, cible), out = [];
+  [["b", "Bunker"], ["e", "Eau"]].forEach(function (k) {
+    (trou[k[0]] || []).forEach(function (f) {
+      var p = dePlat(f); if (p.length < 3) return;
+      var c = centrePoly(p), dx = c[0] - pos[0], dy = c[1] - pos[1];
+      var av = dx * A.u[0] + dy * A.u[1], lat = dx * A.d[0] + dy * A.d[1];
+      var dedans = pointDansPoly(pos, p);
+      if (!dedans && (av <= 0 || Math.abs(lat) > av)) return;
+      var at = dedans ? 0 : Math.round(distLigne(pos, p, true)), pa = 0;
+      p.forEach(function (q) { pa = Math.max(pa, dist2(pos, q)); });
+      if (at > 350) return;
+      out.push({ nom: k[1], cote: Math.abs(lat) < 8 ? "dans l'axe" : lat > 0 ? "à droite" : "à gauche", atteindre: at, passer: Math.round(pa) });
+    });
+  });
+  return out.sort(function (a, b) { return a.atteindre - b.atteindre; }).slice(0, 5);
+}
+/* Cône de dispersion d'un club : e = { d, cx, rx, ry } (distance médiane, biais à droite, demi-largeur, demi-profondeur). */
+function coneTir(pos, cible, e) {
+  if (!pos || !cible || !e || !(e.d > 0)) return null;
+  var A = axeTir(pos, cible), cx = e.cx || 0;
+  var c = [pos[0] + A.u[0] * e.d + A.d[0] * cx, pos[1] + A.u[1] * e.d + A.d[1] * cx], pts = [];
+  for (var i = 0; i < 24; i++) {
+    var t = 2 * Math.PI * i / 24, a = e.rx * Math.cos(t), b = e.ry * Math.sin(t);
+    pts.push([c[0] + A.d[0] * a + A.u[0] * b, c[1] + A.d[1] * a + A.u[1] * b]);
+  }
+  return { c: c, pts: pts, gauche: [c[0] - A.d[0] * e.rx, c[1] - A.d[1] * e.rx], droite: [c[0] + A.d[0] * e.rx, c[1] + A.d[1] * e.rx],
+    court: Math.round(e.d - e.ry), long: Math.round(e.d + e.ry), reste: Math.round(A.L - e.d) };
+}
+
 /* ---------- Apprentissage au fil des parties ----------
    Fin de trou : le joueur est au drapeau du jour. Les drapeaux changent de place sur le green d'une partie à l'autre :
    leur nuage dessine le green. Premier coup du trou : le joueur est au départ.
@@ -5739,7 +5870,7 @@ function lireHcp(texte, n) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-16T22:46:00.278Z";
+  var VERSION_APPLI = "2026-11-17T16:20:38.984Z";
   function etatNeuf() {
     return { v: 1, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -6945,6 +7076,8 @@ function lireHcp(texte, n) {
       var am = AMPLITUDES_COUP.indexOf(c.a) >= 0 && (c.a === "plein" || CLUB[c.c].fam === "w") ? c.a : "plein";
       var r = { c: c.c, d: entier(c.d, 1, 400, null), a: am, g: gOk ? g.map(function (v) { return Math.round(v * 1e6) / 1e6; }) : null }, l = entier(c.l, -60, 60, null);
       if (l != null) r.l = l;
+      if (LIES.some(function (x) { return x.id === c.p; })) r.p = c.p;
+      if (c.t && TYPES_COUP.some(function (x) { return x.id === c.t; })) r.t = c.t;
       return r;
     }).filter(Boolean);
   }
@@ -7493,6 +7626,13 @@ function lireHcp(texte, n) {
     if (etat.carnet.sac) return etat.carnet.sac.slice();
     return CLUBS.filter(function (c) { return SAC_DEFAUT.indexOf(c.id) >= 0 || etat.carnet.clubs[c.id]; }).map(function (c) { return c.id; }).slice(0, SAC_MAX);
   }
+  /* Clubs proposés pendant la partie : le sac composé ; sinon les clubs déjà mesurés (au moins trois) ; sinon le sac type. */
+  function sacJeu() {
+    if (etat.carnet.sac) return etat.carnet.sac.slice();
+    var m = mesuresTout(), mes = CLUBS.filter(function (c) { return m[c.id] && m[c.id].length; }).map(function (c) { return c.id; });
+    return mes.length >= 3 ? mes.slice(0, SAC_MAX) : sacActuel();
+  }
+  function sacCompose() { return !!etat.carnet.sac; }
   function fixerSac(ids) {
     etat.carnet.sac = CLUBS.filter(function (c) { return ids.indexOf(c.id) >= 0; }).map(function (c) { return c.id; }).slice(0, SAC_MAX);
   }
@@ -8275,6 +8415,18 @@ function lireHcp(texte, n) {
     var pr = etat.profil; if (!pr || pr.sansIndex || !nombre(pr.index)) return null;
     return coupsRecusPartie(pt, parcoursDe(pt.pc), pr.index);
   }
+  /* Coups joués hors du fairway et coups de recentrage, quand la position de la balle a été notée. */
+  function liesResume(b) {
+    var l = [];
+    ["ro", "bk", "ar"].forEach(function (k) { if (b.lies[k]) l.push(b.lies[k] + " " + LIES.filter(function (x) { return x.id === k; })[0].nom.toLowerCase()); });
+    ["rec", "sec", "app"].forEach(function (k) { if (b.types[k]) l.push(pluriel(b.types[k], TYPES_COUP.filter(function (x) { return x.id === k; })[0].nom.toLowerCase())); });
+    return l.join(", ");
+  }
+  function liesChiffre(pt, chiffre) {
+    var b = bilanLies([pt]); if (!b.notes && !Object.keys(b.types).length) return "";
+    var hors = (b.lies.ro || 0) + (b.lies.bk || 0) + (b.lies.ar || 0);
+    return chiffre("Hors fairway", hors, liesResume(b));
+  }
   function stablefordChiffre(pt, chiffre) {
     var r = recusPartie(pt); if (!r || !r.notes) return "";
     return chiffre("Stableford", r.points + " pts", "net " + r.net + ", " + pluriel(r.H, "coup") + " reçu" + (r.H > 1 ? "s" : "") + (r.hcpConnus && r.exact ? "" : " (approximatif)"));
@@ -8290,7 +8442,7 @@ function lireHcp(texte, n) {
       '<h2 id="pt-titre">Ta partie en chiffres' + (recordPartie(pt) ? ' <span class="tampon">record ' + TRAIT + '</span>' : '') + '</h2><dl class="cinq">' +
       chiffre("Score", sc.complet ? sc.coups : "–", sc.complet ? (sc.ecart ? ecartLib(sc.ecart) + " par rapport au par" : "dans le par") : "") +
       chiffre("Mises en jeu jouables", s.J, "sur " + s.T) + chiffre("Greens en régulation", s.G, "sur " + s.T) +
-      chiffre("Putts", s.P, s.P3 ? s.P3 + " fois 3 putts ou plus" : "") + chiffre("Coups de pénalité", s.X, "") + stablefordChiffre(pt, chiffre) + '</dl>' +
+      chiffre("Putts", s.P, s.P3 ? s.P3 + " fois 3 putts ou plus" : "") + chiffre("Coups de pénalité", s.X, "") + stablefordChiffre(pt, chiffre) + liesChiffre(pt, chiffre) + '</dl>' +
       '<p>' + t((sc.complet && s.C ? pluriel(s.C, "trou") + " à triple bogey ou pire. " : "") + "Ton bilan est à jour. Il s'appuie sur " + (cu.n > 1 ? "tes " + cu.n + " dernières parties, soit " + cu.T + " trous." : "cette partie.")) + '</p>';
     if (r) {
       var pire = r.secteurs.filter(function (x) { return x.sg != null; }).sort(function (x, y) { return x.sg - y.sg; })[0];
@@ -8550,8 +8702,9 @@ function lireHcp(texte, n) {
   /* Une position, tout de suite : la dernière du suivi si elle a moins de cinq secondes, sinon une demande au téléphone ;
      si la demande n'aboutit pas, la dernière position connue (moins de deux minutes) sert de repli. */
   /* Position du joueur au moment du toucher : un point reçu dans les 3 dernières secondes, sinon le prochain.
+     Trois points de moins de 10 m de précision en six secondes au plus, moyennés : la distance du coup gagne en justesse.
      Plus de repli sur une position ancienne : sans point frais, la mesure échoue et le dit. */
-  function prendrePosition(fin) { positionFraiche(fin, { age: 3000, n: 1, prMax: 30, attente: 12000 }); }
+  function prendrePosition(fin) { positionFraiche(fin, { age: 2000, n: 3, prMax: 10, attente: 6000 }); }
 
   /* ---------- Données du trou ---------- */
   function coupsDuTrou(p, k) { if (!p.coups) p.coups = []; return p.coups[k] || []; }
@@ -8571,7 +8724,9 @@ function lireHcp(texte, n) {
     p.trous[p.i] = v;
     return v;
   }
-  function libCoup(c, n) { return n + " · " + nomClub(c.c) + (c.a && c.a !== "plein" ? " " + AMPLITUDES.filter(function (x) { return x.id === c.a; })[0].nom : "") + (c.d ? " · " + c.d + " m" : "") + (c.l != null ? " · " + libLat(c.l).toLowerCase() : ""); }
+  function nomLie(id) { var x = LIES.filter(function (l) { return l.id === id; })[0]; return x ? x.nom : ""; }
+  function nomType(id) { var x = TYPES_COUP.filter(function (l) { return l.id === id; })[0]; return x && id ? x.nom : ""; }
+  function libCoup(c, n) { return n + " · " + (c.t ? nomType(c.t).toLowerCase() + " · " : "") + (c.p && c.p !== "dep" ? nomLie(c.p).toLowerCase() + " · " : "") + nomClub(c.c) + (c.a && c.a !== "plein" ? " " + AMPLITUDES.filter(function (x) { return x.id === c.a; })[0].nom : "") + (c.d ? " · " + c.d + " m" : "") + (c.l != null ? " · " + libLat(c.l).toLowerCase() : ""); }
   /* Résumé du trou en cours, pour le bandeau : « Trou 7 · par 4 · 5 + 2 putts ». */
   function resumeTrou(p) {
     var x = p.trous[p.i], par = x ? x[5] : trouCourant()[5];
@@ -8661,15 +8816,36 @@ function lireHcp(texte, n) {
     return h + '</section>';
   }
 
+  /* Club de départ des détails du trou (1 driver, 2 bois, 3 hybride, 4 fer ou wedge) d'après un club du sac. */
+  function clubDepartDe(id) { return id === "dr" ? 1 : /^b/.test(id) ? 2 : /^h/.test(id) ? 3 : CLUB[id] ? 4 : 0; }
+  /* Position de la balle d'après la carte GPS : bunker ou fairway, quand le départ du coup est marqué dedans. */
+  function lieDepuisCarte(g) {
+    var x = ctxCarte(); if (!g || g[0] == null || !x || !x.trou) return null;
+    var q = projeter(x.carte.o, g[0], g[1]), dans = function (k) { return (x.trou[k] || []).some(function (f) { return pointDansPoly(q, dePlat(f)); }); };
+    return dans("b") ? "bk" : dans("f") ? "fw" : null;
+  }
+
   /* ---------- Panneau d'un coup ---------- */
   function coupPanneauHTML() {
     var p = etat.partie, C = ui.pvCoup, n = C.i < 0 ? coupsDuTrou(p, p.i).length + 1 : C.i + 1, club = CLUB[C.c], gps = gpsPossible();
     var h = '<div class="pv-voile" aria-hidden="true"></div><div class="pv-panneau" role="dialog" aria-modal="true" aria-labelledby="pv-coup-titre">' +
       '<h3 id="pv-coup-titre">' + t("Coup " + n + " · trou " + numeroTrou(p, p.i)) + '</h3>' +
-      '<div class="pv-clubs" role="group" aria-label="Club joué">' + sacActuel().map(function (id) {
+      '<p class="pv-etiq">Balle</p><div class="pv-choix" role="group" aria-label="Position de la balle">' + LIES.map(function (x) {
+        return '<button type="button" data-a="pv-lie" data-v="' + x.id + '" aria-pressed="' + (C.p === x.id) + '">' + t(x.nom) + '</button>';
+      }).join("") + '</div>' +
+      '<p class="pv-etiq">Coup</p><div class="pv-choix" role="group" aria-label="Type de coup">' + TYPES_COUP.map(function (x) {
+        return '<button type="button" data-a="pv-type" data-v="' + x.id + '" aria-pressed="' + ((C.t || "") === x.id) + '"' + (x.aide ? ' title="' + at(x.aide) + '"' : '') + '>' + t(x.nom) + '</button>';
+      }).join("") + '</div>' +
+      (C.t || LIES_HORS_SAC.indexOf(C.p) >= 0 ? '<p class="aide">' + t("Ce coup ne compte pas dans les distances de ton sac.") + '</p>' : '');
+    var sac = sacJeu(), autres = CLUBS.filter(function (c) { return sac.indexOf(c.id) < 0; }).map(function (c) { return c.id; });
+    h += '<p class="pv-etiq">Club</p><div class="pv-clubs" role="group" aria-label="Club joué">' + sac.map(function (id) {
         var fo = fourchetteDe(id);
         return '<button type="button" data-a="pv-club" data-id="' + id + '" aria-pressed="' + (C.c === id) + '" aria-label="' + at(nomClub(id) + (fo ? ", " + libFourchette(fo) : "")) + '">' + t(courtSac(CLUB[id]).replace(/^(\d)$/, "Fer $1")) + (fo ? '<small>' + t(libFourchette(fo).replace(" m", "")) + '</small>' : '') + '</button>';
       }).join("") + '</div>';
+    /* Les autres clubs restent accessibles, repliés : un club absent du sac s'y ajoute quand on le joue. */
+    if (autres.length) h += '<details class="pv-autres"' + (C.autres || autres.indexOf(C.c) >= 0 ? " open" : "") + '><summary data-a="pv-autres">' + t(sacCompose() ? "Un club qui n'est pas dans ton sac" : "Autres clubs") + '</summary><div class="pv-clubs petit" role="group" aria-label="Autres clubs">' +
+      autres.map(function (id) { return '<button type="button" data-a="pv-club" data-id="' + id + '" aria-pressed="' + (C.c === id) + '">' + t(courtSac(CLUB[id]).replace(/^(\d)$/, "Fer $1")) + '</button>'; }).join("") + '</div>' +
+      (sacCompose() ? "" : '<p class="aide">' + t("La liste du haut : les clubs que tu as déjà mesurés. Compose ton sac dans « Mon sac » pour la fixer.") + '</p>') + '</details>';
     if (club && club.fam === "w") {
       h += '<div class="pv-amplitudes" role="group" aria-label="Amplitude du swing">' + [{ id: "plein", nom: "Plein" }].concat(AMPLITUDES.slice().reverse()).map(function (am) {
         return '<button type="button" data-a="pv-amplitude" data-v="' + am.id + '" aria-pressed="' + ((C.a || "plein") === am.id) + '">' + t(am.nom) + '</button>';
@@ -8766,7 +8942,8 @@ function lireHcp(texte, n) {
     var prec = i < 0 ? l[l.length - 1] : l[i - 1];
     /* Le départ d'un coup reprend l'arrivée du coup précédent, quand elle a été marquée. */
     var g = c && c.g ? c.g.slice() : (prec && prec.g && prec.g[2] != null ? [prec.g[2], prec.g[3], null, null] : null);
-    ui.pvCoup = c ? { i: i, c: c.c, d: c.d, a: c.a, g: g, l: c.l != null ? c.l : null } : { i: -1, c: null, d: null, a: "plein", g: g, l: null };
+    ui.pvCoup = c ? { i: i, c: c.c, d: c.d, a: c.a, g: g, l: c.l != null ? c.l : null, p: c.p || null, t: c.t || "" }
+      : { i: -1, c: null, d: null, a: "plein", g: g, l: null, p: l.length ? lieDepuisCarte(g) : "dep", t: "" };
     ui.pvRetour = i >= 0 ? '[data-a="pv-coup"][data-v="' + i + '"]' : '[data-a="pv-coup"][data-v="-1"]';
     rendrePartie();
     focusPartie(ui.pvCoup.c ? '[data-a="pv-club"][aria-pressed="true"]' : '[data-a="pv-club"]');
@@ -8776,6 +8953,17 @@ function lireHcp(texte, n) {
     rendrePartie(); focusPartie(sel + ", #pt-suiv");
   }
   ACTIONS["pv-coup-annuler"] = fermerCoup;
+  ACTIONS["pv-lie"] = function (el) {
+    var C = ui.pvCoup, v = el.getAttribute("data-v"); if (!C) return;
+    C.p = C.p === v ? null : v;
+    rendrePartie(); focusPartie('[data-a="pv-lie"][data-v="' + v + '"]');
+  };
+  ACTIONS["pv-type"] = function (el) {
+    var C = ui.pvCoup, v = el.getAttribute("data-v") || ""; if (!C) return;
+    C.t = v;
+    rendrePartie(); focusPartie('[data-a="pv-type"][data-v="' + v + '"]');
+  };
+  ACTIONS["pv-autres"] = function () { var C = ui.pvCoup; if (C) C.autres = !C.autres; };
   ACTIONS["pv-club"] = function (el) {
     var C = ui.pvCoup, id = el.getAttribute("data-id"); if (!C || !CLUB[id]) return;
     var avant = C.c; C.c = id;
@@ -8800,7 +8988,7 @@ function lireHcp(texte, n) {
   };
   ACTIONS["pv-gps"] = function (el) {
     var C = ui.pvCoup, k = el.getAttribute("data-v"); if (!C) return;
-    C.gpsMsg = "Position en cours…"; var e = document.getElementById("pv-gps-etat"); if (e) e.textContent = C.gpsMsg;
+    C.gpsMsg = "Mesure GPS : reste immobile quelques secondes…"; var e = document.getElementById("pv-gps-etat"); if (e) e.textContent = C.gpsMsg;
     prendrePosition(function (pos, prec, err) {
       if (ui.pvCoup !== C) return;
       if (!pos) { C.gpsMsg = GPS.refuse ? "Position refusée : saisis la distance." : "Position introuvable pour l'instant. Réessaie à découvert."; rendrePartie(); focusPartie('[data-a="pv-gps"][data-v="' + k + '"], #pv-dist'); return; }
@@ -8822,15 +9010,27 @@ function lireHcp(texte, n) {
     if (C.d != null && !(C.d >= 1 && C.d <= 400)) { if (err) { err.textContent = "Distance entre 1 et 400 m, ou laisse vide."; err.hidden = false; } focusPartie("#pv-dist"); return; }
     var coup = { c: C.c, d: C.d || null, a: C.a || "plein", g: C.g && C.g[0] != null && C.g[2] != null ? C.g.slice() : null };
     if (C.l != null) coup.l = C.l;
+    if (C.p) coup.p = C.p;
+    if (C.t) coup.t = C.t;
+    /* Un club joué qui n'est pas dans le sac composé y entre (dans la limite de la règle). */
+    var ajoute = sacCompose() && sacActuel().indexOf(C.c) < 0 && sacActuel().length < 13;
+    if (ajoute) fixerSac(sacActuel().concat([C.c]));
     if (!p.coups) p.coups = [];
     var l = (p.coups[p.i] || []).slice();
     if (C.i >= 0) l[C.i] = coup; else l.push(coup);
     p.coups[p.i] = l.slice(0, 15);
     var n = C.i >= 0 ? C.i + 1 : l.length;
     if (n === 1 && coup.g) apprendreDepart([coup.g[0], coup.g[1]]);
+    /* Club de départ (détails du trou) : déduit du premier coup, pour ne pas le noter deux fois. */
+    if (n === 1 && (!coup.p || coup.p === "dep")) {
+      var v = trouCourant().slice(), fam = clubDepartDe(coup.c);
+      if (v[5] >= 4 && fam && v[7] !== fam) { v[7] = fam; poserTrou(v); }
+    }
     ui.pvCoup = null; ui.pvRetour = null;
     sauver(); rendrePartie(); focusPartie('[data-a="pv-coup"][data-v="-1"]');
-    if (coup.d) message(nomClub(coup.c) + " : " + coup.d + " m notés. Ton sac est à jour.");
+    if (ajoute) message(nomClub(coup.c) + " ajouté à ton sac.");
+    else if (coup.d && coupPlein(coup)) message(nomClub(coup.c) + " : " + coup.d + " m notés. Ton sac est à jour.");
+    else if (coup.d) message("Coup noté. Il ne compte pas dans les distances du sac.");
   };
   ACTIONS["pv-coup-suppr"] = function () {
     var p = etat.partie, C = ui.pvCoup; if (!p || !C || C.i < 0) return;
@@ -8883,7 +9083,7 @@ function lireHcp(texte, n) {
     pts.forEach(function (pt) {
       (pt.coups || []).forEach(function (cs, k) {
         (cs || []).forEach(function (c) {
-          if (c && c.c === id && (!c.a || c.a === "plein") && c.d != null && c.l != null) l.push({ d: c.d, l: c.l, src: "parcours", date: pt.d, trou: numeroTrou(pt, k) });
+          if (c && c.c === id && (!c.a || c.a === "plein") && coupPlein(c) && c.d != null && c.l != null) l.push({ d: c.d, l: c.l, src: "parcours", date: pt.d, trou: numeroTrou(pt, k) });
         });
       });
     });
@@ -9250,7 +9450,7 @@ function lireHcp(texte, n) {
   function effacerCartes() { GEO.cartes = {}; try { localStorage.removeItem(CLE_GEO); } catch (e) { /* rien */ } }
 
   /* ---------- Position suivie pendant la partie ---------- */
-  var POS = { veille: null, ll: null, pr: null, t: 0, main: null, abonnes: [] };
+  var POS = { veille: null, ll: null, pr: null, t: 0, main: null, abonnes: [], hist: [] };
   function suiviVoulu() { return ui.partie === "saisie" && !!etat.partie && gpsPossible() && document.visibilityState !== "hidden"; }
   function arreterSuivi() { if (POS.veille != null) { try { navigator.geolocation.clearWatch(POS.veille); } catch (e) { /* rien */ } POS.veille = null; } }
   function majSuivi() {
@@ -9265,9 +9465,14 @@ function lireHcp(texte, n) {
   function surPosition(p) {
     var ll = [p.coords.latitude, p.coords.longitude], now = Date.now();
     if (!nombre(ll[0]) || !nombre(ll[1])) return;
-    POS.abonnes.slice().forEach(function (f) { f(ll, Math.max(1, Math.round(p.coords.accuracy || 0))); });
-    if (POS.ll && now - POS.t < 900 && dist2(projeter(POS.ll, ll[0], ll[1]), [0, 0]) < 2) return;
-    POS.ll = ll; POS.pr = Math.max(1, Math.round(p.coords.accuracy || 0)); POS.t = now;
+    var pr = Math.max(1, Math.round(p.coords.accuracy || 0));
+    POS.abonnes.slice().forEach(function (f) { f(ll, pr); });
+    /* Position lissée : moyenne des points récents quand le joueur est immobile. */
+    POS.hist.push({ ll: ll, pr: pr, t: now });
+    POS.hist = POS.hist.filter(function (x) { return now - x.t <= 10000; }).slice(-12);
+    var L = lisserGPS(POS.hist, now); if (!L) return;
+    if (POS.ll && now - POS.t < 900 && dist2(projeter(POS.ll, L.ll[0], L.ll[1]), [0, 0]) < 1 && L.pr >= POS.pr) return;
+    POS.ll = L.ll; POS.pr = L.pr; POS.t = now;
     majCarteDirect();
   }
   document.addEventListener("visibilitychange", majSuivi);
@@ -9283,12 +9488,9 @@ function lireHcp(texte, n) {
       if (tm) clearTimeout(tm);
       POS.abonnes = POS.abonnes.filter(function (f) { return f !== recevoir; });
       if (!pts.length) { fin(null, null, err); return; }
-      /* Moyenne des meilleurs points, pondérée par la précision. */
-      var best = Math.min.apply(null, pts.map(function (q) { return q.pr; })), garde = pts.filter(function (q) { return q.pr <= Math.max(best * 1.5, best + 3); });
-      var w = 0, la = 0, lo = 0;
-      garde.forEach(function (q) { var k = 1 / (q.pr * q.pr); w += k; la += q.ll[0] * k; lo += q.ll[1] * k; });
-      var pr = Math.max(1, Math.round(best / Math.sqrt(garde.length)));
-      fin([Math.round(la / w * 1e6) / 1e6, Math.round(lo / w * 1e6) / 1e6], pr, null);
+      /* Moyenne des meilleurs points, points aberrants écartés. */
+      var M = moyenneGPS(pts);
+      fin(M.ll, M.pr, null);
     };
     var recevoir = function (ll, pr) {
       if (fini) return;
@@ -9331,15 +9533,18 @@ function lireHcp(texte, n) {
     return { p: p, pc: pc, h: h, carte: c, trou: c ? trouCarte(c, h) : null };
   }
   /* Position du joueur dans le repère de la carte : le GPS s'il est sur le trou, sinon le point posé du doigt sur ce trou. */
+  /* Position GPS utilisable pour ce trou : moins de 20 secondes (le joueur a pu marcher), à moins de 1 500 m du green. */
+  function positionGPS(x) {
+    if (!x || !x.carte || !POS.ll || Date.now() - POS.t >= 20000) return null;
+    var q = projeter(x.carte.o, POS.ll[0], POS.ll[1]);
+    return !x.trou || dist2(q, centrePoly(dePlat(x.trou.g))) <= 1500 ? { q: q, gps: true, pr: POS.pr, age: Math.round((Date.now() - POS.t) / 1000) } : null;
+  }
+  /* Position de la balle : posée à la main (« Placer la balle »), sinon le GPS, sinon le dernier point posé. */
   function positionJoueur(x) {
     if (!x || !x.carte) return null;
-    /* Une position de plus de 20 secondes ne sert plus aux distances : le joueur a pu marcher. */
-    if (POS.ll && Date.now() - POS.t < 20000) {
-      var q = projeter(x.carte.o, POS.ll[0], POS.ll[1]);
-      if (!x.trou || dist2(q, centrePoly(dePlat(x.trou.g))) <= 1500) return { q: q, gps: true, pr: POS.pr, age: Math.round((Date.now() - POS.t) / 1000) };
-    }
-    var m = POS.main;
-    return m && x.pc && m.pc === x.pc.id && m.h === x.h ? { q: m.q, gps: false, pr: null } : null;
+    var m = POS.main, main = m && x.pc && m.pc === x.pc.id && m.h === x.h ? { q: m.q, gps: false, pr: null } : null;
+    if (main && ui.carteMode === "position") return main;
+    return positionGPS(x) || main;
   }
   function distancesCourantes() {
     var x = ctxCarte(), pos = positionJoueur(x);
@@ -9404,6 +9609,39 @@ function lireHcp(texte, n) {
       return '<image href="' + at(t.url) + '" width="1" height="1" preserveAspectRatio="none" transform="matrix(' + [sx, 0, 0, -sy, t.x0, t.y1].map(n).join(" ") + ')"/>';
     }).join("") + '</g>';
   }
+  /* ---------- Depuis la balle : cône de dispersion du club et dangers devant ---------- */
+  function clubsCone() {
+    return clubsFourchettes().filter(function (c) { return c.f; }).sort(function (a, b) { return b.f.med - a.f.med; }).map(function (c) { return c.id; });
+  }
+  /* Cible : le point touché, sinon le milieu du green. Club : choisi par le joueur, sinon celui de la distance. */
+  function coneCourant(x, pos) {
+    if (!x || !x.trou || !pos) return null;
+    var M = ui.carteMesure, aPoint = M && M.pc === x.pc.id && M.h === x.h, cib = aPoint ? M.q : centrePoly(dePlat(x.trou.g));
+    var dist = dist2(pos.q, cib); if (dist < 25) return null;
+    var l = clubsCone(), id = ui.carteClub && l.indexOf(ui.carteClub) >= 0 ? ui.carteClub : null, auto = !id;
+    if (!id) { var cp = clubPour(dist, clubsFourchettes()); id = cp ? cp.id : null; }
+    var e = id ? ellipseDe(id) : null; if (!e) return null;
+    var cn = coneTir(pos.q, cib, e);
+    return cn ? { id: id, auto: auto, e: e, cn: cn, cible: cib, dist: Math.round(dist), point: aPoint } : null;
+  }
+  function coneHTML(x, pos) {
+    if (!x || !x.trou || !pos) return "";
+    var C = coneCourant(x, pos), dg = dangersDepuis(pos.q, C ? C.cible : centrePoly(dePlat(x.trou.g)), x.trou), h = '<div class="carte-cone">';
+    if (C) {
+      var e = C.e, cn = C.cn, l = clubsCone(), i = l.indexOf(C.id);
+      h += '<div class="cone-club"><button class="btn petit" type="button" data-a="carte-club" data-v="long"' + (i <= 0 ? " disabled" : "") + ' aria-label="Club plus long">‹</button>' +
+        '<p><b>' + t(nomClub(C.id)) + '</b><small>' + t(C.auto ? "choisi pour " + C.dist + " m" : "choisi par toi") + '</small></p>' +
+        '<button class="btn petit" type="button" data-a="carte-club" data-v="court"' + (i < 0 || i >= l.length - 1 ? " disabled" : "") + ' aria-label="Club plus court">›</button></div>' +
+        '<p class="aide">' + t("La balle tombe le plus souvent entre " + cn.court + " et " + cn.long + " m, sur " + (2 * e.rx) + " m de large" + (e.cx ? ", " + Math.abs(e.cx) + " m à " + (e.cx > 0 ? "droite" : "gauche") + " de la visée" : "") + ". " +
+          (cn.reste > 3 ? "Il reste environ " + cn.reste + " m jusqu'" + (C.point ? "à ton point" : "au milieu du green") + "." : cn.reste < -3 ? "Ça dépasse " + (C.point ? "ton point" : "le milieu du green") + " de " + (-cn.reste) + " m." : "Pile sur " + (C.point ? "ton point" : "le milieu du green") + ".") +
+          (e.estimeeL || e.estimeeP ? " Largeur estimée d'après ton index : note la direction de tes coups pour l'affiner." : "")) + '</p>' +
+        (C.auto ? "" : '<button class="lien" type="button" data-a="carte-club" data-v="auto">Laisser l’appli choisir le club</button>');
+    } else if (!clubsCone().length) h += '<p class="aide">' + t("Note des distances avec tes clubs (pendant les parties ou au practice) : la carte dessinera ton cône de dispersion.") + '</p>';
+    if (dg.length) h += '<ul class="cone-dangers">' + dg.map(function (d) {
+      return '<li><b>' + t(d.nom + " " + d.cote) + '</b> ' + t(d.atteindre ? d.atteindre + " m pour l'atteindre, " + d.passer + " m pour le passer" : "tu es dedans") + '</li>';
+    }).join("") + '</ul>';
+    return h + '</div>';
+  }
   function cartePlanHTML() {
     var x = ctxCarte(), tr = x.trou, pos = positionJoueur(x);
     if (!tr) { VUE = null; return '<p class="carte-vide">' + t("Ce trou n'a pas encore de green sur la carte.") + '</p>'; }
@@ -9458,6 +9696,14 @@ function lireHcp(texte, n) {
       h += '<line class="cp-axe" x1="' + pm[0].toFixed(1) + '" y1="' + pm[1].toFixed(1) + '" x2="' + pf[0].toFixed(1) + '" y2="' + pf[1].toFixed(1) + '"/>' +
         '<circle class="cp-bord" cx="' + pe[0].toFixed(1) + '" cy="' + pe[1].toFixed(1) + '" r="4"/><circle class="cp-bord" cx="' + pf[0].toFixed(1) + '" cy="' + pf[1].toFixed(1) + '" r="4"/>';
     }
+    /* Cône de dispersion du club, de la balle vers la cible. */
+    var CN = moi && !zoom && !(d && d.sur) ? coneCourant(x, pos) : null;
+    if (CN) {
+      var sb = S(moi), sg = S(V(CN.cn.gauche)), sdr = S(V(CN.cn.droite)), sc = S(V(CN.cn.c));
+      h += '<path class="cp-cone" d="M' + sb[0].toFixed(1) + ' ' + sb[1].toFixed(1) + 'L' + sg[0].toFixed(1) + ' ' + sg[1].toFixed(1) + 'L' + sdr[0].toFixed(1) + ' ' + sdr[1].toFixed(1) + 'Z"/>' +
+        '<path class="cp-ellipse-tir" d="' + chemin(CN.cn.pts.map(function (q) { return S(V(q)); })) + '"/>' +
+        '<text class="cp-cone-lib" x="' + sc[0].toFixed(1) + '" y="' + (sc[1] + 4).toFixed(1) + '" text-anchor="middle">' + t(courtSac(CLUB[CN.id]).replace(/^(\d)$/, "Fer $1")) + '</text>';
+    }
     if (mes) {
       var sm = S(mes);
       if (moi) { var s0 = S(moi); h += '<line class="cp-fil" x1="' + s0[0].toFixed(1) + '" y1="' + s0[1].toFixed(1) + '" x2="' + sm[0].toFixed(1) + '" y2="' + sm[1].toFixed(1) + '"/>'; }
@@ -9484,8 +9730,9 @@ function lireHcp(texte, n) {
       var reste = Math.round(dist2(M.q, centrePoly(dePlat(x.trou.g))));
       return pos ? "Point touché : à " + Math.round(dist2(pos.q, M.q)) + " m de toi, puis " + reste + " m jusqu'au milieu du green." : "Point touché : à " + reste + " m du milieu du green.";
     }
-    if (pos && pos.gps) return "Touche la carte pour mesurer un point : un bunker à passer, un endroit où poser la balle.";
-    return ui.carteMode === "mesure" ? "Touche la carte pour mesurer un point." : "Touche la carte là où tu es : les trois distances partent de ce point.";
+    if (ui.carteMode === "position") return "Touche la carte là où est ta balle : les distances et le cône partent de ce point.";
+    if (pos && pos.gps) return "Touche la carte pour mesurer un point : un bunker à passer, un endroit où poser la balle. Le cône vise ce point.";
+    return ui.carteMode === "mesure" ? "Touche la carte pour mesurer un point." : "Touche la carte là où est ta balle : les distances et le cône partent de ce point.";
   }
   /* Relevé sur place : deux positions GPS, l'entrée puis le fond du green. */
   function releveHTML(x) {
@@ -9495,15 +9742,17 @@ function lireHcp(texte, n) {
       '<p class="aide">' + t("Marche jusqu'à l'entrée du green et marque-la, puis fais de même au fond. Deux touchers, une fois pour toutes.") + '</p>' +
       '<div class="carte-releve-b"><button class="btn" type="button" data-a="carte-releve" data-v="e" aria-pressed="' + !!R.e + '"' + (R.attente ? " disabled" : "") + '>' + t(R.attente === "e" ? "Mesure GPS…" : R.e ? "Entrée marquée ✓" : "Je suis à l'entrée") + '</button>' +
       '<button class="btn" type="button" data-a="carte-releve" data-v="f" aria-pressed="' + !!R.f + '"' + (R.attente ? " disabled" : "") + '>' + t(R.attente === "f" ? "Mesure GPS…" : R.f ? "Fond marqué ✓" : "Je suis au fond") + '</button></div>' +
-      (R.attente ? '<p class="aide" role="status">' + t("Reste immobile quelques secondes : l'appli prend trois points GPS et en fait la moyenne.") + '</p>' : '') +
+      (R.attente ? '<p class="aide" role="status">' + t("Reste immobile, téléphone à plat devant toi : l'appli prend jusqu'à cinq points GPS en dix secondes et en fait la moyenne.") + '</p>' : '') +
       (R.msg ? '<p class="erreur" role="alert">' + t(R.msg) + '</p>' : '') + '</div>';
   }
   function carteReglagesHTML() {
-    var x = ctxCarte(), pos = positionJoueur(x), h = "";
+    var x = ctxCarte(), pos = positionJoueur(x), h = coneHTML(x, pos);
     if (x.trou) {
       h += '<div class="carte-reglages">' + choixLigne("carte-zoom", [{ v: "trou", t: "Trou entier" }, { v: "green", t: "Green" }], ui.carteZoom === "green" ? "green" : "trou");
-      if (!(pos && pos.gps)) h += choixLigne("carte-mode", [{ v: "position", t: "Me placer" }, { v: "mesure", t: "Mesurer" }], ui.carteMode === "mesure" ? "mesure" : "position");
+      if (positionGPS(x)) h += choixLigne("carte-mode", [{ v: "mesure", t: "Mesurer un point" }, { v: "position", t: "Placer la balle" }], ui.carteMode === "position" ? "position" : "mesure");
+      else h += choixLigne("carte-mode", [{ v: "position", t: "Placer la balle" }, { v: "mesure", t: "Mesurer" }], ui.carteMode === "mesure" ? "mesure" : "position");
       h += '</div>';
+      if (positionGPS(x) && pos && !pos.gps) h += '<button class="btn large" type="button" data-a="carte-gps">' + icone("position") + t(" Revenir à ma position GPS") + '</button>';
     }
     if (x.carte && !dansCadre() && photoPossible(x.carte.o)) {
       h += '<div class="carte-reglages">' + choixLigne("carte-fond", [{ v: "plan", t: "Plan" }, { v: "photo", t: "Photo aérienne" }], etat.cartePhoto !== false ? "photo" : "plan") + '</div>';
@@ -9551,6 +9800,19 @@ function lireHcp(texte, n) {
   };
   ACTIONS["carte-zoom"] = function (el) { ui.carteZoom = el.getAttribute("data-v") === "green" ? "green" : "trou"; majCartePanneau(); };
   ACTIONS["carte-mode"] = function (el) { ui.carteMode = el.getAttribute("data-v") === "mesure" ? "mesure" : "position"; majCartePanneau(); };
+  /* Retour à la position GPS après avoir posé la balle à la main. */
+  ACTIONS["carte-gps"] = function () { POS.main = null; ui.carteMode = "mesure"; majCartePanneau(); };
+  /* Club du cône : plus long, plus court, ou choisi par l'appli d'après la distance. */
+  ACTIONS["carte-club"] = function (el) {
+    var x = ctxCarte(), cn = coneCourant(x, positionJoueur(x)), l = clubsCone();
+    var v = el.getAttribute("data-v");
+    if (v === "auto") ui.carteClub = null;
+    else if (cn && l.length) {
+      var i = l.indexOf(cn.id), j = Math.max(0, Math.min(l.length - 1, (i < 0 ? 0 : i) + (v === "long" ? -1 : 1)));
+      ui.carteClub = l[j];
+    }
+    majCartePanneau();
+  };
   ACTIONS["carte-toucher"] = function (el, ev) {
     var svg = el.querySelector("svg"), x = ctxCarte();
     var De = ui.carteDessin && x && ui.carteDessin.pc === x.pc.id && ui.carteDessin.h === x.h ? ui.carteDessin : null;
@@ -9568,8 +9830,9 @@ function lireHcp(texte, n) {
       message(poserCarte(x.pc.id, x.carte) ? "Green du trou " + (x.h + 1) + " dessiné." : "Le téléphone n'a plus de place pour enregistrer la carte.");
       rendrePartie(); focusPartie('[data-a="carte-dessin"]'); return;
     }
-    if ((pos && pos.gps) || ui.carteMode === "mesure") ui.carteMesure = { pc: x.pc.id, h: x.h, q: q };
-    else { POS.main = { pc: x.pc.id, h: x.h, q: q }; ui.carteMesure = null; }
+    var placer = ui.carteMode === "position" || (!positionGPS(x) && ui.carteMode !== "mesure");
+    if (placer) { POS.main = { pc: x.pc.id, h: x.h, q: q }; ui.carteMode = "position"; }
+    else ui.carteMesure = { pc: x.pc.id, h: x.h, q: q };
     majCartePanneau();
   };
   ACTIONS["carte-releve"] = function (el) {
@@ -9596,7 +9859,7 @@ function lireHcp(texte, n) {
     /* Trois points GPS (celui de l'instant du toucher, puis les suivants), moyennés : jamais une position de plus de 2 secondes. */
     R.attente = k; R.msg = "";
     if (ui.pvPanneau === "carte") { rendrePartie(); focusPartie(sel); }
-    positionFraiche(function (ll, pr) { R.attente = null; poser(ll, pr); }, { age: 2000, n: 3, prMax: 25, attente: 6000 });
+    positionFraiche(function (ll, pr) { R.attente = null; poser(ll, pr); }, { age: 2000, n: 5, prMax: 8, attente: 10000 });
   };
   ACTIONS["sjc-carte"] = function () { var s = etatSjc(); s.brut = null; rePanneau('[data-a="sjc-brut"][data-d="1"]'); };
 
@@ -10864,6 +11127,14 @@ function lireHcp(texte, n) {
       }
       if (mieux) tc += " Sur les trous étroits, " + (mieux === 3 ? "l'hybride" : "le " + CLUBS_DEPART[mieux].toLowerCase()) + " te garde plus souvent en jeu que le driver.";
       l.push({ t: tc, alerte: !!mieux });
+    }
+    /* Positions de jeu notées avec les coups : rough, bunker, arbres, recentrages. */
+    var bl = bilanLies(etat.parties.slice(-10));
+    if (bl.notes >= 10) {
+      var pc = function (k) { return Math.round(100 * (bl.lies[k] || 0) / bl.notes); }, rec = bl.types.rec || 0;
+      l.push({ t: "Coups notés sur tes dernières parties : " + pc("fw") + " % du fairway, " + pc("ro") + " % du rough, " + pc("bk") + " % du bunker, " + pc("ar") + " % des arbres." +
+        (rec ? " " + pluriel(rec, "recentrage") + " en " + pluriel(bl.parties, "partie") + " : " + (Math.round(rec / Math.max(1, bl.parties) * 10) / 10).toString().replace(".", ",") + " par partie, autant de coups perdus." : ""),
+        alerte: rec / Math.max(1, bl.parties) >= 2 });
     }
     /* Premier putt : ce qu'il dit de l'approche, puis du putting. */
     if (r.nApp >= 5) l.push({ t: "Petit jeu : après un green manqué, ton premier putt fait moins de 3 m " + (r.app[1] + r.app[2]) + " fois sur " + r.nApp + "." });

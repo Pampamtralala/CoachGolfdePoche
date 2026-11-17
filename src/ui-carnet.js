@@ -72,6 +72,8 @@
       var am = AMPLITUDES_COUP.indexOf(c.a) >= 0 && (c.a === "plein" || CLUB[c.c].fam === "w") ? c.a : "plein";
       var r = { c: c.c, d: entier(c.d, 1, 400, null), a: am, g: gOk ? g.map(function (v) { return Math.round(v * 1e6) / 1e6; }) : null }, l = entier(c.l, -60, 60, null);
       if (l != null) r.l = l;
+      if (LIES.some(function (x) { return x.id === c.p; })) r.p = c.p;
+      if (c.t && TYPES_COUP.some(function (x) { return x.id === c.t; })) r.t = c.t;
       return r;
     }).filter(Boolean);
   }
