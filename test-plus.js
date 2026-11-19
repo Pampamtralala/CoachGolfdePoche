@@ -353,5 +353,20 @@ ok(rel.T === 5 && rel.nCotes === 1 && rel.cotes[3] === 1 && rel.clubs[1][0] === 
 ok(rel.nP1 === 3 && rel.p1[4][0] === 1 && rel.p1[4][2] === 1 && rel.p1[2][1] === 1 && rel.nApp === 2 && rel.app[4] === 1 && rel.app[2] === 1, 'premiers putts : ' + JSON.stringify(rel.p1) + ' ' + JSON.stringify(rel.app));
 ok(E.releveDetail([{ d: 'a', trous: t18 }], 90).nP1 === 0 && E.releveDetail([], 90).T === 0, 'aucun relevé sur une ancienne partie');
 
+/* --- Modèle unifié des données collectées --- */
+{
+  const parties = [{ d: '2026-11-19', o: 9, coups: [[
+    { c: 'f7', d: 145, source: 'gps', distanceType: 'total', mesureLe: 123, g: [46, 2, 46.001, 2] },
+    { c: 'pw', d: 90 }
+  ]] }];
+  const carnet = { series: [{ d: '2026-11-18', c: 'f7', v: [137, 140], l: [-3, 5] }] };
+  const r = E.observationsGolf(parties, carnet), q = E.qualiteObservations(r);
+  ok(r.length === 4 && r[0].type === 'coup' && r[0].trou === 10, 'observations parcours et practice unifiées');
+  ok(r[0].origine === 'gps' && r[0].distanceType === 'total' && r[1].origine === 'inconnu', 'provenance connue ou explicitement inconnue');
+  ok(r[2].type === 'practice' && r[2].distanceType === 'carry' && r[2].deviation === -3, 'distance practice avec dispersion');
+  ok(q.total === 4 && q.gps === 1 && q.distance === 4 && q.origineConnue === 3, 'qualité et comptage des sources');
+  ok(E.qualiteObservations([]).total === 0 && E.observationsGolf([], {}).length === 0, 'cas vide');
+}
+
 console.log(n + ' vérifications · ' + ko + ' échec' + (ko > 1 ? 's' : ''));
 process.exit(ko ? 1 : 0);
