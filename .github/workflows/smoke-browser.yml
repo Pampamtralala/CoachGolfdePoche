@@ -1,0 +1,24 @@
+name: Vérification du lancement dans Chromium
+on:
+  push:
+    branches:
+      - feat/carnet-donnees-fiables
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer le navigateur de test
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Tester le premier lancement et les sauvegardes v1
+        run: node test-startup.js
