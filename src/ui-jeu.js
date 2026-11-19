@@ -153,6 +153,8 @@
       (dernier ? "" : '<button class="lien" type="button" data-a="pt-terminer">Terminer la partie ici</button>') + '</div>' +
       (statsTrous(p.trous).T ? '' : '<p class="pt-cumul">Score et putts sont déjà proposés : un toucher pour corriger, un pour valider. Tu peux aussi glisser le doigt vers la gauche pour valider.</p>') +
       '';
+    h += '<div class="pv-validation"><p class="aide">' + t((p.validation || [])[p.i] === "confirme" ? "Score confirmé par toi." : "Score proposé automatiquement : confirme-le avant de terminer le trou.") + '</p>' +
+      '<button class="btn" type="button" data-a="pt-confirmer">' + ((p.validation || [])[p.i] === "confirme" ? "Score confirmé ✓" : "Confirmer le score") + '</button></div>';
     h += '<div class="pv-mode" role="group" aria-label="Mode de saisie"><button type="button" data-a="mode-saisie" data-v="express" aria-pressed="' + expr + '">Score express</button><button type="button" data-a="mode-saisie" data-v="detail" aria-pressed="' + !expr + '">Performance détaillée</button></div></div>';
 
     h += '<footer class="pv-pied"><button class="btn" type="button" data-a="pt-prec"' + (p.i === 0 ? " disabled" : "") + ' aria-label="' + at(p.i === 0 ? "Trou précédent" : "Revenir au trou " + numeroTrou(p, p.i - 1)) + '">' + (p.i === 0 ? "‹" : "‹ " + numeroTrou(p, p.i - 1)) + '</button>' +
