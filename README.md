@@ -41,3 +41,19 @@ lancement suivant. La date de la version s'affiche en bas du profil.
 
 Carte des parcours : © les contributeurs d'OpenStreetMap (ODbL), recherche par Nominatim.
 Photos aériennes : © IGN, Géoplateforme (Licence ouverte Etalab 2.0), en France seulement.
+
+## Évolution du carnet — branche feat/carnet-donnees-fiables
+
+Cette branche conserve les formats historiques v1 et enrichit le modèle (schéma de données 2) sans effacer les anciennes observations.
+
+- Historique des parties, séries de practice, index et mesures brutes conservé sans plafonds arbitraires précédents.
+- Double sauvegarde locale (localStorage + IndexedDB), export JSON et restauration après confirmation. La synchronisation externe reste conditionnée à la plateforme d'exécution.
+- Coups avec source, date et type de distance lorsque disponibles ; les données historiques sans origine déclarée restent « inconnues ».
+- Scores proposés puis confirmés au passage d'un trou ; l'absence d'indication sur les anciennes parties n'est pas interprétée comme une validation.
+- Accueil « Mon jeu », tendances personnelles et rubrique de qualité des observations.
+
+### Validation et publication
+
+Exécuter `npm test`, puis `node build.js` et vérifier les modifications générées dans `docs/` avant de fusionner sur `app`. **Ne pas fusionner cette branche sans mettre à jour `docs/`** : GitHub Pages sert les fichiers de `docs/`, pas les sources `src/` directement.
+
+Pour les anciennes sauvegardes : faire un export dans le profil avant une mise à jour majeure. Les anciens scores ont une confirmation « inconnue » et les anciennes distances sans métadonnées n'ont pas de provenance reconstituée artificiellement.

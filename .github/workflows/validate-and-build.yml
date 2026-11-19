@@ -1,0 +1,34 @@
+name: Vérification et génération du site (branche de travail)
+on:
+  push:
+    branches:
+      - feat/carnet-donnees-fiables
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verifications:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Tester les calculs
+        run: npm test
+      - name: Construire la PWA
+        run: node build.js
+      - name: Versionner les fichiers générés (branche de travail uniquement)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          if ! git diff --cached --quiet; then
+            git commit -m "build: regenerate PWA for review [skip ci]"
+            git push origin HEAD:feat/carnet-donnees-fiables
+          fi
