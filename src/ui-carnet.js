@@ -71,7 +71,7 @@
       var g = liste(c.g), gOk = g.length === 4 && g.every(nombre) && Math.abs(g[0]) <= 90 && Math.abs(g[2]) <= 90 && Math.abs(g[1]) <= 180 && Math.abs(g[3]) <= 180;
       var am = AMPLITUDES_COUP.indexOf(c.a) >= 0 && (c.a === "plein" || CLUB[c.c].fam === "w") ? c.a : "plein";
       var r = { c: c.c, d: entier(c.d, 1, 400, null), a: am, g: gOk ? g.map(function (v) { return Math.round(v * 1e6) / 1e6; }) : null }, l = entier(c.l, -60, 60, null);
-      r.source = c.source === "gps" && gOk ? "gps" : c.source === "import" ? "import" : "manuel";
+      r.source = c.source === "gps" && gOk ? "gps" : c.source === "import" ? "import" : c.source === "manuel" ? "manuel" : "inconnu";
       r.distanceType = c.distanceType === "total" ? "total" : c.distanceType === "carry" ? "carry" : "inconnu";
       r.mesureLe = nombre(c.mesureLe) && c.mesureLe > 0 ? c.mesureLe : null;
       if (l != null) r.l = l;
