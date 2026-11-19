@@ -9,7 +9,7 @@
     var h = etat.indexHist || (etat.indexHist = []), der = h[h.length - 1], j = auj();
     if (der && der.v === v) return;
     if (der && String(der.d).slice(0, 10) === j.slice(0, 10)) der.v = v; else h.push({ d: j, v: v });
-    /* On garde toutes les anciennes observations d’index. */
+    if (h.length > 60) h.splice(0, h.length - 60);
   }
   function courbeIndexHTML(h, l, ht) {
     var pts = (etat.indexHist || []).slice(-12);
@@ -67,23 +67,6 @@
   function etatVideHTML(ico, titre, texte, action, bouton) {
     return '<div class="etat-vide">' + icone(ico) + '<p class="tb-titre">' + t(titre) + '</p><p>' + t(texte) + '</p>' +
       (action ? '<button class="btn principal" type="button" data-a="' + action + '">' + t(bouton) + '</button>' : '') + '</div>';
-  }
-
-  /* Qualité des données : transparence sur l'échantillon et les sources. */
-  function qualiteGolfHTML() {
-    var obs = observationsGolf(etat.parties, etat.carnet), q = qualiteObservations(obs);
-    var confirmes = 0, suivis = 0;
-    etat.parties.forEach(function (p) {
-      (p.trous || []).forEach(function (tr, i) {
-        if (!tr) return;
-        suivis++;
-        if ((p.validation || [])[i] === "confirme") confirmes++;
-      });
-    });
-    return '<section class="bloc" id="qualite-donnees"><h2>Qualité de mon carnet</h2>' +
-      '<p class="aide">' + t(q.total ? q.total + " observations · " + q.distance + " distances mesurées ou déclarées · " + q.gps + " relevés GPS." : "Les observations apparaîtront après tes premières mesures et tes premiers coups.") + '</p>' +
-      '<p class="aide">' + t(suivis ? confirmes + " scores confirmés sur " + suivis + " trous historiques. Les anciens scores restent utilisables, mais leur confirmation n’est pas connue." : "Aucun trou historique pour le moment.") + '</p>' +
-      '<p class="aide">Chaque coup peut conserver sa source (manuel, GPS, import), sa date, son type de distance et son niveau de confiance. Les anciennes données non documentées restent marquées comme inconnues.</p></section>';
   }
 
   /* ---------- Statistiques : chiffres clés ---------- */

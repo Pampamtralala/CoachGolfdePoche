@@ -577,48 +577,6 @@ function dispersion(mesures) {
   return { n: n, moy: Math.round(moy), sigma: Math.round(Math.sqrt(v)), p10: Math.round(quantile(tri, 0.1)), p90: Math.round(quantile(tri, 0.9)), min: tri[0], max: tri[n - 1] };
 }
 
-/* Modèle unifié, non destructif, des observations golfiques.
-   Les données historiques restent intactes ; les champs inconnus ne sont pas inventés. */
-function observationsGolf(parties, carnet) {
-  var out = [];
-  (parties || []).forEach(function (partie, pi) {
-    (partie.coups || []).forEach(function (coups, trou) {
-      (coups || []).forEach(function (c, ci) {
-        if (!c || !c.c) return;
-        out.push({
-          id: "p" + pi + "-t" + trou + "-c" + ci, type: "coup",
-          origine: c.source || "inconnu", date: c.mesureLe || partie.d || null,
-          partie: pi, trou: (partie.o || 0) + trou + 1, club: c.c,
-          distance: typeof c.d === "number" ? c.d : null,
-          distanceType: c.distanceType || "inconnu", positions: c.g || null,
-          lie: c.p || null, typeCoup: c.t || null,
-          confiance: c.source === "gps" ? "mesuree" : c.source === "manuel" ? "declaree" : "inconnue"
-        });
-      });
-    });
-  });
-  ((carnet || {}).series || []).forEach(function (serie, i) {
-    (serie.v || []).forEach(function (d, j) {
-      if (typeof d !== "number") return;
-      out.push({ id: "s" + i + "-b" + j, type: "practice", origine: "manuel",
-        date: serie.d || null, club: serie.c, distance: d, distanceType: "carry",
-        deviation: serie.l && serie.l[j] != null ? serie.l[j] : null, confiance: "declaree" });
-    });
-  });
-  return out;
-}
-function qualiteObservations(observations) {
-  var a = observations || [], q = { total: a.length, distance: 0, gps: 0, dates: 0, origineConnue: 0, typeConnu: 0 };
-  a.forEach(function (o) {
-    if (o.distance != null) q.distance++;
-    if (o.origine === "gps") q.gps++;
-    if (o.date) q.dates++;
-    if (o.origine !== "inconnu") q.origineConnue++;
-    if (o.distanceType !== "inconnu") q.typeConnu++;
-  });
-  return q;
-}
-
 /* ---------- Bilan express d'une partie ----------
    Trois points clés : ce qui a le mieux marché, puis les deux secteurs qui ont coûté le plus,
    chacun avec un fait de la partie et le domaine d'exercices qui y répond. */
@@ -668,5 +626,5 @@ function scoreJoueur(scores, pars) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { observationsGolf, qualiteObservations, coupPlein, bilanLies, COUPS_MAX, AMPLITUDES_COUP, mesuresParcours, fusionMesures, fusionWedges, distanceGPS, quantile, dispersion, pointsCles, topFlopTrous, scoreJoueur, DEFI, CLUB, CLUBS, WEDGES, WEDGES_BASE, LOFT_MIN, LOFT_MAX, definirWedges, wedgeAuLoft, estNombre, statsClub, SAC_ECART, analyseCarnet, analyseWedges, trouNote, scoreSuggere, scoreMini, statsTrous, cumulParties, indicateursParties, scorePartie, repereSG, puttsAttendus, cibleAuto, coupsGagnes, valeursStats, objectifs, statsFenetre, etatObjectif, differentiel, indexEstime, analyseParcours, causesTrou, coteDominant, releveDetail, defiNeuf, niveauVise, cibleDefi, defiCoup, defiFinSeance };
+  module.exports = { coupPlein, bilanLies, COUPS_MAX, AMPLITUDES_COUP, mesuresParcours, fusionMesures, fusionWedges, distanceGPS, quantile, dispersion, pointsCles, topFlopTrous, scoreJoueur, DEFI, CLUB, CLUBS, WEDGES, WEDGES_BASE, LOFT_MIN, LOFT_MAX, definirWedges, wedgeAuLoft, estNombre, statsClub, SAC_ECART, analyseCarnet, analyseWedges, trouNote, scoreSuggere, scoreMini, statsTrous, cumulParties, indicateursParties, scorePartie, repereSG, puttsAttendus, cibleAuto, coupsGagnes, valeursStats, objectifs, statsFenetre, etatObjectif, differentiel, indexEstime, analyseParcours, causesTrou, coteDominant, releveDetail, defiNeuf, niveauVise, cibleDefi, defiCoup, defiFinSeance };
 }

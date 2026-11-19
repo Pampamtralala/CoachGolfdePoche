@@ -205,38 +205,60 @@
   /* ============================================================
      ACCUEIL : trois portes (le sac, le parcours, le practice), puis l'essentiel du jour
      ============================================================ */
-  /* Accueil centré sur les données du joueur : le coaching reste dans Progresser. */
   VUES.accueil = function () {
-    var p = etat.profil, pt = etat.partie, parties = etat.parties;
-    var totalTrous = parties.reduce(function (n, x) { return n + (x.trous || []).length; }, 0);
-    var nbCoups = parties.reduce(function (n, x) {
-      return n + (x.coups || []).reduce(function (a, l) { return a + (l || []).length; }, 0);
-    }, 0);
-    var derniere = parties.length ? parties[parties.length - 1] : null;
-    var h = '<section class="bloc premier mon-jeu"><p class="surtitre">Carnet golfique personnel</p><h1>' +
-      t(p.prenom ? "Mon jeu · " + p.prenom : "Mon jeu") + '</h1>' +
-      '<p class="chapo">Mieux connaître ton jeu pour mieux jouer. Chaque partie enrichit tes statistiques et tes distances.</p>' +
-      '<div class="acces-rapides">' +
-      '<button class="btn principal" type="button" data-a="' + (pt ? "pt-reprendre" : "partie-rapide") + '">' +
-      icone("drapeau") + t(pt ? " Reprendre ma partie" : " Nouvelle partie") + '</button>' +
-      '<button class="btn" type="button" data-a="serie-ouvrir">' + icone("sac") + ' Mesurer mes clubs</button>' +
-      '<button class="btn" type="button" data-a="onglet" data-v="parcours">Mes parties</button>' +
-      '<button class="btn" type="button" data-a="onglet" data-v="sac">Mon sac</button></div>' +
-      '<p class="aide">' + t(pluriel(parties.length, "partie") + " conservée" + (parties.length > 1 ? "s" : "") +
-      " · " + totalTrous + " trous · " + nbCoups + " coups documentés") + '</p></section>';
-    if (derniere) {
-      var sc = scorePartie(derniere), st = statsTrous(derniere.trous);
-      h += '<section class="bloc"><h2>Dernière partie</h2><button type="button" class="carte-tb lien-tb derniere" data-a="pt-carte" data-id="' + (parties.length - 1) + '">' +
-        '<p class="surtitre">' + t(dateCourte(derniere.d)) + '</p><p class="tb-titre">' +
-        t(sc.complet ? sc.coups + " coups · " + ecartLib(sc.ecart) : st.T + " trous saisis") +
-        '</p><p class="tb-meta">' + t(st.G + " GIR · " + st.P + " putts · " + st.X + " pénalités") + '</p></button></section>';
+    var p = etat.profil, plan = etat.plan, w = semaineCourante(), pal = palierDe(p.index), c = conditionsDuJour();
+    var date = "";
+    try { date = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }); } catch (e) { date = ""; }
+    var lieux = [];
+
+    /* Le club-house : le bilan */
+    lieux.push({ cle: "club", attrs: 'data-a="onglet" data-v="bilan"', ico: "progres", lieu: "Club-house", titre: "Mon bilan" });
+
+    /* Le green : jouer une partie */
+    var pt = etat.partie, l = etat.parties;
+    if (pt) {
+      var st = statsTrous(pt.trous);
+      lieux.push({ cle: "parcours", vif: true, attrs: 'data-a="pt-reprendre"', ico: "partie", lieu: "Partie en cours",
+        titre: "Reprendre au trou " + numeroTrou(pt, pt.i), meta: pluriel(st.T, "trou") + " joué" + (st.T > 1 ? "s" : "") + " sur " + pt.n });
+    } else {
+      var der = l.length ? l[l.length - 1] : null, sc = der ? scorePartie(der) : null;
+      lieux.push({ cle: "parcours", attrs: 'data-a="partie-rapide"', ico: "partie", lieu: "Parcours", titre: "Lancer une partie",
+        meta: der ? "Dernière le " + dateCourte(der.d) + (sc.complet ? " : " + sc.coups + " (" + ecartLib(sc.ecart) + ")" : "") : "Note tes trous en jouant" });
     }
-    h += '<section class="bloc"><h2>Mes tendances</h2>' + chiffresClesHTML() + '</section>' + qualiteGolfHTML();
-    h += '<section class="bloc"><h2>À découvrir dans mes données</h2>' +
-      '<p class="aide">Pour des distances fiables, mesure plusieurs balles par club. Les chiffres détaillés et leur historique sont disponibles dans Mon sac et Statistiques.</p>' +
-      '<div class="acces-rapides"><button class="btn" type="button" data-a="onglet" data-v="bilan">Toutes mes statistiques</button>' +
-      '<button class="btn" type="button" data-a="onglet" data-v="practice">Entraînement (facultatif)</button></div></section>';
-    return h;
+
+    /* Le practice : la séance du jour */
+    var pr = prochaineSeance();
+    if (pr) {
+      lieux.push({ cle: "practice", attrs: 'data-a="voir-seance" data-id="' + at(pr.se.id) + '" data-v="' + pr.w + '"', ico: "entrainement",
+        lieu: pr.retard ? "Practice · à rattraper" : "Practice", titre: pr.se.doms.map(function (d) { return DOM[d].court; }).join(" et "),
+        meta: (pr.w !== w ? "Semaine " + pr.w + " · " : "Séance du jour · ") + dureeLib(pr.se.min) });
+    } else {
+      lieux.push({ cle: "practice", attrs: 'data-a="onglet" data-v="practice"', ico: "entrainement", lieu: "Practice", titre: "Cycle terminé", meta: "Fais le bilan du cycle" });
+    }
+
+    /* Le départ et le sac */
+    var an = analyseCarnet(mesuresTout(), sacActuel()), P = an.paires.length;
+    var nTrous = an.alertes.filter(function (x) { return x.type === "trou"; }).length, nDoub = an.alertes.length - nTrous;
+    lieux.push({ cle: "sac", attrs: 'data-a="onglet" data-v="sac"', ico: "sac", lieu: "Mon sac",
+      titre: P ? an.ok + "/" + P + " écarts justes" : pluriel(sacActuel().length, "club") + " + putter",
+      meta: !an.lignes.length ? "Saisis tes distances" : !P ? "Saisis deux clubs voisins" : an.ok === P ? "Sac parfaitement étagé" :
+        [nTrous ? pluriel(nTrous, "trou") : "", nDoub ? pluriel(nDoub, "écart") + " trop " + (nDoub > 1 ? "serrés" : "serré") : ""].filter(Boolean).join(" · ") });
+
+    var titre = '<p class="surtitre">' + t(date) + '</p><h1>' + t(p.prenom ? "Bonjour " + p.prenom : "Bonjour") + '</h1>';
+    var h = '<section class="bloc premier accueil-golf"><div class="accueil-grille"><div>' + paysageHTML(lieux, titre, c ? c.vent : 0) + '</div><div>';
+
+    /* En bref : conditions du jour et défi */
+    var cons = c ? conseilsConditions(c, pal) : [], lignes = [];
+    lignes.push('<li><button class="ligne-jour" type="button" data-a="cond-ouvrir"><span class="lj-val">' + icone("vent") + '</span><span class="lj-txt"><b>' +
+      t(c ? (c.vent ? "Vent " + VENTS[c.vent].nom.toLowerCase() : "Vent non noté") + (c.temp ? " · " + TEMPS[c.temp].nom : "") : "Conditions du jour") + '</b><small>' +
+      t(c ? (cons[0] || "Touche pour modifier") : "Note le vent et la température pour adapter tes trajectoires") + '</small></span>' + icone("chevron") + '</button></li>');
+    var df = defiDuJour();
+    if (df) {
+      var D = etatDefi(df.id), n = df.niveaux.length;
+      lignes.push('<li><button class="ligne-jour" type="button" data-a="defi" data-id="' + df.id + '"><span class="lj-val"><span class="main">' + Math.min(D.niv + 1, n) + '</span><small>sur ' + n + '</small></span>' +
+        '<span class="lj-txt"><b>' + t("Défi · " + df.t) + '</b><small>' + t(D.niv >= n ? "Bouclé : rejoue-le" : "Niveau " + (D.niv + 1) + " : " + df.niveaux[D.niv].nom) + '</small></span>' + icone("chevron") + '</button></li>');
+    }
+    return h + tableauBordHTML() + '<h2 class="titre-bref">Aujourd’hui</h2><ul class="carte-jour en-bref">' + lignes.join("") + '</ul></div></div></section>';
   };
 
   ACTIONS["voir-seance"] = function (el) {

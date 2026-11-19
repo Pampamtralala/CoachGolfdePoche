@@ -263,12 +263,12 @@
     var idx = []; p.trous.forEach(function (x, k) { if (x) idx.push(k); });
     var pt = { d: p.d, trous: saisis, pc: parcoursDe(p.pc) ? p.pc : null, o: p.o || 0 };
     if (pt.pc && p.rep >= 0) pt.rep = p.rep;
-    pt.validation = idx.map(function (k) { return (p.validation || [])[k] === "confirme" ? "confirme" : "suggere"; });
     /* Coups et partenaires suivent les trous gardés. */
     var coups = idx.map(function (k) { return (p.coups && p.coups[k]) || []; });
     if (coups.some(function (l) { return l.length; })) pt.coups = coups;
     if (p.joueurs && p.joueurs.length) pt.joueurs = p.joueurs.map(function (j) { return { nom: j.nom, s: idx.map(function (k) { return j.s[k] == null ? null : j.s[k]; }) }; });
     etat.parties.push(pt);
+    if (etat.parties.length > 40) etat.parties.splice(0, etat.parties.length - 40);
     etat.partie = null;
     majIndicateursParties();
     sauver();
@@ -319,7 +319,6 @@
     for (i = 0; i < n; i++) tr.push(null);
     etat.partie = { d: auj(), n: n, i: 0, trous: tr, pc: pc.id, o: d.jeu === "retour" && pc.pars.length === 18 ? 9 : 0,
       coups: tr.map(function () { return []; }),
-      validation: tr.map(function () { return "suggere"; }),
       joueurs: (d.joueurs || []).map(function (nm) { return { nom: nm, s: tr.map(function () { return null; }) }; }) };
     if (pc.reps && pc.reps.length) etat.partie.rep = d.rep >= 0 && d.rep < pc.reps.length ? d.rep : 0;
     ui.depart = null;
@@ -349,18 +348,9 @@
     var p = etat.partie; if (!p) return;
     var v = trouCourant().slice(), d = el.getAttribute("data-d") === "1" ? 1 : -1;
     v[4] = Math.max(scoreMini(v[2], v[3]), Math.min(15, v[4] + d));
-    if (!p.validation) p.validation = p.trous.map(function () { return "suggere"; });
-    p.validation[p.i] = "confirme";
     poserTrou(v);
     sauver(); rendrePartie();
     focusPartie('[data-a="pt-score"][data-d="' + d + '"]:not([disabled]), [data-a="pt-score"]:not([disabled])');
-  };
-  ACTIONS["pt-confirmer"] = function () {
-    var p = etat.partie; if (!p) return;
-    poserTrou(trouCourant().slice());
-    if (!p.validation) p.validation = p.trous.map(function () { return "suggere"; });
-    p.validation[p.i] = "confirme";
-    sauver(); rendrePartie(); focusPartie('[data-a="pt-confirmer"]');
   };
   ACTIONS["pt-theme"] = function () {
     etat.ecranClair = !etat.ecranClair;
@@ -381,8 +371,6 @@
     var p = etat.partie; if (!p) return;
     apprendreFinTrou();
     poserTrou(trouCourant().slice());
-    if (!p.validation) p.validation = p.trous.map(function () { return "suggere"; });
-    p.validation[p.i] = "confirme";
     memoriserPar(p, p.i);
     vibrer(35); ui.pvLong = false; ui.pvCoup = null; ui.pvPanneau = null;
     if (p.i >= p.n - 1) { sauver(); terminerPartie(); return; }

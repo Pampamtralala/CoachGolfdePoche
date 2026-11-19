@@ -94,8 +94,8 @@
     var cb = etat.carnet;
     var se = { d: auj(), c: S.c, v: S.v.slice() };
     if (S.l && S.l.some(function (x) { return x != null; })) se.l = S.l.slice(0, S.v.length);
-    cb.series = (cb.series || []).concat([se]);
-    cb.clubs[S.c] = (cb.clubs[S.c] || []).concat(S.v);
+    cb.series = (cb.series || []).concat([se]).slice(-40);
+    cb.clubs[S.c] = (cb.clubs[S.c] || []).concat(S.v).slice(-MESURES_MAX);
     var r = { c: S.c, n: S.v.length, dsp: dispersion(S.v), moy: Math.round(somme(S.v) / S.v.length) };
     S.v = []; S.l = []; S.lp = null; S.ddp = null;
     sauver();
