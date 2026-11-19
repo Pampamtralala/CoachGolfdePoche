@@ -21,4 +21,6 @@ jobs:
           npm install --no-save playwright
           npx playwright install --with-deps chromium
       - name: Tester le premier lancement et les sauvegardes v1
-        run: node test-startup.js
+        run: |
+          node build.js
+          node test-startup.js
