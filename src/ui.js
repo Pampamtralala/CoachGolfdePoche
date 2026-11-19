@@ -336,7 +336,7 @@
         .map(function (x) { return { d: dateOk(x.d), v: Math.round(x.v) }; });
       if (l.length) e.scores[id] = l;
     });
-    e.historique = liste(o.historique).slice(-60).filter(function (c) { return c && typeof c === "object"; }).map(function (c) {
+    e.historique = liste(o.historique).filter(function (c) { return c && typeof c === "object"; }).map(function (c) {
       return {
         cycle: entier(c.cycle, 1, 999, 1), debut: dateOk(c.debut), fin: dateOk(c.fin),
         faites: entier(c.faites, 0, 16, 0), total: entier(c.total, 0, 16, 0),
