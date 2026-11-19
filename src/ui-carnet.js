@@ -104,7 +104,7 @@
       var r = { d: dateOk(x.d), c: x.c, v: v };
       if (l.some(function (y) { return y != null; })) r.l = l;
       return r;
-    }).filter(Boolean).slice(-40);
+    }).filter(Boolean);
     CLUBS.forEach(function (k) {
       if (!a(cl, k.id)) return;
       var l = liste(cl[k.id]).filter(function (v) { return nombre(v) && v >= 5 && v <= 400; }).slice(-MESURES_MAX).map(Math.round);
@@ -158,11 +158,12 @@
       if (tr.length < 9) return null;
       var r = { d: dateOk(p.d), trous: tr, pc: pc, o: decalage(p, pc, tr.length) }, cp = liste(p.coups);
       if (pc && entier(p.rep, 0, 7, null) != null) r.rep = p.rep;
+      r.validation = idx.map(function (i) { return liste(p.validation)[i] === "confirme" ? "confirme" : "inconnu"; });
       var coups = idx.map(function (i) { return assainirCoups(cp[i]); });
       if (coups.some(function (x) { return x.length; })) r.coups = coups;
       var js = assainirJoueurs(p.joueurs, idx); if (js.length) r.joueurs = js;
       return r;
-    }).filter(Boolean).slice(-40);
+    }).filter(Boolean);
     var pc = o.partie;
     if (pc && typeof pc === "object" && (pc.n === 9 || pc.n === 18) && Array.isArray(pc.trous)) {
       var tr2 = [], pc2 = lien(pc);
@@ -174,7 +175,7 @@
         if (tr && !tr[4]) tr[4] = scoreSuggere(tr[5], tr[1], tr[2], tr[3]);
         tr2.push(tr);
       }
-      e.partie = { d: dateOk(pc.d), n: pc.n, i: entier(pc.i, 0, pc.n - 1, 0), trous: tr2, pc: pc2, o: decalage(pc, pc2, pc.n) };
+      e.partie = { d: dateOk(pc.d), n: pc.n, i: entier(pc.i, 0, pc.n - 1, 0), trous: tr2, pc: pc2, o: decalage(pc, pc2, pc.n), validation: tr2.map(function (tr, i) { return liste(pc.validation)[i] === "confirme" ? "confirme" : "suggere"; }) };
       if (pc2 && entier(pc.rep, 0, 7, null) != null) e.partie.rep = pc.rep;
       var tous = []; for (var k = 0; k < pc.n; k++) tous.push(k);
       var cp2 = liste(pc.coups);
