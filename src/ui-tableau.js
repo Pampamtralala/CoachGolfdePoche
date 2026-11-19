@@ -9,7 +9,7 @@
     var h = etat.indexHist || (etat.indexHist = []), der = h[h.length - 1], j = auj();
     if (der && der.v === v) return;
     if (der && String(der.d).slice(0, 10) === j.slice(0, 10)) der.v = v; else h.push({ d: j, v: v });
-    if (h.length > 60) h.splice(0, h.length - 60);
+    /* On garde toutes les anciennes observations d’index. */
   }
   function courbeIndexHTML(h, l, ht) {
     var pts = (etat.indexHist || []).slice(-12);
