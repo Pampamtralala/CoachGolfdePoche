@@ -190,7 +190,7 @@
     }
     e.detail = o.detail === true;
     e.cartePhoto = o.cartePhoto !== false;
-    e.modeSaisie = o.modeSaisie === "express" ? "express" : "detail";
+    e.modeSaisie = o.modeSaisie === "detail" ? "detail" : "express";
     /* Historique de l'index : dates et valeurs ; sans historique, le point de départ est l'index actuel. */
     e.indexHist = liste(o.indexHist).map(function (x) { return x && nombre(x.v) && x.v >= -10 && x.v <= 54 ? { d: dateOk(x.d), v: Math.round(x.v * 10) / 10 } : null; }).filter(function (x) { return x && x.d; });
     if (!e.indexHist.length && e.profil && !e.profil.sansIndex && nombre(e.profil.index)) {
