@@ -153,6 +153,8 @@
       (dernier ? "" : '<button class="lien" type="button" data-a="pt-terminer">Terminer la partie ici</button>') + '</div>' +
       (statsTrous(p.trous).T ? '' : '<p class="pt-cumul">Score et putts sont déjà proposés : un toucher pour corriger, un pour valider. Tu peux aussi glisser le doigt vers la gauche pour valider.</p>') +
       '';
+    h += '<div class="pv-validation"><p class="aide">' + t((p.validation || [])[p.i] === "confirme" ? "Score confirmé par toi." : "Score proposé automatiquement : confirme-le avant de terminer le trou.") + '</p>' +
+      '<button class="btn" type="button" data-a="pt-confirmer">' + ((p.validation || [])[p.i] === "confirme" ? "Score confirmé ✓" : "Confirmer le score") + '</button></div>';
     h += '<div class="pv-mode" role="group" aria-label="Mode de saisie"><button type="button" data-a="mode-saisie" data-v="express" aria-pressed="' + expr + '">Score express</button><button type="button" data-a="mode-saisie" data-v="detail" aria-pressed="' + !expr + '">Performance détaillée</button></div></div>';
 
     h += '<footer class="pv-pied"><button class="btn" type="button" data-a="pt-prec"' + (p.i === 0 ? " disabled" : "") + ' aria-label="' + at(p.i === 0 ? "Trou précédent" : "Revenir au trou " + numeroTrou(p, p.i - 1)) + '">' + (p.i === 0 ? "‹" : "‹ " + numeroTrou(p, p.i - 1)) + '</button>' +
@@ -356,7 +358,8 @@
     var err = document.getElementById("pv-coup-err");
     if (!C.c) { if (err) { err.textContent = "Choisis le club joué."; err.hidden = false; } focusPartie('[data-a="pv-club"]'); return; }
     if (C.d != null && !(C.d >= 1 && C.d <= 400)) { if (err) { err.textContent = "Distance entre 1 et 400 m, ou laisse vide."; err.hidden = false; } focusPartie("#pv-dist"); return; }
-    var coup = { c: C.c, d: C.d || null, a: C.a || "plein", g: C.g && C.g[0] != null && C.g[2] != null ? C.g.slice() : null };
+    var coup = { c: C.c, d: C.d || null, a: C.a || "plein", g: C.g && C.g[0] != null && C.g[2] != null ? C.g.slice() : null,
+      source: C.g && C.g[2] != null ? "gps" : "manuel", distanceType: C.g && C.g[2] != null ? "total" : "carry", mesureLe: Date.now() };
     if (C.l != null) coup.l = C.l;
     if (C.p) coup.p = C.p;
     if (C.t) coup.t = C.t;

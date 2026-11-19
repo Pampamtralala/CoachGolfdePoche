@@ -11,15 +11,71 @@
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
   var VERSION_APPLI = "/*VERSION*/";
   function etatNeuf() {
-    return { v: 1, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
+    return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
   }
   function lireLocal() {
     try { var s = localStorage.getItem(CLE); var o = s ? JSON.parse(s) : null; return o && o.v === 1 ? o : null; } catch (e) { return null; }
   }
-  function ecrireLocal() { try { localStorage.setItem(CLE, JSON.stringify(etat)); } catch (e) { /* stockage indisponible */ } }
+  var sauvegardeLocaleOK = true, sauvegardeIndexee = "attente", ouvertureDB = null, fileEcritures = Promise.resolve();
+  function ecrireLocal(json) {
+    try { localStorage.setItem(CLE, json || JSON.stringify(etat)); sauvegardeLocaleOK = true; return true; }
+    catch (e) { sauvegardeLocaleOK = false; return false; }
+  }
+  function ouvrirDB() {
+    if (!ouvertureDB) ouvertureDB = new Promise(function (ok, ko) {
+      if (typeof indexedDB === "undefined") { ko(new Error("IndexedDB absent")); return; }
+      var r = indexedDB.open("coachgolf-donnees", 1);
+      r.onupgradeneeded = function () { if (!r.result.objectStoreNames.contains("etat")) r.result.createObjectStore("etat"); };
+      r.onsuccess = function () { ok(r.result); };
+      r.onerror = function () { ko(r.error || new Error("Stockage indisponible")); };
+    });
+    return ouvertureDB;
+  }
+  function ecrireDB(json) {
+    return ouvrirDB().then(function (db) {
+      return new Promise(function (ok, ko) {
+        var tx = db.transaction("etat", "readwrite");
+        tx.objectStore("etat").put(json, "principal");
+        tx.oncomplete = ok;
+        tx.onerror = function () { ko(tx.error || new Error("Écriture impossible")); };
+        tx.onabort = function () { ko(tx.error || new Error("Écriture annulée")); };
+      });
+    });
+  }
   var etat = lireLocal() || etatNeuf();
-  function sauver() { etat.maj = Date.now(); ecrireLocal(); planifierEnvoi(); }
+  function persisterIndexe(json) {
+    sauvegardeIndexee = "attente";
+    /* Les écritures sont ordonnées : une sauvegarde ancienne ne peut pas remplacer une nouvelle. */
+    fileEcritures = fileEcritures.catch(function () {}).then(function () { return ecrireDB(json); })
+      .then(function () { sauvegardeIndexee = "ok"; majStatut(); }, function () { sauvegardeIndexee = "erreur"; majStatut(); });
+  }
+  function sauver() {
+    etat.maj = Math.max(Date.now(), (etat.maj || 0) + 1);
+    var json = JSON.stringify(etat);
+    ecrireLocal(json);
+    persisterIndexe(json);
+    planifierEnvoi();
+    majStatut();
+  }
+  function restaurerIndexe() {
+    ouvrirDB().then(function (db) {
+      return new Promise(function (ok, ko) {
+        var tx = db.transaction("etat", "readonly"), r = tx.objectStore("etat").get("principal");
+        r.onsuccess = function () { ok(r.result); };
+        r.onerror = function () { ko(r.error); };
+      });
+    }).then(function (json) {
+      if (!json) return;
+      var recu = null;
+      try { recu = assainir(JSON.parse(json)); } catch (e) { return; }
+      if (!recu || (recu.maj || 0) <= (etat.maj || 0)) return;
+      etat = recu; ecrireLocal(json); verifierPlan();
+      ui.vue = "auto"; ui.partie = etat.partie ? "saisie" : null; ui.feuille = null;
+      rendreSur(); rendreFeuille(); rendrePartie(); majStatut();
+      message("Tes données ont été restaurées depuis la sauvegarde de cet appareil.");
+    }).catch(function () { /* La copie locale reste disponible, si elle existe. */ });
+  }
 
   /* Sauvegarde dans l'espace personnel du joueur, si la page y a accès. */
   var distant = { ref: null, etat: "attente", enCours: false, encore: false, minuterie: null };
@@ -47,7 +103,7 @@
             try { recu = assainir(JSON.parse(d.json)); } catch (e) { recu = null; }
             if (recu) {
               var sansProfil = !etat.profil;
-              etat = recu; ecrireLocal(); verifierPlan();
+              etat = recu; ecrireLocal(); persisterIndexe(JSON.stringify(etat)); verifierPlan();
               if (etat.profil && (ui.vue !== "questionnaire" || !ui.mode)) { ui.vue = "app"; ui.brouillon = null; ui.mode = null; }
               if (sansProfil) ui.semaine = semaineCourante();
               if (!etat.partie && ui.partie === "saisie") ui.partie = null;
@@ -82,6 +138,8 @@
     });
   }
   function texteStatut() {
+    if (!sauvegardeLocaleOK && sauvegardeIndexee === "erreur") return "Attention : tes dernières données ne sont pas enregistrées. Exporte une sauvegarde depuis le profil.";
+    if (!sauvegardeLocaleOK && sauvegardeIndexee === "attente") return "Sauvegarde en cours sur cet appareil…";
     if (distant.etat === "actif") return "Tes données sont enregistrées sur cet appareil et dans ton espace personnel. Tu les retrouves en ouvrant cette page avec ton compte sur un autre appareil.";
     if (distant.etat === "attente") return "Tes données sont enregistrées sur cet appareil.";
     return "Tes données sont enregistrées sur cet appareil uniquement. Copie une sauvegarde de temps en temps : vider le navigateur les efface.";
@@ -95,7 +153,7 @@
     var el = document.getElementById("statut-donnees"); if (el) el.textContent = texteStatut();
     var c = document.getElementById("statut-tete");
     if (c) { c.className = "statut-tete " + (distant.etat === "actif" ? "synchro" : "local"); c.setAttribute("aria-label", texteStatut()); c.title = texteStatut();
-      c.lastChild.textContent = distant.etat === "actif" ? "Synchronisé" : "Enregistré"; }
+      c.lastChild.textContent = !sauvegardeLocaleOK && sauvegardeIndexee === "erreur" ? "Non enregistré" : (!sauvegardeLocaleOK && sauvegardeIndexee === "attente" ? "Sauvegarde…" : (distant.etat === "actif" ? "Synchronisé" : "Enregistré")); }
   }
 
   /* ---------- État de l'écran ---------- */
@@ -261,6 +319,7 @@
   function assainir(o) {
     if (!o || typeof o !== "object" || o.v !== 1) return null;
     var e = etatNeuf();
+    e.schemaDonnees = 2; /* Migration non destructive des sauvegardes v1. */
     e.maj = nombre(o.maj) && o.maj > 0 ? o.maj : 0;
     e.profil = assainirProfil(o.profil);
     if (!e.profil) return e;
@@ -277,7 +336,7 @@
         .map(function (x) { return { d: dateOk(x.d), v: Math.round(x.v) }; });
       if (l.length) e.scores[id] = l;
     });
-    e.historique = liste(o.historique).slice(-60).filter(function (c) { return c && typeof c === "object"; }).map(function (c) {
+    e.historique = liste(o.historique).filter(function (c) { return c && typeof c === "object"; }).map(function (c) {
       return {
         cycle: entier(c.cycle, 1, 999, 1), debut: dateOk(c.debut), fin: dateOk(c.fin),
         faites: entier(c.faites, 0, 16, 0), total: entier(c.total, 0, 16, 0),
@@ -695,7 +754,7 @@
   VUES.bilan = function () {
     var p = etat.profil, pal = palierDe(p.index), P = PALIERS[pal - 1];
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
-    var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' + chiffresClesHTML() + '</section>' +
+    var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' + chiffresClesHTML() + '</section>' + qualiteGolfHTML() +
       '<section class="bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
 
@@ -788,7 +847,7 @@
     h += '<button class="btn large" type="button" data-a="fin-cycle">Faire le bilan du cycle</button></section>';
 
     h += '<section class="bloc" id="donnees"><h2>Tes données</h2><p id="statut-donnees">' + t(texteStatut()) + '</p><div class="ligne-btn">' +
-      '<button class="btn" type="button" data-a="exporter">Copier une sauvegarde</button><button class="btn" type="button" data-a="importer">Restaurer une sauvegarde</button></div>' +
+      '<button class="btn" type="button" data-a="exporter-fichier">Télécharger mes données (.json)</button><label class="btn" for="importer-fichier">Restaurer un fichier<input id="importer-fichier" type="file" accept=".json,application/json" data-c="importer-fichier" class="vh"></label><button class="btn" type="button" data-a="exporter">Copier une sauvegarde</button><button class="btn" type="button" data-a="importer">Restaurer un texte</button></div>' +
       '<p style="margin-top:14px"><button class="btn danger large" type="button" data-a="effacer">Tout effacer</button></p></section>';
 
     h += '<section class="bloc"><h2>À propos</h2><p>Prototype. Les repères par palier sont des ordres de grandeur, à affiner avec les résultats des joueurs. Si un exercice provoque une douleur, arrête-le. Les coups gagnés sont une estimation à partir de quelques chiffres par trou. L’index estimé suit la méthode du World Handicap System sans la reproduire entièrement : il ne remplace pas ton index officiel. Les causes proposées pour un défaut sont les plus fréquentes : elles ne remplacent pas le regard d’un enseignant de golf sur ton swing. Graphiques : Chart.js, sous licence MIT.</p>' +
@@ -1048,6 +1107,21 @@
       ui.vue = "auto"; ui.brouillon = null; ui.dialogue = null; ui.feuille = null; ui.feuilleRetour = null; ui.partie = null; ui.bilanPartie = null; ui.depart = null;
       rendreDialogue(); rendreFeuille(); rendrePartie(); rendre(); window.scrollTo(0, 0);
     },
+    "exporter-fichier": function () {
+      var blob = new Blob([JSON.stringify(etat, null, 2)], { type: "application/json" });
+      var url = URL.createObjectURL(blob), lien = document.createElement("a");
+      lien.href = url; lien.download = "coachgolf-" + auj().slice(0, 10) + ".json";
+      document.body.appendChild(lien); lien.click(); lien.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+      message("Sauvegarde téléchargée.");
+    },
+    "ok-importer-fichier": function () {
+      if (!ui.importPrete) return;
+      etat = ui.importPrete; ui.importPrete = null; ui.dialogue = null; ui.feuille = null;
+      verifierPlan(); sauver(); rendreDialogue(); rendreFeuille();
+      ui.vue = "auto"; ui.partie = etat.partie ? "saisie" : null;
+      rendre(); rendrePartie(); message("Données restaurées depuis le fichier.");
+    },
     exporter: function () {
       dialogue({ titre: "Copier une sauvegarde", corps: '<p>Copie ce texte et garde-le dans une note ou un message. Il permet de restaurer tes données ici ou sur un autre appareil.</p><div class="champ"><label for="d-code">Ta sauvegarde</label><textarea id="d-code" readonly>' + codeSauvegarde() + '</textarea></div>',
         boutons: [{ l: "Fermer", a: "fermer-dialogue" }, { l: "Copier", a: "copier", c: "principal" }] });
@@ -1162,6 +1236,24 @@
   /*INCLURE:ui-defis.js*/
   /*INCLURE:ui-schemas.js*/
 
+  /* Enregistrer les actions après l'inclusion qui initialise CHANGEMENTS. */
+  CHANGEMENTS["importer-fichier"] = function (el) {
+    var fichier = el.files && el.files[0]; if (!fichier) return;
+    if (fichier.size > 40e6) { message("Fichier trop volumineux."); return; }
+    var fr = new FileReader();
+    fr.onload = function () {
+      var r = null;
+      try { r = assainir(JSON.parse(String(fr.result))); } catch (e) { r = null; }
+      if (!r || !r.profil) { message("Fichier de sauvegarde invalide."); return; }
+      ui.importPrete = r;
+      dialogue({ titre: "Remplacer les données actuelles ?", corps: "<p>Cette restauration remplacera toutes les données actuellement présentes sur cet appareil. Télécharge d’abord une sauvegarde si nécessaire.</p>", boutons: [{ l: "Annuler", a: "fermer-dialogue" }, { l: "Restaurer", a: "ok-importer-fichier", c: "principal" }] });
+    };
+    fr.onerror = function () { message("Impossible de lire le fichier."); };
+    fr.readAsText(fichier);
+    el.value = "";
+  };
+
+
   /* ============================================================
      DÉMARRAGE
      ============================================================ */
@@ -1200,7 +1292,7 @@
     if (etat.partie && Date.now() - Date.parse(etat.partie.d) < 288e5 && ui.vue !== "questionnaire") ui.partie = "saisie";
     rendreSur();
     try { rendrePartie(); } catch (e) { ui.partie = null; rendrePartie(); }
-    initDistant(); verifierPartage();
+    restaurerIndexe(); initDistant(); verifierPartage();
   }
   var chaud = null;
   try { chaud = window.claude && window.claude.hot; } catch (e) { chaud = null; }

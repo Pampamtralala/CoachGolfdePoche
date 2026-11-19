@@ -71,6 +71,9 @@
       var g = liste(c.g), gOk = g.length === 4 && g.every(nombre) && Math.abs(g[0]) <= 90 && Math.abs(g[2]) <= 90 && Math.abs(g[1]) <= 180 && Math.abs(g[3]) <= 180;
       var am = AMPLITUDES_COUP.indexOf(c.a) >= 0 && (c.a === "plein" || CLUB[c.c].fam === "w") ? c.a : "plein";
       var r = { c: c.c, d: entier(c.d, 1, 400, null), a: am, g: gOk ? g.map(function (v) { return Math.round(v * 1e6) / 1e6; }) : null }, l = entier(c.l, -60, 60, null);
+      r.source = c.source === "gps" && gOk ? "gps" : c.source === "import" ? "import" : c.source === "manuel" ? "manuel" : "inconnu";
+      r.distanceType = c.distanceType === "total" ? "total" : c.distanceType === "carry" ? "carry" : "inconnu";
+      r.mesureLe = nombre(c.mesureLe) && c.mesureLe > 0 ? c.mesureLe : null;
       if (l != null) r.l = l;
       if (LIES.some(function (x) { return x.id === c.p; })) r.p = c.p;
       if (c.t && TYPES_COUP.some(function (x) { return x.id === c.t; })) r.t = c.t;
@@ -104,10 +107,10 @@
       var r = { d: dateOk(x.d), c: x.c, v: v };
       if (l.some(function (y) { return y != null; })) r.l = l;
       return r;
-    }).filter(Boolean).slice(-40);
+    }).filter(Boolean);
     CLUBS.forEach(function (k) {
       if (!a(cl, k.id)) return;
-      var l = liste(cl[k.id]).filter(function (v) { return nombre(v) && v >= 5 && v <= 400; }).slice(-MESURES_MAX).map(Math.round);
+      var l = liste(cl[k.id]).filter(function (v) { return nombre(v) && v >= 5 && v <= 400; }).map(Math.round);
       if (l.length) e.carnet.clubs[k.id] = l;
     });
     /* Composition du sac : clubs connus, sans doublon, du plus long au plus court, 13 au plus. */
@@ -158,11 +161,12 @@
       if (tr.length < 9) return null;
       var r = { d: dateOk(p.d), trous: tr, pc: pc, o: decalage(p, pc, tr.length) }, cp = liste(p.coups);
       if (pc && entier(p.rep, 0, 7, null) != null) r.rep = p.rep;
+      r.validation = idx.map(function (i) { return liste(p.validation)[i] === "confirme" ? "confirme" : "inconnu"; });
       var coups = idx.map(function (i) { return assainirCoups(cp[i]); });
       if (coups.some(function (x) { return x.length; })) r.coups = coups;
       var js = assainirJoueurs(p.joueurs, idx); if (js.length) r.joueurs = js;
       return r;
-    }).filter(Boolean).slice(-40);
+    }).filter(Boolean);
     var pc = o.partie;
     if (pc && typeof pc === "object" && (pc.n === 9 || pc.n === 18) && Array.isArray(pc.trous)) {
       var tr2 = [], pc2 = lien(pc);
@@ -174,7 +178,7 @@
         if (tr && !tr[4]) tr[4] = scoreSuggere(tr[5], tr[1], tr[2], tr[3]);
         tr2.push(tr);
       }
-      e.partie = { d: dateOk(pc.d), n: pc.n, i: entier(pc.i, 0, pc.n - 1, 0), trous: tr2, pc: pc2, o: decalage(pc, pc2, pc.n) };
+      e.partie = { d: dateOk(pc.d), n: pc.n, i: entier(pc.i, 0, pc.n - 1, 0), trous: tr2, pc: pc2, o: decalage(pc, pc2, pc.n), validation: tr2.map(function (tr, i) { return liste(pc.validation)[i] === "confirme" ? "confirme" : "suggere"; }) };
       if (pc2 && entier(pc.rep, 0, 7, null) != null) e.partie.rep = pc.rep;
       var tous = []; for (var k = 0; k < pc.n; k++) tous.push(k);
       var cp2 = liste(pc.coups);
@@ -186,9 +190,9 @@
     }
     e.detail = o.detail === true;
     e.cartePhoto = o.cartePhoto !== false;
-    e.modeSaisie = o.modeSaisie === "express" ? "express" : "detail";
+    e.modeSaisie = o.modeSaisie === "detail" ? "detail" : "express";
     /* Historique de l'index : dates et valeurs ; sans historique, le point de départ est l'index actuel. */
-    e.indexHist = liste(o.indexHist).map(function (x) { return x && nombre(x.v) && x.v >= -10 && x.v <= 54 ? { d: dateOk(x.d), v: Math.round(x.v * 10) / 10 } : null; }).filter(function (x) { return x && x.d; }).slice(-60);
+    e.indexHist = liste(o.indexHist).map(function (x) { return x && nombre(x.v) && x.v >= -10 && x.v <= 54 ? { d: dateOk(x.d), v: Math.round(x.v * 10) / 10 } : null; }).filter(function (x) { return x && x.d; });
     if (!e.indexHist.length && e.profil && !e.profil.sansIndex && nombre(e.profil.index)) {
       var dm = e.profil.maj; e.indexHist = [{ d: typeof dm === "number" && isFinite(dm) ? new Date(dm).toISOString() : dateOk(dm), v: e.profil.index }];
     }
