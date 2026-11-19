@@ -69,6 +69,23 @@
       (action ? '<button class="btn principal" type="button" data-a="' + action + '">' + t(bouton) + '</button>' : '') + '</div>';
   }
 
+  /* Qualité des données : transparence sur l'échantillon et les sources. */
+  function qualiteGolfHTML() {
+    var obs = observationsGolf(etat.parties, etat.carnet), q = qualiteObservations(obs);
+    var confirmes = 0, suivis = 0;
+    etat.parties.forEach(function (p) {
+      (p.trous || []).forEach(function (tr, i) {
+        if (!tr) return;
+        suivis++;
+        if ((p.validation || [])[i] === "confirme") confirmes++;
+      });
+    });
+    return '<section class="bloc" id="qualite-donnees"><h2>Qualité de mon carnet</h2>' +
+      '<p class="aide">' + t(q.total ? q.total + " observations · " + q.distance + " distances mesurées ou déclarées · " + q.gps + " relevés GPS." : "Les observations apparaîtront après tes premières mesures et tes premiers coups.") + '</p>' +
+      '<p class="aide">' + t(suivis ? confirmes + " scores confirmés sur " + suivis + " trous historiques. Les anciens scores restent utilisables, mais leur confirmation n’est pas connue." : "Aucun trou historique pour le moment.") + '</p>' +
+      '<p class="aide">Chaque coup peut conserver sa source (manuel, GPS, import), sa date, son type de distance et son niveau de confiance. Les anciennes données non documentées restent marquées comme inconnues.</p></section>';
+  }
+
   /* ---------- Statistiques : chiffres clés ---------- */
   function chiffresClesHTML() {
     var n = ui.fenetre || 5, l = etat.parties, c = cumulParties(l, n * 18), avant = cumulParties(l.slice(0, Math.max(0, l.length - c.n)), n * 18);
