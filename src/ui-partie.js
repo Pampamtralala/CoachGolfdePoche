@@ -381,6 +381,8 @@
     var p = etat.partie; if (!p) return;
     apprendreFinTrou();
     poserTrou(trouCourant().slice());
+    if (!p.validation) p.validation = p.trous.map(function () { return "suggere"; });
+    p.validation[p.i] = "confirme";
     memoriserPar(p, p.i);
     vibrer(35); ui.pvLong = false; ui.pvCoup = null; ui.pvPanneau = null;
     if (p.i >= p.n - 1) { sauver(); terminerPartie(); return; }
