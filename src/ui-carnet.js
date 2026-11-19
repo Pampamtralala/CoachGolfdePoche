@@ -110,7 +110,7 @@
     }).filter(Boolean);
     CLUBS.forEach(function (k) {
       if (!a(cl, k.id)) return;
-      var l = liste(cl[k.id]).filter(function (v) { return nombre(v) && v >= 5 && v <= 400; }).slice(-MESURES_MAX).map(Math.round);
+      var l = liste(cl[k.id]).filter(function (v) { return nombre(v) && v >= 5 && v <= 400; }).map(Math.round);
       if (l.length) e.carnet.clubs[k.id] = l;
     });
     /* Composition du sac : clubs connus, sans doublon, du plus long au plus court, 13 au plus. */
