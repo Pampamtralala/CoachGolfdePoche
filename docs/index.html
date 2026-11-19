@@ -4717,6 +4717,48 @@ function dispersion(mesures) {
   return { n: n, moy: Math.round(moy), sigma: Math.round(Math.sqrt(v)), p10: Math.round(quantile(tri, 0.1)), p90: Math.round(quantile(tri, 0.9)), min: tri[0], max: tri[n - 1] };
 }
 
+/* Modèle unifié, non destructif, des observations golfiques.
+   Les données historiques restent intactes ; les champs inconnus ne sont pas inventés. */
+function observationsGolf(parties, carnet) {
+  var out = [];
+  (parties || []).forEach(function (partie, pi) {
+    (partie.coups || []).forEach(function (coups, trou) {
+      (coups || []).forEach(function (c, ci) {
+        if (!c || !c.c) return;
+        out.push({
+          id: "p" + pi + "-t" + trou + "-c" + ci, type: "coup",
+          origine: c.source || "inconnu", date: c.mesureLe || partie.d || null,
+          partie: pi, trou: (partie.o || 0) + trou + 1, club: c.c,
+          distance: typeof c.d === "number" ? c.d : null,
+          distanceType: c.distanceType || "inconnu", positions: c.g || null,
+          lie: c.p || null, typeCoup: c.t || null,
+          confiance: c.source === "gps" ? "mesuree" : c.source === "manuel" ? "declaree" : "inconnue"
+        });
+      });
+    });
+  });
+  ((carnet || {}).series || []).forEach(function (serie, i) {
+    (serie.v || []).forEach(function (d, j) {
+      if (typeof d !== "number") return;
+      out.push({ id: "s" + i + "-b" + j, type: "practice", origine: "manuel",
+        date: serie.d || null, club: serie.c, distance: d, distanceType: "carry",
+        deviation: serie.l && serie.l[j] != null ? serie.l[j] : null, confiance: "declaree" });
+    });
+  });
+  return out;
+}
+function qualiteObservations(observations) {
+  var a = observations || [], q = { total: a.length, distance: 0, gps: 0, dates: 0, origineConnue: 0, typeConnu: 0 };
+  a.forEach(function (o) {
+    if (o.distance != null) q.distance++;
+    if (o.origine === "gps") q.gps++;
+    if (o.date) q.dates++;
+    if (o.origine !== "inconnu") q.origineConnue++;
+    if (o.distanceType !== "inconnu") q.typeConnu++;
+  });
+  return q;
+}
+
 /* ---------- Bilan express d'une partie ----------
    Trois points clés : ce qui a le mieux marché, puis les deux secteurs qui ont coûté le plus,
    chacun avec un fait de la partie et le domaine d'exercices qui y répond. */
@@ -5870,17 +5912,73 @@ function lireHcp(texte, n) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-17T16:20:38.984Z";
+  var VERSION_APPLI = "2026-11-19T10:19:48.856Z";
   function etatNeuf() {
-    return { v: 1, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
+    return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
   }
   function lireLocal() {
     try { var s = localStorage.getItem(CLE); var o = s ? JSON.parse(s) : null; return o && o.v === 1 ? o : null; } catch (e) { return null; }
   }
-  function ecrireLocal() { try { localStorage.setItem(CLE, JSON.stringify(etat)); } catch (e) { /* stockage indisponible */ } }
+  var sauvegardeLocaleOK = true, sauvegardeIndexee = "attente", ouvertureDB = null, fileEcritures = Promise.resolve();
+  function ecrireLocal(json) {
+    try { localStorage.setItem(CLE, json || JSON.stringify(etat)); sauvegardeLocaleOK = true; return true; }
+    catch (e) { sauvegardeLocaleOK = false; return false; }
+  }
+  function ouvrirDB() {
+    if (!ouvertureDB) ouvertureDB = new Promise(function (ok, ko) {
+      if (typeof indexedDB === "undefined") { ko(new Error("IndexedDB absent")); return; }
+      var r = indexedDB.open("coachgolf-donnees", 1);
+      r.onupgradeneeded = function () { if (!r.result.objectStoreNames.contains("etat")) r.result.createObjectStore("etat"); };
+      r.onsuccess = function () { ok(r.result); };
+      r.onerror = function () { ko(r.error || new Error("Stockage indisponible")); };
+    });
+    return ouvertureDB;
+  }
+  function ecrireDB(json) {
+    return ouvrirDB().then(function (db) {
+      return new Promise(function (ok, ko) {
+        var tx = db.transaction("etat", "readwrite");
+        tx.objectStore("etat").put(json, "principal");
+        tx.oncomplete = ok;
+        tx.onerror = function () { ko(tx.error || new Error("Écriture impossible")); };
+        tx.onabort = function () { ko(tx.error || new Error("Écriture annulée")); };
+      });
+    });
+  }
   var etat = lireLocal() || etatNeuf();
-  function sauver() { etat.maj = Date.now(); ecrireLocal(); planifierEnvoi(); }
+  function persisterIndexe(json) {
+    sauvegardeIndexee = "attente";
+    /* Les écritures sont ordonnées : une sauvegarde ancienne ne peut pas remplacer une nouvelle. */
+    fileEcritures = fileEcritures.catch(function () {}).then(function () { return ecrireDB(json); })
+      .then(function () { sauvegardeIndexee = "ok"; majStatut(); }, function () { sauvegardeIndexee = "erreur"; majStatut(); });
+  }
+  function sauver() {
+    etat.maj = Math.max(Date.now(), (etat.maj || 0) + 1);
+    var json = JSON.stringify(etat);
+    ecrireLocal(json);
+    persisterIndexe(json);
+    planifierEnvoi();
+    majStatut();
+  }
+  function restaurerIndexe() {
+    ouvrirDB().then(function (db) {
+      return new Promise(function (ok, ko) {
+        var tx = db.transaction("etat", "readonly"), r = tx.objectStore("etat").get("principal");
+        r.onsuccess = function () { ok(r.result); };
+        r.onerror = function () { ko(r.error); };
+      });
+    }).then(function (json) {
+      if (!json) return;
+      var recu = null;
+      try { recu = assainir(JSON.parse(json)); } catch (e) { return; }
+      if (!recu || (recu.maj || 0) <= (etat.maj || 0)) return;
+      etat = recu; ecrireLocal(json); verifierPlan();
+      ui.vue = "auto"; ui.partie = etat.partie ? "saisie" : null; ui.feuille = null;
+      rendreSur(); rendreFeuille(); rendrePartie(); majStatut();
+      message("Tes données ont été restaurées depuis la sauvegarde de cet appareil.");
+    }).catch(function () { /* La copie locale reste disponible, si elle existe. */ });
+  }
 
   /* Sauvegarde dans l'espace personnel du joueur, si la page y a accès. */
   var distant = { ref: null, etat: "attente", enCours: false, encore: false, minuterie: null };
@@ -5908,7 +6006,7 @@ function lireHcp(texte, n) {
             try { recu = assainir(JSON.parse(d.json)); } catch (e) { recu = null; }
             if (recu) {
               var sansProfil = !etat.profil;
-              etat = recu; ecrireLocal(); verifierPlan();
+              etat = recu; ecrireLocal(); persisterIndexe(JSON.stringify(etat)); verifierPlan();
               if (etat.profil && (ui.vue !== "questionnaire" || !ui.mode)) { ui.vue = "app"; ui.brouillon = null; ui.mode = null; }
               if (sansProfil) ui.semaine = semaineCourante();
               if (!etat.partie && ui.partie === "saisie") ui.partie = null;
@@ -5943,6 +6041,8 @@ function lireHcp(texte, n) {
     });
   }
   function texteStatut() {
+    if (!sauvegardeLocaleOK && sauvegardeIndexee === "erreur") return "Attention : tes dernières données ne sont pas enregistrées. Exporte une sauvegarde depuis le profil.";
+    if (!sauvegardeLocaleOK && sauvegardeIndexee === "attente") return "Sauvegarde en cours sur cet appareil…";
     if (distant.etat === "actif") return "Tes données sont enregistrées sur cet appareil et dans ton espace personnel. Tu les retrouves en ouvrant cette page avec ton compte sur un autre appareil.";
     if (distant.etat === "attente") return "Tes données sont enregistrées sur cet appareil.";
     return "Tes données sont enregistrées sur cet appareil uniquement. Copie une sauvegarde de temps en temps : vider le navigateur les efface.";
@@ -5956,7 +6056,7 @@ function lireHcp(texte, n) {
     var el = document.getElementById("statut-donnees"); if (el) el.textContent = texteStatut();
     var c = document.getElementById("statut-tete");
     if (c) { c.className = "statut-tete " + (distant.etat === "actif" ? "synchro" : "local"); c.setAttribute("aria-label", texteStatut()); c.title = texteStatut();
-      c.lastChild.textContent = distant.etat === "actif" ? "Synchronisé" : "Enregistré"; }
+      c.lastChild.textContent = !sauvegardeLocaleOK && sauvegardeIndexee === "erreur" ? "Non enregistré" : (!sauvegardeLocaleOK && sauvegardeIndexee === "attente" ? "Sauvegarde…" : (distant.etat === "actif" ? "Synchronisé" : "Enregistré")); }
   }
 
   /* ---------- État de l'écran ---------- */
@@ -6122,6 +6222,7 @@ function lireHcp(texte, n) {
   function assainir(o) {
     if (!o || typeof o !== "object" || o.v !== 1) return null;
     var e = etatNeuf();
+    e.schemaDonnees = 2; /* Migration non destructive des sauvegardes v1. */
     e.maj = nombre(o.maj) && o.maj > 0 ? o.maj : 0;
     e.profil = assainirProfil(o.profil);
     if (!e.profil) return e;
@@ -6138,7 +6239,7 @@ function lireHcp(texte, n) {
         .map(function (x) { return { d: dateOk(x.d), v: Math.round(x.v) }; });
       if (l.length) e.scores[id] = l;
     });
-    e.historique = liste(o.historique).slice(-60).filter(function (c) { return c && typeof c === "object"; }).map(function (c) {
+    e.historique = liste(o.historique).filter(function (c) { return c && typeof c === "object"; }).map(function (c) {
       return {
         cycle: entier(c.cycle, 1, 999, 1), debut: dateOk(c.debut), fin: dateOk(c.fin),
         faites: entier(c.faites, 0, 16, 0), total: entier(c.total, 0, 16, 0),
@@ -6556,7 +6657,7 @@ function lireHcp(texte, n) {
   VUES.bilan = function () {
     var p = etat.profil, pal = palierDe(p.index), P = PALIERS[pal - 1];
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
-    var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' + chiffresClesHTML() + '</section>' +
+    var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' + chiffresClesHTML() + '</section>' + qualiteGolfHTML() +
       '<section class="bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
 
@@ -6649,7 +6750,7 @@ function lireHcp(texte, n) {
     h += '<button class="btn large" type="button" data-a="fin-cycle">Faire le bilan du cycle</button></section>';
 
     h += '<section class="bloc" id="donnees"><h2>Tes données</h2><p id="statut-donnees">' + t(texteStatut()) + '</p><div class="ligne-btn">' +
-      '<button class="btn" type="button" data-a="exporter">Copier une sauvegarde</button><button class="btn" type="button" data-a="importer">Restaurer une sauvegarde</button></div>' +
+      '<button class="btn" type="button" data-a="exporter-fichier">Télécharger mes données (.json)</button><label class="btn" for="importer-fichier">Restaurer un fichier<input id="importer-fichier" type="file" accept=".json,application/json" data-c="importer-fichier" class="vh"></label><button class="btn" type="button" data-a="exporter">Copier une sauvegarde</button><button class="btn" type="button" data-a="importer">Restaurer un texte</button></div>' +
       '<p style="margin-top:14px"><button class="btn danger large" type="button" data-a="effacer">Tout effacer</button></p></section>';
 
     h += '<section class="bloc"><h2>À propos</h2><p>Prototype. Les repères par palier sont des ordres de grandeur, à affiner avec les résultats des joueurs. Si un exercice provoque une douleur, arrête-le. Les coups gagnés sont une estimation à partir de quelques chiffres par trou. L’index estimé suit la méthode du World Handicap System sans la reproduire entièrement : il ne remplace pas ton index officiel. Les causes proposées pour un défaut sont les plus fréquentes : elles ne remplacent pas le regard d’un enseignant de golf sur ton swing. Graphiques : Chart.js, sous licence MIT.</p>' +
@@ -6909,6 +7010,21 @@ function lireHcp(texte, n) {
       ui.vue = "auto"; ui.brouillon = null; ui.dialogue = null; ui.feuille = null; ui.feuilleRetour = null; ui.partie = null; ui.bilanPartie = null; ui.depart = null;
       rendreDialogue(); rendreFeuille(); rendrePartie(); rendre(); window.scrollTo(0, 0);
     },
+    "exporter-fichier": function () {
+      var blob = new Blob([JSON.stringify(etat, null, 2)], { type: "application/json" });
+      var url = URL.createObjectURL(blob), lien = document.createElement("a");
+      lien.href = url; lien.download = "coachgolf-" + auj().slice(0, 10) + ".json";
+      document.body.appendChild(lien); lien.click(); lien.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+      message("Sauvegarde téléchargée.");
+    },
+    "ok-importer-fichier": function () {
+      if (!ui.importPrete) return;
+      etat = ui.importPrete; ui.importPrete = null; ui.dialogue = null; ui.feuille = null;
+      verifierPlan(); sauver(); rendreDialogue(); rendreFeuille();
+      ui.vue = "auto"; ui.partie = etat.partie ? "saisie" : null;
+      rendre(); rendrePartie(); message("Données restaurées depuis le fichier.");
+    },
     exporter: function () {
       dialogue({ titre: "Copier une sauvegarde", corps: '<p>Copie ce texte et garde-le dans une note ou un message. Il permet de restaurer tes données ici ou sur un autre appareil.</p><div class="champ"><label for="d-code">Ta sauvegarde</label><textarea id="d-code" readonly>' + codeSauvegarde() + '</textarea></div>',
         boutons: [{ l: "Fermer", a: "fermer-dialogue" }, { l: "Copier", a: "copier", c: "principal" }] });
@@ -6982,6 +7098,21 @@ function lireHcp(texte, n) {
     var k = ev.target.getAttribute("data-f");
     if (k && FORMULAIRES[k]) FORMULAIRES[k](ev.target);
   });
+  CHANGEMENTS["importer-fichier"] = function (el) {
+    var fichier = el.files && el.files[0]; if (!fichier) return;
+    if (fichier.size > 40e6) { message("Fichier trop volumineux."); return; }
+    var fr = new FileReader();
+    fr.onload = function () {
+      var r = null;
+      try { r = assainir(JSON.parse(String(fr.result))); } catch (e) { r = null; }
+      if (!r || !r.profil) { message("Fichier de sauvegarde invalide."); return; }
+      ui.importPrete = r;
+      dialogue({ titre: "Remplacer les données actuelles ?", corps: "<p>Cette restauration remplacera toutes les données actuellement présentes sur cet appareil. Télécharge d’abord une sauvegarde si nécessaire.</p>", boutons: [{ l: "Annuler", a: "fermer-dialogue" }, { l: "Restaurer", a: "ok-importer-fichier", c: "principal" }] });
+    };
+    fr.onerror = function () { message("Impossible de lire le fichier."); };
+    fr.readAsText(fichier);
+    el.value = "";
+  };
   document.addEventListener("change", function (ev) {
     var k = ev.target.getAttribute ? ev.target.getAttribute("data-c") : null;
     if (k && CHANGEMENTS[k]) CHANGEMENTS[k](ev.target);
@@ -7075,6 +7206,9 @@ function lireHcp(texte, n) {
       var g = liste(c.g), gOk = g.length === 4 && g.every(nombre) && Math.abs(g[0]) <= 90 && Math.abs(g[2]) <= 90 && Math.abs(g[1]) <= 180 && Math.abs(g[3]) <= 180;
       var am = AMPLITUDES_COUP.indexOf(c.a) >= 0 && (c.a === "plein" || CLUB[c.c].fam === "w") ? c.a : "plein";
       var r = { c: c.c, d: entier(c.d, 1, 400, null), a: am, g: gOk ? g.map(function (v) { return Math.round(v * 1e6) / 1e6; }) : null }, l = entier(c.l, -60, 60, null);
+      r.source = c.source === "gps" && gOk ? "gps" : c.source === "import" ? "import" : c.source === "manuel" ? "manuel" : "inconnu";
+      r.distanceType = c.distanceType === "total" ? "total" : c.distanceType === "carry" ? "carry" : "inconnu";
+      r.mesureLe = nombre(c.mesureLe) && c.mesureLe > 0 ? c.mesureLe : null;
       if (l != null) r.l = l;
       if (LIES.some(function (x) { return x.id === c.p; })) r.p = c.p;
       if (c.t && TYPES_COUP.some(function (x) { return x.id === c.t; })) r.t = c.t;
@@ -7108,10 +7242,10 @@ function lireHcp(texte, n) {
       var r = { d: dateOk(x.d), c: x.c, v: v };
       if (l.some(function (y) { return y != null; })) r.l = l;
       return r;
-    }).filter(Boolean).slice(-40);
+    }).filter(Boolean);
     CLUBS.forEach(function (k) {
       if (!a(cl, k.id)) return;
-      var l = liste(cl[k.id]).filter(function (v) { return nombre(v) && v >= 5 && v <= 400; }).slice(-MESURES_MAX).map(Math.round);
+      var l = liste(cl[k.id]).filter(function (v) { return nombre(v) && v >= 5 && v <= 400; }).map(Math.round);
       if (l.length) e.carnet.clubs[k.id] = l;
     });
     /* Composition du sac : clubs connus, sans doublon, du plus long au plus court, 13 au plus. */
@@ -7162,11 +7296,12 @@ function lireHcp(texte, n) {
       if (tr.length < 9) return null;
       var r = { d: dateOk(p.d), trous: tr, pc: pc, o: decalage(p, pc, tr.length) }, cp = liste(p.coups);
       if (pc && entier(p.rep, 0, 7, null) != null) r.rep = p.rep;
+      r.validation = idx.map(function (i) { return liste(p.validation)[i] === "confirme" ? "confirme" : "inconnu"; });
       var coups = idx.map(function (i) { return assainirCoups(cp[i]); });
       if (coups.some(function (x) { return x.length; })) r.coups = coups;
       var js = assainirJoueurs(p.joueurs, idx); if (js.length) r.joueurs = js;
       return r;
-    }).filter(Boolean).slice(-40);
+    }).filter(Boolean);
     var pc = o.partie;
     if (pc && typeof pc === "object" && (pc.n === 9 || pc.n === 18) && Array.isArray(pc.trous)) {
       var tr2 = [], pc2 = lien(pc);
@@ -7178,7 +7313,7 @@ function lireHcp(texte, n) {
         if (tr && !tr[4]) tr[4] = scoreSuggere(tr[5], tr[1], tr[2], tr[3]);
         tr2.push(tr);
       }
-      e.partie = { d: dateOk(pc.d), n: pc.n, i: entier(pc.i, 0, pc.n - 1, 0), trous: tr2, pc: pc2, o: decalage(pc, pc2, pc.n) };
+      e.partie = { d: dateOk(pc.d), n: pc.n, i: entier(pc.i, 0, pc.n - 1, 0), trous: tr2, pc: pc2, o: decalage(pc, pc2, pc.n), validation: tr2.map(function (tr, i) { return liste(pc.validation)[i] === "confirme" ? "confirme" : "suggere"; }) };
       if (pc2 && entier(pc.rep, 0, 7, null) != null) e.partie.rep = pc.rep;
       var tous = []; for (var k = 0; k < pc.n; k++) tous.push(k);
       var cp2 = liste(pc.coups);
@@ -7190,9 +7325,9 @@ function lireHcp(texte, n) {
     }
     e.detail = o.detail === true;
     e.cartePhoto = o.cartePhoto !== false;
-    e.modeSaisie = o.modeSaisie === "express" ? "express" : "detail";
+    e.modeSaisie = o.modeSaisie === "detail" ? "detail" : "express";
     /* Historique de l'index : dates et valeurs ; sans historique, le point de départ est l'index actuel. */
-    e.indexHist = liste(o.indexHist).map(function (x) { return x && nombre(x.v) && x.v >= -10 && x.v <= 54 ? { d: dateOk(x.d), v: Math.round(x.v * 10) / 10 } : null; }).filter(function (x) { return x && x.d; }).slice(-60);
+    e.indexHist = liste(o.indexHist).map(function (x) { return x && nombre(x.v) && x.v >= -10 && x.v <= 54 ? { d: dateOk(x.d), v: Math.round(x.v * 10) / 10 } : null; }).filter(function (x) { return x && x.d; });
     if (!e.indexHist.length && e.profil && !e.profil.sansIndex && nombre(e.profil.index)) {
       var dm = e.profil.maj; e.indexHist = [{ d: typeof dm === "number" && isFinite(dm) ? new Date(dm).toISOString() : dateOk(dm), v: e.profil.index }];
     }
@@ -8486,12 +8621,12 @@ function lireHcp(texte, n) {
     var idx = []; p.trous.forEach(function (x, k) { if (x) idx.push(k); });
     var pt = { d: p.d, trous: saisis, pc: parcoursDe(p.pc) ? p.pc : null, o: p.o || 0 };
     if (pt.pc && p.rep >= 0) pt.rep = p.rep;
+    pt.validation = idx.map(function (k) { return (p.validation || [])[k] === "confirme" ? "confirme" : "suggere"; });
     /* Coups et partenaires suivent les trous gardés. */
     var coups = idx.map(function (k) { return (p.coups && p.coups[k]) || []; });
     if (coups.some(function (l) { return l.length; })) pt.coups = coups;
     if (p.joueurs && p.joueurs.length) pt.joueurs = p.joueurs.map(function (j) { return { nom: j.nom, s: idx.map(function (k) { return j.s[k] == null ? null : j.s[k]; }) }; });
     etat.parties.push(pt);
-    if (etat.parties.length > 40) etat.parties.splice(0, etat.parties.length - 40);
     etat.partie = null;
     majIndicateursParties();
     sauver();
@@ -8542,6 +8677,7 @@ function lireHcp(texte, n) {
     for (i = 0; i < n; i++) tr.push(null);
     etat.partie = { d: auj(), n: n, i: 0, trous: tr, pc: pc.id, o: d.jeu === "retour" && pc.pars.length === 18 ? 9 : 0,
       coups: tr.map(function () { return []; }),
+      validation: tr.map(function () { return "suggere"; }),
       joueurs: (d.joueurs || []).map(function (nm) { return { nom: nm, s: tr.map(function () { return null; }) }; }) };
     if (pc.reps && pc.reps.length) etat.partie.rep = d.rep >= 0 && d.rep < pc.reps.length ? d.rep : 0;
     ui.depart = null;
@@ -8571,9 +8707,18 @@ function lireHcp(texte, n) {
     var p = etat.partie; if (!p) return;
     var v = trouCourant().slice(), d = el.getAttribute("data-d") === "1" ? 1 : -1;
     v[4] = Math.max(scoreMini(v[2], v[3]), Math.min(15, v[4] + d));
+    if (!p.validation) p.validation = p.trous.map(function () { return "suggere"; });
+    p.validation[p.i] = "confirme";
     poserTrou(v);
     sauver(); rendrePartie();
     focusPartie('[data-a="pt-score"][data-d="' + d + '"]:not([disabled]), [data-a="pt-score"]:not([disabled])');
+  };
+  ACTIONS["pt-confirmer"] = function () {
+    var p = etat.partie; if (!p) return;
+    poserTrou(trouCourant().slice());
+    if (!p.validation) p.validation = p.trous.map(function () { return "suggere"; });
+    p.validation[p.i] = "confirme";
+    sauver(); rendrePartie(); focusPartie('[data-a="pt-confirmer"]');
   };
   ACTIONS["pt-theme"] = function () {
     etat.ecranClair = !etat.ecranClair;
@@ -8594,6 +8739,8 @@ function lireHcp(texte, n) {
     var p = etat.partie; if (!p) return;
     apprendreFinTrou();
     poserTrou(trouCourant().slice());
+    if (!p.validation) p.validation = p.trous.map(function () { return "suggere"; });
+    p.validation[p.i] = "confirme";
     memoriserPar(p, p.i);
     vibrer(35); ui.pvLong = false; ui.pvCoup = null; ui.pvPanneau = null;
     if (p.i >= p.n - 1) { sauver(); terminerPartie(); return; }
@@ -8805,6 +8952,8 @@ function lireHcp(texte, n) {
       (dernier ? "" : '<button class="lien" type="button" data-a="pt-terminer">Terminer la partie ici</button>') + '</div>' +
       (statsTrous(p.trous).T ? '' : '<p class="pt-cumul">Score et putts sont déjà proposés : un toucher pour corriger, un pour valider. Tu peux aussi glisser le doigt vers la gauche pour valider.</p>') +
       '';
+    h += '<div class="pv-validation"><p class="aide">' + t((p.validation || [])[p.i] === "confirme" ? "Score confirmé par toi." : "Score proposé automatiquement : confirme-le avant de terminer le trou.") + '</p>' +
+      '<button class="btn" type="button" data-a="pt-confirmer">' + ((p.validation || [])[p.i] === "confirme" ? "Score confirmé ✓" : "Confirmer le score") + '</button></div>';
     h += '<div class="pv-mode" role="group" aria-label="Mode de saisie"><button type="button" data-a="mode-saisie" data-v="express" aria-pressed="' + expr + '">Score express</button><button type="button" data-a="mode-saisie" data-v="detail" aria-pressed="' + !expr + '">Performance détaillée</button></div></div>';
 
     h += '<footer class="pv-pied"><button class="btn" type="button" data-a="pt-prec"' + (p.i === 0 ? " disabled" : "") + ' aria-label="' + at(p.i === 0 ? "Trou précédent" : "Revenir au trou " + numeroTrou(p, p.i - 1)) + '">' + (p.i === 0 ? "‹" : "‹ " + numeroTrou(p, p.i - 1)) + '</button>' +
@@ -9008,7 +9157,8 @@ function lireHcp(texte, n) {
     var err = document.getElementById("pv-coup-err");
     if (!C.c) { if (err) { err.textContent = "Choisis le club joué."; err.hidden = false; } focusPartie('[data-a="pv-club"]'); return; }
     if (C.d != null && !(C.d >= 1 && C.d <= 400)) { if (err) { err.textContent = "Distance entre 1 et 400 m, ou laisse vide."; err.hidden = false; } focusPartie("#pv-dist"); return; }
-    var coup = { c: C.c, d: C.d || null, a: C.a || "plein", g: C.g && C.g[0] != null && C.g[2] != null ? C.g.slice() : null };
+    var coup = { c: C.c, d: C.d || null, a: C.a || "plein", g: C.g && C.g[0] != null && C.g[2] != null ? C.g.slice() : null,
+      source: C.g && C.g[2] != null ? "gps" : "manuel", distanceType: C.g && C.g[2] != null ? "total" : "carry", mesureLe: Date.now() };
     if (C.l != null) coup.l = C.l;
     if (C.p) coup.p = C.p;
     if (C.t) coup.t = C.t;
@@ -10230,7 +10380,7 @@ function lireHcp(texte, n) {
     var h = etat.indexHist || (etat.indexHist = []), der = h[h.length - 1], j = auj();
     if (der && der.v === v) return;
     if (der && String(der.d).slice(0, 10) === j.slice(0, 10)) der.v = v; else h.push({ d: j, v: v });
-    if (h.length > 60) h.splice(0, h.length - 60);
+    /* On garde toutes les anciennes observations d’index. */
   }
   function courbeIndexHTML(h, l, ht) {
     var pts = (etat.indexHist || []).slice(-12);
@@ -10288,6 +10438,23 @@ function lireHcp(texte, n) {
   function etatVideHTML(ico, titre, texte, action, bouton) {
     return '<div class="etat-vide">' + icone(ico) + '<p class="tb-titre">' + t(titre) + '</p><p>' + t(texte) + '</p>' +
       (action ? '<button class="btn principal" type="button" data-a="' + action + '">' + t(bouton) + '</button>' : '') + '</div>';
+  }
+
+  /* Qualité des données : transparence sur l'échantillon et les sources. */
+  function qualiteGolfHTML() {
+    var obs = observationsGolf(etat.parties, etat.carnet), q = qualiteObservations(obs);
+    var confirmes = 0, suivis = 0;
+    etat.parties.forEach(function (p) {
+      (p.trous || []).forEach(function (tr, i) {
+        if (!tr) return;
+        suivis++;
+        if ((p.validation || [])[i] === "confirme") confirmes++;
+      });
+    });
+    return '<section class="bloc" id="qualite-donnees"><h2>Qualité de mon carnet</h2>' +
+      '<p class="aide">' + t(q.total ? q.total + " observations · " + q.distance + " distances mesurées ou déclarées · " + q.gps + " relevés GPS." : "Les observations apparaîtront après tes premières mesures et tes premiers coups.") + '</p>' +
+      '<p class="aide">' + t(suivis ? confirmes + " scores confirmés sur " + suivis + " trous historiques. Les anciens scores restent utilisables, mais leur confirmation n’est pas connue." : "Aucun trou historique pour le moment.") + '</p>' +
+      '<p class="aide">Chaque coup peut conserver sa source (manuel, GPS, import), sa date, son type de distance et son niveau de confiance. Les anciennes données non documentées restent marquées comme inconnues.</p></section>';
   }
 
   /* ---------- Statistiques : chiffres clés ---------- */
@@ -10706,8 +10873,8 @@ function lireHcp(texte, n) {
     var cb = etat.carnet;
     var se = { d: auj(), c: S.c, v: S.v.slice() };
     if (S.l && S.l.some(function (x) { return x != null; })) se.l = S.l.slice(0, S.v.length);
-    cb.series = (cb.series || []).concat([se]).slice(-40);
-    cb.clubs[S.c] = (cb.clubs[S.c] || []).concat(S.v).slice(-MESURES_MAX);
+    cb.series = (cb.series || []).concat([se]);
+    cb.clubs[S.c] = (cb.clubs[S.c] || []).concat(S.v);
     var r = { c: S.c, n: S.v.length, dsp: dispersion(S.v), moy: Math.round(somme(S.v) / S.v.length) };
     S.v = []; S.l = []; S.lp = null; S.ddp = null;
     sauver();
@@ -11369,60 +11536,38 @@ function lireHcp(texte, n) {
   /* ============================================================
      ACCUEIL : trois portes (le sac, le parcours, le practice), puis l'essentiel du jour
      ============================================================ */
+  /* Accueil centré sur les données du joueur : le coaching reste dans Progresser. */
   VUES.accueil = function () {
-    var p = etat.profil, plan = etat.plan, w = semaineCourante(), pal = palierDe(p.index), c = conditionsDuJour();
-    var date = "";
-    try { date = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }); } catch (e) { date = ""; }
-    var lieux = [];
-
-    /* Le club-house : le bilan */
-    lieux.push({ cle: "club", attrs: 'data-a="onglet" data-v="bilan"', ico: "progres", lieu: "Club-house", titre: "Mon bilan" });
-
-    /* Le green : jouer une partie */
-    var pt = etat.partie, l = etat.parties;
-    if (pt) {
-      var st = statsTrous(pt.trous);
-      lieux.push({ cle: "parcours", vif: true, attrs: 'data-a="pt-reprendre"', ico: "partie", lieu: "Partie en cours",
-        titre: "Reprendre au trou " + numeroTrou(pt, pt.i), meta: pluriel(st.T, "trou") + " joué" + (st.T > 1 ? "s" : "") + " sur " + pt.n });
-    } else {
-      var der = l.length ? l[l.length - 1] : null, sc = der ? scorePartie(der) : null;
-      lieux.push({ cle: "parcours", attrs: 'data-a="partie-rapide"', ico: "partie", lieu: "Parcours", titre: "Lancer une partie",
-        meta: der ? "Dernière le " + dateCourte(der.d) + (sc.complet ? " : " + sc.coups + " (" + ecartLib(sc.ecart) + ")" : "") : "Note tes trous en jouant" });
+    var p = etat.profil, pt = etat.partie, parties = etat.parties;
+    var totalTrous = parties.reduce(function (n, x) { return n + (x.trous || []).length; }, 0);
+    var nbCoups = parties.reduce(function (n, x) {
+      return n + (x.coups || []).reduce(function (a, l) { return a + (l || []).length; }, 0);
+    }, 0);
+    var derniere = parties.length ? parties[parties.length - 1] : null;
+    var h = '<section class="bloc premier mon-jeu"><p class="surtitre">Carnet golfique personnel</p><h1>' +
+      t(p.prenom ? "Mon jeu · " + p.prenom : "Mon jeu") + '</h1>' +
+      '<p class="chapo">Mieux connaître ton jeu pour mieux jouer. Chaque partie enrichit tes statistiques et tes distances.</p>' +
+      '<div class="acces-rapides">' +
+      '<button class="btn principal" type="button" data-a="' + (pt ? "pt-reprendre" : "partie-rapide") + '">' +
+      icone("drapeau") + t(pt ? " Reprendre ma partie" : " Nouvelle partie") + '</button>' +
+      '<button class="btn" type="button" data-a="serie-ouvrir">' + icone("sac") + ' Mesurer mes clubs</button>' +
+      '<button class="btn" type="button" data-a="onglet" data-v="parcours">Mes parties</button>' +
+      '<button class="btn" type="button" data-a="onglet" data-v="sac">Mon sac</button></div>' +
+      '<p class="aide">' + t(pluriel(parties.length, "partie") + " conservée" + (parties.length > 1 ? "s" : "") +
+      " · " + totalTrous + " trous · " + nbCoups + " coups documentés") + '</p></section>';
+    if (derniere) {
+      var sc = scorePartie(derniere), st = statsTrous(derniere.trous);
+      h += '<section class="bloc"><h2>Dernière partie</h2><button type="button" class="carte-tb lien-tb derniere" data-a="pt-carte" data-id="' + (parties.length - 1) + '">' +
+        '<p class="surtitre">' + t(dateCourte(derniere.d)) + '</p><p class="tb-titre">' +
+        t(sc.complet ? sc.coups + " coups · " + ecartLib(sc.ecart) : st.T + " trous saisis") +
+        '</p><p class="tb-meta">' + t(st.G + " GIR · " + st.P + " putts · " + st.X + " pénalités") + '</p></button></section>';
     }
-
-    /* Le practice : la séance du jour */
-    var pr = prochaineSeance();
-    if (pr) {
-      lieux.push({ cle: "practice", attrs: 'data-a="voir-seance" data-id="' + at(pr.se.id) + '" data-v="' + pr.w + '"', ico: "entrainement",
-        lieu: pr.retard ? "Practice · à rattraper" : "Practice", titre: pr.se.doms.map(function (d) { return DOM[d].court; }).join(" et "),
-        meta: (pr.w !== w ? "Semaine " + pr.w + " · " : "Séance du jour · ") + dureeLib(pr.se.min) });
-    } else {
-      lieux.push({ cle: "practice", attrs: 'data-a="onglet" data-v="practice"', ico: "entrainement", lieu: "Practice", titre: "Cycle terminé", meta: "Fais le bilan du cycle" });
-    }
-
-    /* Le départ et le sac */
-    var an = analyseCarnet(mesuresTout(), sacActuel()), P = an.paires.length;
-    var nTrous = an.alertes.filter(function (x) { return x.type === "trou"; }).length, nDoub = an.alertes.length - nTrous;
-    lieux.push({ cle: "sac", attrs: 'data-a="onglet" data-v="sac"', ico: "sac", lieu: "Mon sac",
-      titre: P ? an.ok + "/" + P + " écarts justes" : pluriel(sacActuel().length, "club") + " + putter",
-      meta: !an.lignes.length ? "Saisis tes distances" : !P ? "Saisis deux clubs voisins" : an.ok === P ? "Sac parfaitement étagé" :
-        [nTrous ? pluriel(nTrous, "trou") : "", nDoub ? pluriel(nDoub, "écart") + " trop " + (nDoub > 1 ? "serrés" : "serré") : ""].filter(Boolean).join(" · ") });
-
-    var titre = '<p class="surtitre">' + t(date) + '</p><h1>' + t(p.prenom ? "Bonjour " + p.prenom : "Bonjour") + '</h1>';
-    var h = '<section class="bloc premier accueil-golf"><div class="accueil-grille"><div>' + paysageHTML(lieux, titre, c ? c.vent : 0) + '</div><div>';
-
-    /* En bref : conditions du jour et défi */
-    var cons = c ? conseilsConditions(c, pal) : [], lignes = [];
-    lignes.push('<li><button class="ligne-jour" type="button" data-a="cond-ouvrir"><span class="lj-val">' + icone("vent") + '</span><span class="lj-txt"><b>' +
-      t(c ? (c.vent ? "Vent " + VENTS[c.vent].nom.toLowerCase() : "Vent non noté") + (c.temp ? " · " + TEMPS[c.temp].nom : "") : "Conditions du jour") + '</b><small>' +
-      t(c ? (cons[0] || "Touche pour modifier") : "Note le vent et la température pour adapter tes trajectoires") + '</small></span>' + icone("chevron") + '</button></li>');
-    var df = defiDuJour();
-    if (df) {
-      var D = etatDefi(df.id), n = df.niveaux.length;
-      lignes.push('<li><button class="ligne-jour" type="button" data-a="defi" data-id="' + df.id + '"><span class="lj-val"><span class="main">' + Math.min(D.niv + 1, n) + '</span><small>sur ' + n + '</small></span>' +
-        '<span class="lj-txt"><b>' + t("Défi · " + df.t) + '</b><small>' + t(D.niv >= n ? "Bouclé : rejoue-le" : "Niveau " + (D.niv + 1) + " : " + df.niveaux[D.niv].nom) + '</small></span>' + icone("chevron") + '</button></li>');
-    }
-    return h + tableauBordHTML() + '<h2 class="titre-bref">Aujourd’hui</h2><ul class="carte-jour en-bref">' + lignes.join("") + '</ul></div></div></section>';
+    h += '<section class="bloc"><h2>Mes tendances</h2>' + chiffresClesHTML() + '</section>' + qualiteGolfHTML();
+    h += '<section class="bloc"><h2>À découvrir dans mes données</h2>' +
+      '<p class="aide">Pour des distances fiables, mesure plusieurs balles par club. Les chiffres détaillés et leur historique sont disponibles dans Mon sac et Statistiques.</p>' +
+      '<div class="acces-rapides"><button class="btn" type="button" data-a="onglet" data-v="bilan">Toutes mes statistiques</button>' +
+      '<button class="btn" type="button" data-a="onglet" data-v="practice">Entraînement (facultatif)</button></div></section>';
+    return h;
   };
 
   ACTIONS["voir-seance"] = function (el) {
@@ -12276,7 +12421,7 @@ function lireHcp(texte, n) {
     if (etat.partie && Date.now() - Date.parse(etat.partie.d) < 288e5 && ui.vue !== "questionnaire") ui.partie = "saisie";
     rendreSur();
     try { rendrePartie(); } catch (e) { ui.partie = null; rendrePartie(); }
-    initDistant(); verifierPartage();
+    restaurerIndexe(); initDistant(); verifierPartage();
   }
   var chaud = null;
   try { chaud = window.claude && window.claude.hot; } catch (e) { chaud = null; }
