@@ -1195,21 +1195,6 @@
     var k = ev.target.getAttribute("data-f");
     if (k && FORMULAIRES[k]) FORMULAIRES[k](ev.target);
   });
-  CHANGEMENTS["importer-fichier"] = function (el) {
-    var fichier = el.files && el.files[0]; if (!fichier) return;
-    if (fichier.size > 40e6) { message("Fichier trop volumineux."); return; }
-    var fr = new FileReader();
-    fr.onload = function () {
-      var r = null;
-      try { r = assainir(JSON.parse(String(fr.result))); } catch (e) { r = null; }
-      if (!r || !r.profil) { message("Fichier de sauvegarde invalide."); return; }
-      ui.importPrete = r;
-      dialogue({ titre: "Remplacer les données actuelles ?", corps: "<p>Cette restauration remplacera toutes les données actuellement présentes sur cet appareil. Télécharge d’abord une sauvegarde si nécessaire.</p>", boutons: [{ l: "Annuler", a: "fermer-dialogue" }, { l: "Restaurer", a: "ok-importer-fichier", c: "principal" }] });
-    };
-    fr.onerror = function () { message("Impossible de lire le fichier."); };
-    fr.readAsText(fichier);
-    el.value = "";
-  };
   document.addEventListener("change", function (ev) {
     var k = ev.target.getAttribute ? ev.target.getAttribute("data-c") : null;
     if (k && CHANGEMENTS[k]) CHANGEMENTS[k](ev.target);
@@ -1250,6 +1235,24 @@
   /*INCLURE:ui-graphes.js*/
   /*INCLURE:ui-defis.js*/
   /*INCLURE:ui-schemas.js*/
+
+  /* Enregistrer les actions après l'inclusion qui initialise CHANGEMENTS. */
+  CHANGEMENTS["importer-fichier"] = function (el) {
+    var fichier = el.files && el.files[0]; if (!fichier) return;
+    if (fichier.size > 40e6) { message("Fichier trop volumineux."); return; }
+    var fr = new FileReader();
+    fr.onload = function () {
+      var r = null;
+      try { r = assainir(JSON.parse(String(fr.result))); } catch (e) { r = null; }
+      if (!r || !r.profil) { message("Fichier de sauvegarde invalide."); return; }
+      ui.importPrete = r;
+      dialogue({ titre: "Remplacer les données actuelles ?", corps: "<p>Cette restauration remplacera toutes les données actuellement présentes sur cet appareil. Télécharge d’abord une sauvegarde si nécessaire.</p>", boutons: [{ l: "Annuler", a: "fermer-dialogue" }, { l: "Restaurer", a: "ok-importer-fichier", c: "principal" }] });
+    };
+    fr.onerror = function () { message("Impossible de lire le fichier."); };
+    fr.readAsText(fichier);
+    el.value = "";
+  };
+
 
   /* ============================================================
      DÉMARRAGE
