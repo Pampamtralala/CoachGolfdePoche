@@ -1,6 +1,6 @@
 /* Service worker de Coach de golf de poche : l'appli s'ouvre sans réseau, et se met à jour dès que le réseau revient.
    La page est demandée au réseau d'abord (version la plus récente), avec la copie gardée en secours. */
-var VERSION = "20261119104845";
+var VERSION = "20261119105056";
 var CACHE = "coach-" + VERSION, POLICES = "coach-polices-1", PHOTOS = "coach-photos-1";
 var FICHIERS = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
 

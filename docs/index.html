@@ -5912,7 +5912,7 @@ function lireHcp(texte, n) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-19T10:48:45.496Z";
+  var VERSION_APPLI = "2026-11-19T10:50:56.768Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -7098,21 +7098,6 @@ function lireHcp(texte, n) {
     var k = ev.target.getAttribute("data-f");
     if (k && FORMULAIRES[k]) FORMULAIRES[k](ev.target);
   });
-  CHANGEMENTS["importer-fichier"] = function (el) {
-    var fichier = el.files && el.files[0]; if (!fichier) return;
-    if (fichier.size > 40e6) { message("Fichier trop volumineux."); return; }
-    var fr = new FileReader();
-    fr.onload = function () {
-      var r = null;
-      try { r = assainir(JSON.parse(String(fr.result))); } catch (e) { r = null; }
-      if (!r || !r.profil) { message("Fichier de sauvegarde invalide."); return; }
-      ui.importPrete = r;
-      dialogue({ titre: "Remplacer les données actuelles ?", corps: "<p>Cette restauration remplacera toutes les données actuellement présentes sur cet appareil. Télécharge d’abord une sauvegarde si nécessaire.</p>", boutons: [{ l: "Annuler", a: "fermer-dialogue" }, { l: "Restaurer", a: "ok-importer-fichier", c: "principal" }] });
-    };
-    fr.onerror = function () { message("Impossible de lire le fichier."); };
-    fr.readAsText(fichier);
-    el.value = "";
-  };
   document.addEventListener("change", function (ev) {
     var k = ev.target.getAttribute ? ev.target.getAttribute("data-c") : null;
     if (k && CHANGEMENTS[k]) CHANGEMENTS[k](ev.target);
@@ -12381,6 +12366,24 @@ function lireHcp(texte, n) {
       '<g' + (G ? ' transform="translate(' + W + ' 0) scale(-1 1)"' : '') + '>' + s.geo + '</g>' + txt + '</svg>' +
       '<figcaption>' + t("Schéma " + (REDUIT ? "" : "animé, ") + vues[s.vue] + (s.miroir !== false ? (gaucher ? ", pour un gaucher" : ", pour un droitier") : "")) + '</figcaption></figure>';
   }
+
+
+  /* Enregistrer les actions après l'inclusion qui initialise CHANGEMENTS. */
+  CHANGEMENTS["importer-fichier"] = function (el) {
+    var fichier = el.files && el.files[0]; if (!fichier) return;
+    if (fichier.size > 40e6) { message("Fichier trop volumineux."); return; }
+    var fr = new FileReader();
+    fr.onload = function () {
+      var r = null;
+      try { r = assainir(JSON.parse(String(fr.result))); } catch (e) { r = null; }
+      if (!r || !r.profil) { message("Fichier de sauvegarde invalide."); return; }
+      ui.importPrete = r;
+      dialogue({ titre: "Remplacer les données actuelles ?", corps: "<p>Cette restauration remplacera toutes les données actuellement présentes sur cet appareil. Télécharge d’abord une sauvegarde si nécessaire.</p>", boutons: [{ l: "Annuler", a: "fermer-dialogue" }, { l: "Restaurer", a: "ok-importer-fichier", c: "principal" }] });
+    };
+    fr.onerror = function () { message("Impossible de lire le fichier."); };
+    fr.readAsText(fichier);
+    el.value = "";
+  };
 
 
   /* ============================================================
