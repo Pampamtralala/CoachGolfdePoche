@@ -963,6 +963,34 @@
     var premier = c.querySelector("textarea:not([readonly]), .dialogue .btn"); if (premier) premier.focus();
     synchroHisto();
   }
+  /* Les cartes GPS sont conservées à part : l'export JSON doit les inclure explicitement. */
+  function archiveComplete() {
+    var archive = JSON.parse(JSON.stringify(etat));
+    archive.cartesGeo = cartesStock();
+    return archive;
+  }
+  function lireCartesArchive(brut, restaure) {
+    if (!brut || !Object.prototype.hasOwnProperty.call(brut, "cartesGeo")) return null; /* ancien export : conserver les cartes locales */
+    var r = brut.cartesGeo;
+    if (!r || typeof r !== "object" || Array.isArray(r)) throw new Error("Cartes GPS invalides");
+    var ids = {};
+    (restaure.parcours || []).forEach(function (pc) { ids[pc.id] = true; });
+    var cartes = {};
+    Object.keys(r).slice(0, 20).forEach(function (id) {
+      if (!ids[id] || !/^p\\d{1,6}$/.test(id)) return;
+      var c = assainirCarte(r[id]);
+      if (c) cartes[id] = c;
+    });
+    return cartes;
+  }
+  function restaurerCartesArchive(cartes) {
+    if (cartes === null) return true;
+    var avant = cartesStock();
+    GEO.cartes = cartes;
+    if (ecrireCartes()) return true;
+    GEO.cartes = avant;
+    return false;
+  }
   function codeSauvegarde() { return btoa(unescape(encodeURIComponent(JSON.stringify(etat)))); }
 
   /* ============================================================
@@ -1108,19 +1136,23 @@
       rendreDialogue(); rendreFeuille(); rendrePartie(); rendre(); window.scrollTo(0, 0);
     },
     "exporter-fichier": function () {
-      var blob = new Blob([JSON.stringify(etat, null, 2)], { type: "application/json" });
+      var blob = new Blob([JSON.stringify(archiveComplete(), null, 2)], { type: "application/json" });
       var url = URL.createObjectURL(blob), lien = document.createElement("a");
       lien.href = url; lien.download = "coachgolf-" + auj().slice(0, 10) + ".json";
       document.body.appendChild(lien); lien.click(); lien.remove();
       setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
-      message("Sauvegarde téléchargée.");
+      message("Export JSON préparé, avec les cartes GPS.");
     },
     "ok-importer-fichier": function () {
       if (!ui.importPrete) return;
-      etat = ui.importPrete; ui.importPrete = null; ui.dialogue = null; ui.feuille = null;
-      verifierPlan(); sauver(); rendreDialogue(); rendreFeuille();
+      var cartes = ui.importCartesPretes;
+      etat = ui.importPrete; ui.importPrete = null; ui.importCartesPretes = null; ui.dialogue = null; ui.feuille = null;
+      verifierPlan(); sauver();
+      var cartesOK = restaurerCartesArchive(cartes);
+      rendreDialogue(); rendreFeuille();
       ui.vue = "auto"; ui.partie = etat.partie ? "saisie" : null;
-      rendre(); rendrePartie(); message("Données restaurées depuis le fichier.");
+      rendre(); rendrePartie();
+      message(cartesOK ? "Données et cartes GPS du fichier restaurées." : "Données restaurées, mais les cartes GPS n’ont pas pu être enregistrées sur cet appareil.");
     },
     exporter: function () {
       dialogue({ titre: "Copier une sauvegarde", corps: '<p>Copie ce texte et garde-le dans une note ou un message. Il permet de restaurer tes données ici ou sur un autre appareil.</p><div class="champ"><label for="d-code">Ta sauvegarde</label><textarea id="d-code" readonly>' + codeSauvegarde() + '</textarea></div>',
@@ -1242,10 +1274,14 @@
     if (fichier.size > 40e6) { message("Fichier trop volumineux."); return; }
     var fr = new FileReader();
     fr.onload = function () {
-      var r = null;
-      try { r = assainir(JSON.parse(String(fr.result))); } catch (e) { r = null; }
+      var r = null, cartes = null;
+      try {
+        var brut = JSON.parse(String(fr.result));
+        r = assainir(brut);
+        if (r && r.profil) cartes = lireCartesArchive(brut, r);
+      } catch (e) { r = null; }
       if (!r || !r.profil) { message("Fichier de sauvegarde invalide."); return; }
-      ui.importPrete = r;
+      ui.importPrete = r; ui.importCartesPretes = cartes;
       dialogue({ titre: "Remplacer les données actuelles ?", corps: "<p>Cette restauration remplacera toutes les données actuellement présentes sur cet appareil. Télécharge d’abord une sauvegarde si nécessaire.</p>", boutons: [{ l: "Annuler", a: "fermer-dialogue" }, { l: "Restaurer", a: "ok-importer-fichier", c: "principal" }] });
     };
     fr.onerror = function () { message("Impossible de lire le fichier."); };
