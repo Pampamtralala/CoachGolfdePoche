@@ -201,7 +201,7 @@
         return '<button type="button" data-a="pv-amplitude" data-v="' + am.id + '" aria-pressed="' + ((C.a || "plein") === am.id) + '">' + t(am.nom) + '</button>';
       }).join("") + '</div>';
     }
-    h += '<div class="pv-dist"><label for="pv-dist">Distance de vol, en mètres</label><div class="pv-dist-reglage">' +
+    h += '<div class="pv-dist"><label for="pv-dist">Distance réellement mesurée (mètres)</label><div class="pv-dist-reglage">' +
       [-5, -1].map(function (d) { return '<button class="pv-pm petit" type="button" data-a="pv-dist" data-d="' + d + '" aria-label="' + at(Math.abs(d) + " mètre" + (d < -1 ? "s" : "") + " de moins") + '">' + d + '</button>'; }).join("") +
       '<input id="pv-dist" type="text" inputmode="numeric" maxlength="3" autocomplete="off" data-i="pv-dist" value="' + (C.d || "") + '" placeholder="' + (C.c && moyenneClub(mesuresTout(), C.c) ? 'Repère ' + moyenneClub(mesuresTout(), C.c) + ' m' : 'm') + '">' +
       [1, 5].map(function (d) { return '<button class="pv-pm petit" type="button" data-a="pv-dist" data-d="' + d + '" aria-label="' + at(d + " mètre" + (d > 1 ? "s" : "") + " de plus") + '">+' + d + '</button>'; }).join("") + '</div></div>';
@@ -387,7 +387,8 @@
     ui.pvCoup = null; ui.pvRetour = null;
     sauver(); rendrePartie(); focusPartie('[data-a="pv-coup"][data-v="-1"]');
     if (ajoute) message(nomClub(coup.c) + " ajouté à ton sac.");
-    else if (coup.d && coupPlein(coup)) message(nomClub(coup.c) + " : " + coup.d + " m notés. Ton sac est à jour.");
+    else if (coup.d && coupPlein(coup) && coup.distanceType !== "total") message(nomClub(coup.c) + " : " + coup.d + " m notés. Ton sac est à jour.");
+    else if (coup.d && coup.distanceType === "total") message("Distance totale GPS enregistrée : elle ne remplace pas ta distance de vol.");
     else if (coup.d) message("Coup noté. Il ne compte pas dans les distances du sac.");
   };
   ACTIONS["pv-coup-suppr"] = function () {
