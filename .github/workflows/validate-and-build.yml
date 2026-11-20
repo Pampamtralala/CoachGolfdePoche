@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feat/carnet-donnees-fiables
+      - fix/reprise-fiabilisation-collecte-20261120
   workflow_dispatch:
 
 permissions:
@@ -30,5 +31,5 @@ jobs:
           git add docs/
           if ! git diff --cached --quiet; then
             git commit -m "build: regenerate PWA for review [skip ci]"
-            git push origin HEAD:feat/carnet-donnees-fiables
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
