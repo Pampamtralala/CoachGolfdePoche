@@ -530,6 +530,9 @@ function mesuresParcours(parties) {
         if (!c || !estNombre(c.d) || !CLUB[c.c]) return;
         /* Recentrage, sécurité, approche, bunker, arbres : la distance ne dit rien de la portée du club. */
         if (!coupPlein(c)) return;
+        /* Une distance GPS entre deux balles est une distance totale, pas un carry. */
+        /* On la conserve dans les observations sans l’utiliser comme distance de vol du sac. */
+        if (c.distanceType === "total") return;
         if (!c.a || c.a === "plein") (clubs[c.c] = clubs[c.c] || []).push(c.d);
         else if (CLUB[c.c].fam === "w") { var w = wedges[c.c] = wedges[c.c] || {}; (w[c.a] = w[c.a] || []).push(c.d); }
       });
