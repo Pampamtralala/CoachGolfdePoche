@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feat/carnet-donnees-fiables
+      - fix/reprise-fiabilisation-collecte-20261120
   workflow_dispatch:
 
 permissions:
