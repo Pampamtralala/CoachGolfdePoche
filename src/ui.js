@@ -977,7 +977,7 @@
     (restaure.parcours || []).forEach(function (pc) { ids[pc.id] = true; });
     var cartes = {};
     Object.keys(r).slice(0, 20).forEach(function (id) {
-      if (!ids[id] || !/^p\\d{1,6}$/.test(id)) return;
+      if (!ids[id] || !/^p\d{1,6}$/.test(id)) return;
       var c = assainirCarte(r[id]);
       if (c) cartes[id] = c;
     });
