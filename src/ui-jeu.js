@@ -203,7 +203,7 @@
     }
     h += '<div class="pv-dist"><label for="pv-dist">Distance de vol, en mètres</label><div class="pv-dist-reglage">' +
       [-5, -1].map(function (d) { return '<button class="pv-pm petit" type="button" data-a="pv-dist" data-d="' + d + '" aria-label="' + at(Math.abs(d) + " mètre" + (d < -1 ? "s" : "") + " de moins") + '">' + d + '</button>'; }).join("") +
-      '<input id="pv-dist" type="text" inputmode="numeric" maxlength="3" autocomplete="off" data-i="pv-dist" value="' + (C.d || "") + '" placeholder="m">' +
+      '<input id="pv-dist" type="text" inputmode="numeric" maxlength="3" autocomplete="off" data-i="pv-dist" value="' + (C.d || "") + '" placeholder="' + (C.c && moyenneClub(mesuresTout(), C.c) ? 'Repère ' + moyenneClub(mesuresTout(), C.c) + ' m' : 'm') + '">' +
       [1, 5].map(function (d) { return '<button class="pv-pm petit" type="button" data-a="pv-dist" data-d="' + d + '" aria-label="' + at(d + " mètre" + (d > 1 ? "s" : "") + " de plus") + '">+' + d + '</button>'; }).join("") + '</div></div>';
     if (club) {
       var el = ellipseDe(C.c);
@@ -292,8 +292,10 @@
     var prec = i < 0 ? l[l.length - 1] : l[i - 1];
     /* Le départ d'un coup reprend l'arrivée du coup précédent, quand elle a été marquée. */
     var g = c && c.g ? c.g.slice() : (prec && prec.g && prec.g[2] != null ? [prec.g[2], prec.g[3], null, null] : null);
-    ui.pvCoup = c ? { i: i, c: c.c, d: c.d, a: c.a, g: g, l: c.l != null ? c.l : null, p: c.p || null, t: c.t || "" }
-      : { i: -1, c: null, d: null, a: "plein", g: g, l: null, p: l.length ? lieDepuisCarte(g) : "dep", t: "" };
+    ui.pvCoup = c ? { i: i, c: c.c, d: c.d, a: c.a, g: g, l: c.l != null ? c.l : null, p: c.p || null, t: c.t || "",
+        source: c.source || "inconnu", distanceType: c.distanceType || "inconnu", mesureLe: c.mesureLe || null }
+      : { i: -1, c: null, d: null, a: "plein", g: g, l: null, p: l.length ? lieDepuisCarte(g) : "dep", t: "",
+        source: "inconnu", distanceType: "inconnu", mesureLe: null };
     ui.pvRetour = i >= 0 ? '[data-a="pv-coup"][data-v="' + i + '"]' : '[data-a="pv-coup"][data-v="-1"]';
     rendrePartie();
     focusPartie(ui.pvCoup.c ? '[data-a="pv-club"][aria-pressed="true"]' : '[data-a="pv-club"]');
@@ -318,8 +320,8 @@
     var C = ui.pvCoup, id = el.getAttribute("data-id"); if (!C || !CLUB[id]) return;
     var avant = C.c; C.c = id;
     if (CLUB[id].fam !== "w") C.a = "plein";
-    /* Distance proposée : la moyenne du club, tant que le joueur n'en a pas tapé une. */
-    if (!C.d || C.dAuto) { var m = moyenneClub(mesuresTout(), id); C.d = m; C.dAuto = m != null; }
+    /* La moyenne du sac est un repère, jamais une mesure à enregistrer. */
+    if (C.dAuto) { C.d = null; C.dAuto = false; }
     if (avant !== id) { rendrePartie(); focusPartie('[data-a="pv-club"][data-id="' + id + '"]'); }
   };
   ACTIONS["pv-amplitude"] = function (el) {
@@ -330,10 +332,13 @@
   SAISIES["pv-dist"] = function (el) {
     var C = ui.pvCoup; if (!C) return;
     var v = el.value.trim(); C.d = /^\d{1,3}$/.test(v) ? parseInt(v, 10) : null; C.dAuto = false; C.dTap = false;
+    C.source = C.d != null ? "manuel" : "inconnu";
+    C.distanceType = C.d != null ? "carry" : "inconnu"; C.mesureLe = C.d != null ? Date.now() : null;
   };
   ACTIONS["pv-dist"] = function (el) {
     var C = ui.pvCoup; if (!C) return;
     C.d = Math.max(1, Math.min(400, (C.d || moyenneClub(mesuresTout(), C.c) || 100) + parseInt(el.getAttribute("data-d"), 10))); C.dAuto = false; C.dTap = false;
+    C.source = "manuel"; C.distanceType = "carry"; C.mesureLe = Date.now();
     var i = document.getElementById("pv-dist"); if (i) i.value = C.d;
   };
   ACTIONS["pv-gps"] = function (el) {
@@ -347,7 +352,7 @@
       else {
         g[2] = pos[0]; g[3] = pos[1];
         var d = distanceGPS([g[0], g[1]], [g[2], g[3]]);
-        if (d >= 1 && d <= 400) { C.d = d; C.dAuto = false; }
+        if (d >= 1 && d <= 400) { C.d = d; C.dAuto = false; C.source = "gps"; C.distanceType = "total"; C.mesureLe = Date.now(); }
         C.gpsMsg = "Distance mesurée : " + d + " m, à " + prec + " m près.";
       }
       C.g = g; rendrePartie(); focusPartie(k === "a" ? '[data-a="pv-gps"][data-v="b"]' : "#pv-coup-ok");
@@ -359,7 +364,9 @@
     if (!C.c) { if (err) { err.textContent = "Choisis le club joué."; err.hidden = false; } focusPartie('[data-a="pv-club"]'); return; }
     if (C.d != null && !(C.d >= 1 && C.d <= 400)) { if (err) { err.textContent = "Distance entre 1 et 400 m, ou laisse vide."; err.hidden = false; } focusPartie("#pv-dist"); return; }
     var coup = { c: C.c, d: C.d || null, a: C.a || "plein", g: C.g && C.g[0] != null && C.g[2] != null ? C.g.slice() : null,
-      source: C.g && C.g[2] != null ? "gps" : "manuel", distanceType: C.g && C.g[2] != null ? "total" : "carry", mesureLe: Date.now() };
+      source: C.d != null ? (C.source || "inconnu") : "inconnu",
+      distanceType: C.d != null ? (C.distanceType || "inconnu") : "inconnu",
+      mesureLe: C.d != null ? (C.mesureLe || null) : null };
     if (C.l != null) coup.l = C.l;
     if (C.p) coup.p = C.p;
     if (C.t) coup.t = C.t;
