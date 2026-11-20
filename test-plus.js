@@ -44,6 +44,17 @@ ok(E.analyseCarnet({}).lignes.length === 0 && E.analyseCarnet({}).ecartMoyen ===
   const d = E.dispersion([140, 145, 150, 138, 152, 147, 143, 149, 141, 146]);
   ok(d.n === 10 && d.moy === 145 && d.sigma === 5 && d.p10 === 140 && d.p90 === 150, 'dispersion : ' + JSON.stringify(d));
   ok(E.dispersion([140, 150]) === null, 'dispersion à partir de trois balles');
+  const melange = E.mesuresParcours([{ coups: [[
+    { c: 'f7', d: 160, source: 'gps', distanceType: 'total' },
+    { c: 'f7', d: 143, source: 'manuel', distanceType: 'carry' }
+  ]] }]);
+  ok(JSON.stringify(melange.clubs.f7) === '[143]', 'le sac utilise le carry et écarte les distances totales GPS');
+  const obsMixte = E.observationsGolf([{ d: '2026-11-20', coups: [[
+    { c: 'f7', d: 160, source: 'gps', distanceType: 'total' },
+    { c: 'f7', d: 143, source: 'manuel', distanceType: 'carry' }
+  ]] }], {});
+  ok(obsMixte.length === 2 && obsMixte[0].distanceType === 'total', 'distance totale GPS conservée dans les observations');
+
   ok(Math.abs(E.distanceGPS([45.9, 2.17], [45.9013, 2.17]) - 145) <= 1, 'distance GPS');
   const trous = []; for (let k = 0; k < 18; k++) trous.push([k % 3 ? 1 : 0, k % 4 ? 0 : 1, k % 5 ? 2 : 3, k === 7 ? 1 : 0, k % 2 ? 6 : 5, 4, 0, 0, 0]);
   const pc = E.pointsCles({ d: '2026-11-14', trous: trous }, 18);
