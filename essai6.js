@@ -44,12 +44,14 @@ const { allerVue, menuAction } = require('./nav-essai');
   res.ferme = await page.locator('#feuille').count();
   /* Conditions du jour */
   await allerVue(page, 'jour'); await page.waitForTimeout(1300); await vue('66-jour');
-  await page.click('[data-a="cond-ouvrir"]'); await vue('67-conditions-vide');
+  /* Depuis l'accueil « Mon jeu » (19/11), les conditions du jour s'ouvrent par la recherche des fonctions. */
+  if (await page.locator('#vue [data-a="cond-ouvrir"]').count()) await page.click('#vue [data-a="cond-ouvrir"]'); else await menuAction(page, 'cond-ouvrir');
+  await vue('67-conditions-vide');
   await page.click('[data-a="cond"][data-k="vent"][data-v="3"]'); await page.click('[data-a="cond"][data-k="temp"][data-v="1"]');
   res.conseils = await page.$$eval('#feuille .constats li', l => l.map(x => x.textContent));
   await vue('68-conditions');
   await page.keyboard.press('Escape'); await page.waitForTimeout(1300);
-  res.tuile = await page.$eval('[data-a="cond-ouvrir"]', b => b.textContent.replace(/\s+/g, ' '));
+  res.tuile = await page.locator('[data-a="cond-ouvrir"]').count() ? await page.$eval('[data-a="cond-ouvrir"]', b => b.textContent.replace(/\s+/g, ' ')) : 'tuile retirée de l\'accueil (19/11)';
   await vue('69-jour-conditions');
   res.etatConditions = await page.evaluate(() => JSON.parse(localStorage.getItem('coachgolf.v1')).conditions);
   /* Exercices, profil, distances */
@@ -72,7 +74,7 @@ const { allerVue, menuAction } = require('./nav-essai');
   for (const id of ['c1-s1-1', 'c1-s1-2']) await page.click(`[data-a="fait"][data-id="${id}"]`);
   await page.click('#fete .fete').catch(() => {});
   await allerVue(page, 'jour'); await page.waitForTimeout(1600);
-  res.jauge = await page.$eval('.golf-etiq.e-practice', c => c.textContent);
+  res.jauge = await page.locator('.golf-etiq.e-practice').count() ? await page.$eval('.golf-etiq.e-practice', c => c.textContent) : 'jauge retirée de l\'accueil (19/11)';
   await page.screenshot({ path: `${D}/76-jauge.png`, clip: { x: 0, y: 300, width: 390, height: 280 } });
   /* Grand écran */
   await page.setViewportSize({ width: 1200, height: 860 }); await page.waitForTimeout(200);

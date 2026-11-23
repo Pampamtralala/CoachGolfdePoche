@@ -1508,6 +1508,10 @@ main.entree { animation: entreeVue .22s ease-out; }
 .cone-club small { color: var(--encre-2); }
 .cone-dangers { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: .92rem; }
 
+/* Accueil « Mon jeu » : les accès rapides tiennent dans la largeur du téléphone (le libellé passe à la ligne). */
+.acces-rapides { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.acces-rapides .btn { white-space: normal; min-width: 0; line-height: 1.2; }
+
 /* ---------- Sac de golf en perspective (fausse 3D) ----------
    Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
    --s3-bulle, --s3-bulle-texte, --s3-chiffre, --s3-focus. */
@@ -6009,7 +6013,7 @@ function attribuerIds(e) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-23T19:52:02.972Z";
+  var VERSION_APPLI = "2026-11-23T21:26:07.662Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -10726,7 +10730,9 @@ function attribuerIds(e) {
   }
 
   /* ---------- Jouer : mode de saisie ---------- */
-  function modeSaisie() { return etat.modeSaisie === "express" ? "express" : "detail"; }
+  /* Express par défaut, comme au chargement d'une sauvegarde : avant, un premier lancement affichait le mode détaillé
+     puis basculait en express au rechargement suivant. */
+  function modeSaisie() { return etat.modeSaisie === "detail" ? "detail" : "express"; }
   function modesHTML() {
     var m = modeSaisie();
     return '<div class="modes" role="group" aria-label="Mode de saisie">' +

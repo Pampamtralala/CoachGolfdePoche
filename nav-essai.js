@@ -58,4 +58,9 @@ function trouPave(t) {
   while (x.length < 11) x.push(0);
   return x;
 }
-module.exports = { allerVue, menuAction, ouvrirMenu, lirePave, saisirTrou, trouPave };
+/* La saisie démarre en score express depuis le 19/11 : les scénarios qui notent coups et détails passent en mode détaillé. */
+async function modeDetail(page) {
+  const b = page.locator('#calque-partie [data-a="mode-saisie"][data-v="detail"]');
+  if (await b.count() && (await b.getAttribute('aria-pressed')) !== 'true') await b.click();
+}
+module.exports = { allerVue, menuAction, ouvrirMenu, lirePave, saisirTrou, trouPave, modeDetail };
