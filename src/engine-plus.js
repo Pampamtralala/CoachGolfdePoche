@@ -529,7 +529,10 @@ function mesuresParcours(parties) {
       (l || []).forEach(function (c) {
         if (!c || !estNombre(c.d) || !CLUB[c.c]) return;
         /* Recentrage, sécurité, approche, bunker, arbres : la distance ne dit rien de la portée du club. */
-        if (!coupPlein(c) || c.dm) return;   /* distance moyenne notée faute de mieux : pas une mesure */
+        if (!coupPlein(c) || c.dm) return;   /* ancienne estimation enregistrée le 23/11 : pas une mesure */
+        /* Une distance GPS entre deux balles est une distance totale, pas un carry. */
+        /* On la conserve dans les observations sans l’utiliser comme distance de vol du sac. */
+        if (c.distanceType === "total") return;
         if (!c.a || c.a === "plein") (clubs[c.c] = clubs[c.c] || []).push(c.d);
         else if (CLUB[c.c].fam === "w") { var w = wedges[c.c] = wedges[c.c] || {}; (w[c.a] = w[c.a] || []).push(c.d); }
       });
@@ -577,6 +580,31 @@ function dispersion(mesures) {
   return { n: n, moy: Math.round(moy), sigma: Math.round(Math.sqrt(v)), p10: Math.round(quantile(tri, 0.1)), p90: Math.round(quantile(tri, 0.9)), min: tri[0], max: tri[n - 1] };
 }
 
+/* ---------- Statut d'une distance de coup ----------
+   Quatre statuts, jamais mélangés :
+   - "gps"      : mesurée entre deux positions du téléphone (approximative, distance totale roulée comprise) ;
+   - "declaree" : saisie par le joueur (ou importée) ;
+   - "estimee"  : remplacée par la moyenne historique du club, faute de distance ; jamais une mesure ;
+   - "inconnue" : aucune distance et aucune moyenne fiable.
+   Une ancienne distance sans provenance enregistrée compte comme déclarée, ou GPS si les deux positions existent. */
+function statutDistance(c) {
+  if (!c) return "inconnue";
+  if (c.dm) return "estimee";
+  if (!estNombre(c.d)) return "inconnue";
+  if (c.source === "gps" || c.distanceType === "total") return "gps";
+  if (c.source === "manuel" || c.source === "import") return "declaree";
+  return Array.isArray(c.g) && c.g[2] != null ? "gps" : "declaree";
+}
+/* Distance utilisable dans un calcul ou un affichage. moyennes : { club: distance moyenne } (mesures seulement).
+   L'estimation n'est proposée que pour un plein coup ; elle n'est jamais enregistrée ni réinjectée dans une moyenne. */
+function distanceCoup(c, moyennes) {
+  var st = statutDistance(c);
+  if (st !== "inconnue") return { v: c.d, statut: st };
+  var m = moyennes && c && moyennes[c.c];
+  if (estNombre(m) && m > 0 && (!c.a || c.a === "plein") && coupPlein(c)) return { v: Math.round(m), statut: "estimee" };
+  return { v: null, statut: "inconnue" };
+}
+
 /* Modèle unifié, non destructif, des observations golfiques.
    Les données historiques restent intactes ; les champs inconnus ne sont pas inventés. */
 function observationsGolf(parties, carnet) {
@@ -589,7 +617,9 @@ function observationsGolf(parties, carnet) {
           id: "p" + pi + "-t" + trou + "-c" + ci, type: "coup",
           origine: c.source || "inconnu", date: c.mesureLe || partie.d || null,
           partie: pi, trou: (partie.o || 0) + trou + 1, club: c.c,
-          distance: typeof c.d === "number" && !c.dm ? c.d : null,   /* moyenne notée faute de distance : inconnue */
+          distance: typeof c.d === "number" && !c.dm ? c.d : null,   /* une estimation n'est pas une observation */
+          distanceStatut: statutDistance(c) === "estimee" ? "inconnue" : statutDistance(c),
+          direction: estNombre(c.l) ? c.l : null,   /* mètres, négatif à gauche ; null : non renseignée */
           distanceType: c.distanceType || "inconnu", positions: c.g || null,
           lie: c.p || null, typeCoup: c.t || null,
           confiance: c.source === "gps" ? "mesuree" : c.source === "manuel" ? "declaree" : "inconnue"
@@ -601,16 +631,19 @@ function observationsGolf(parties, carnet) {
     (serie.v || []).forEach(function (d, j) {
       if (typeof d !== "number") return;
       out.push({ id: "s" + i + "-b" + j, type: "practice", origine: "manuel",
-        date: serie.d || null, club: serie.c, distance: d, distanceType: "carry",
+        date: serie.d || null, club: serie.c, distance: d, distanceType: "carry", distanceStatut: "declaree",
         deviation: serie.l && serie.l[j] != null ? serie.l[j] : null, confiance: "declaree" });
     });
   });
   return out;
 }
 function qualiteObservations(observations) {
-  var a = observations || [], q = { total: a.length, distance: 0, gps: 0, dates: 0, origineConnue: 0, typeConnu: 0 };
+  var a = observations || [], q = { total: a.length, distance: 0, gps: 0, dates: 0, origineConnue: 0, typeConnu: 0, direction: 0,
+    statuts: { gps: 0, declaree: 0, inconnue: 0 } };
   a.forEach(function (o) {
     if (o.distance != null) q.distance++;
+    if (o.distanceStatut && q.statuts[o.distanceStatut] != null) q.statuts[o.distanceStatut]++;
+    if (o.direction != null || o.deviation != null) q.direction++;
     if (o.origine === "gps") q.gps++;
     if (o.date) q.dates++;
     if (o.origine !== "inconnu") q.origineConnue++;
@@ -668,5 +701,5 @@ function scoreJoueur(scores, pars) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { observationsGolf, qualiteObservations, coupPlein, bilanLies, COUPS_MAX, AMPLITUDES_COUP, mesuresParcours, fusionMesures, fusionWedges, distanceGPS, quantile, dispersion, pointsCles, topFlopTrous, scoreJoueur, DEFI, CLUB, CLUBS, WEDGES, WEDGES_BASE, LOFT_MIN, LOFT_MAX, definirWedges, wedgeAuLoft, estNombre, statsClub, SAC_ECART, analyseCarnet, analyseWedges, trouNote, scoreSuggere, scoreMini, statsTrous, cumulParties, indicateursParties, scorePartie, repereSG, puttsAttendus, cibleAuto, coupsGagnes, valeursStats, objectifs, statsFenetre, etatObjectif, differentiel, indexEstime, analyseParcours, causesTrou, coteDominant, releveDetail, defiNeuf, niveauVise, cibleDefi, defiCoup, defiFinSeance };
+  module.exports = { statutDistance, distanceCoup, observationsGolf, qualiteObservations, coupPlein, bilanLies, COUPS_MAX, AMPLITUDES_COUP, mesuresParcours, fusionMesures, fusionWedges, distanceGPS, quantile, dispersion, pointsCles, topFlopTrous, scoreJoueur, DEFI, CLUB, CLUBS, WEDGES, WEDGES_BASE, LOFT_MIN, LOFT_MAX, definirWedges, wedgeAuLoft, estNombre, statsClub, SAC_ECART, analyseCarnet, analyseWedges, trouNote, scoreSuggere, scoreMini, statsTrous, cumulParties, indicateursParties, scorePartie, repereSG, puttsAttendus, cibleAuto, coupsGagnes, valeursStats, objectifs, statsFenetre, etatObjectif, differentiel, indexEstime, analyseParcours, causesTrou, coteDominant, releveDetail, defiNeuf, niveauVise, cibleDefi, defiCoup, defiFinSeance };
 }
