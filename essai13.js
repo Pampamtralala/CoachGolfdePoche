@@ -126,7 +126,7 @@ async function toucherCarte(page, dx, dy) {
     /* Partie : distances en direct */
     await page.click('.cta-partie'); await page.waitForSelector('#dp-pc');
     r.departPc = await page.$eval('#dp-pc', s => s.options[s.selectedIndex].textContent);
-    await page.click('[data-a="pt-nouvelle"]'); await page.waitForSelector('#calque-partie .pave');
+    await page.click('[data-a="pt-nouvelle"]'); await page.waitForSelector('#calque-partie .pave'); await (require('./nav-essai').modeDetail)(page);
     await attendreMilieu(page, 150);
     r.depart1 = await emf(page);
     r.etat1 = net(await page.textContent('#emf-etat'));
@@ -224,7 +224,7 @@ async function toucherCarte(page, dx, dy) {
     verifie(/1 green sur 18/.test(r.resumeApres), nom + ' green numéroté : ' + r.resumeApres);
     await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' });
     await allerVue(page, 'parcours');
-    await page.click('.cta-partie'); await page.click('[data-a="pt-nouvelle"]'); await page.waitForSelector('#calque-partie .pave');
+    await page.click('.cta-partie'); await page.click('[data-a="pt-nouvelle"]'); await page.waitForSelector('#calque-partie .pave'); await (require('./nav-essai').modeDetail)(page);
     r.sansPosition = (await emf(page)) + ' · ' + await page.textContent('#emf-etat');
     verifie(/^– – – · Touche pour te placer/.test(r.sansPosition), nom + ' sans position : ' + r.sansPosition);
     await page.click('#calque-partie .pv-emf'); await page.waitForSelector('.pv-panneau.carte svg.cp');
@@ -264,7 +264,7 @@ async function toucherCarte(page, dx, dy) {
     const vue = n => page.screenshot({ path: `${Dos}/${nom}-${n}.png` });
     const lire = k => page.evaluate(k => JSON.parse(localStorage.getItem(k)), k);
     await profil(page);
-    await allerVue(page, 'parcours'); await page.click('.cta-partie'); await page.fill('#dp-nom', 'Golf sans carte'); await page.click('[data-a="pt-nouvelle"]'); await page.waitForSelector('#calque-partie .pave');
+    await allerVue(page, 'parcours'); await page.click('.cta-partie'); await page.fill('#dp-nom', 'Golf sans carte'); await page.click('[data-a="pt-nouvelle"]'); await page.waitForSelector('#calque-partie .pave'); await (require('./nav-essai').modeDetail)(page);
     r.ligneSansCarte = (await page.textContent('#calque-partie .pv-emf')).replace(/\s+/g, ' ');
     await page.click('#calque-partie .pv-emf.vide'); await page.waitForSelector('#feuille #carte-q');
     r.prerempli = await page.inputValue('#carte-q');
@@ -327,7 +327,7 @@ async function toucherCarte(page, dx, dy) {
     await vue('01-carte-parcours');
     await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' });
     await page.click('.cta-partie'); await page.waitForSelector('[data-a="pt-nouvelle"]');
-    await page.click('[data-a="pt-nouvelle"]'); await page.waitForSelector('#calque-partie .pave');
+    await page.click('[data-a="pt-nouvelle"]'); await page.waitForSelector('#calque-partie .pave'); await (require('./nav-essai').modeDetail)(page);
     await attendreMilieu(page, 150);
     r.pave = await emf(page); r.etat = await page.textContent('#emf-etat');
     verifie(r.pave === '136 150 164' && /Green estimé · GPS/.test(r.etat), nom + ' pavé : ' + r.pave + ' · ' + r.etat);

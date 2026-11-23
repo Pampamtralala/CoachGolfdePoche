@@ -52,7 +52,9 @@ const LARGEURS = (process.env.LARGEURS || '390,360,390s,1280').split(',');
     await page.keyboard.press('Escape'); await page.waitForTimeout(250);
     r.rechercheFermee = await page.locator('#recherche-q').count();
     /* Le sac : sortir un club */
-    await page.click('.golf-etiq.e-sac'); await page.waitForTimeout(300);
+    /* L'accueil « Mon jeu » (19/11) n'a plus l'étiquette du sac : on passe par la rubrique Mon sac. */
+    if (await page.locator('.golf-etiq.e-sac').count()) await page.click('.golf-etiq.e-sac'); else await allerVue(page, 'sac');
+    await page.waitForTimeout(300);
     await page.click('#sac-scene [data-id="f7"]'); await page.waitForTimeout(600);
     r.sel = await page.$eval('#sac-scene .c3d.sel .c3d-bulle', x => x.textContent) + ' · ' + await page.$eval('#sac-info', x => x.textContent.replace(/\s+/g, ' ').slice(0, 120));
     await page.screenshot({ path: `${D}/${nom}-3-sac.png` });
@@ -74,7 +76,8 @@ const LARGEURS = (process.env.LARGEURS || '390,360,390s,1280').split(',');
     }
     /* Lancer une partie depuis l'accueil, puis le bouton flottant */
     await menu('accueil');
-    await page.click('.golf-etiq.e-parcours'); await page.waitForTimeout(300);
+    if (await page.locator('.golf-etiq.e-parcours').count()) await page.click('.golf-etiq.e-parcours'); else await allerVue(page, 'parcours');
+    await page.waitForTimeout(300);
     r.depart = await page.evaluate(() => location.hash + ' · ' + !!document.getElementById('dp-pc') + !!document.getElementById('dp-nom'));
     await ctx.close();
   }

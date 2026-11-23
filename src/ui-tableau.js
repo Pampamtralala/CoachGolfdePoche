@@ -210,7 +210,9 @@
   }
 
   /* ---------- Jouer : mode de saisie ---------- */
-  function modeSaisie() { return etat.modeSaisie === "express" ? "express" : "detail"; }
+  /* Express par défaut, comme au chargement d'une sauvegarde : avant, un premier lancement affichait le mode détaillé
+     puis basculait en express au rechargement suivant. */
+  function modeSaisie() { return etat.modeSaisie === "detail" ? "detail" : "express"; }
   function modesHTML() {
     var m = modeSaisie();
     return '<div class="modes" role="group" aria-label="Mode de saisie">' +

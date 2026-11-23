@@ -135,7 +135,8 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   res.jourCartes = await page.$$eval('.golf-etiq, .en-bref', l => l.map(x => x.className + ' : ' + x.textContent.replace(/\s+/g, ' ').trim().slice(0, 140)));
   res.ongletJour = await page.evaluate(() => location.hash);
   await long('42-jour-vide', 2);
-  await page.click('[data-a="voir-seance"]');
+  /* L'accueil « Mon jeu » (19/11) ne montre plus la séance du jour : elle est dans Progresser. */
+  if (await page.locator('#vue [data-a="voir-seance"]').count()) await page.click('#vue [data-a="voir-seance"]'); else await allerVue(page, 'practice');
   res.voirSeance = (await page.evaluate(() => location.hash)) + ' · ' + await page.textContent('h1');
   res.avancementPlan = await page.$$eval('.avancement p', l => l.map(x => x.textContent).join(' | '));
   /* Séance faite : le tampon, puis la semaine bouclée */
