@@ -4754,7 +4754,8 @@ function observationsGolf(parties, carnet) {
       (coups || []).forEach(function (c, ci) {
         if (!c || !c.c) return;
         out.push({
-          id: "p" + pi + "-t" + trou + "-c" + ci, type: "coup",
+          /* Identifiants stables (P01) ; repli sur la position pour une donnée qui n'en a pas encore. */
+          id: (partie.id || "p" + pi) + "/t" + trou + "/" + (c.id || "c" + ci), type: "coup", partieId: partie.id || null, coupId: c.id || null,
           origine: c.source || "inconnu", date: c.mesureLe || partie.d || null,
           partie: pi, trou: (partie.o || 0) + trou + 1, club: c.c,
           distance: typeof c.d === "number" && !c.dm ? c.d : null,   /* une estimation n'est pas une observation */
@@ -4770,7 +4771,7 @@ function observationsGolf(parties, carnet) {
   ((carnet || {}).series || []).forEach(function (serie, i) {
     (serie.v || []).forEach(function (d, j) {
       if (typeof d !== "number") return;
-      out.push({ id: "s" + i + "-b" + j, type: "practice", origine: "manuel",
+      out.push({ id: (serie.id || "s" + i) + "/b" + j, type: "practice", serieId: serie.id || null, origine: "manuel",
         date: serie.d || null, club: serie.c, distance: d, distanceType: "carry", distanceStatut: "declaree",
         deviation: serie.l && serie.l[j] != null ? serie.l[j] : null, confiance: "declaree" });
     });
@@ -5934,6 +5935,69 @@ function lireHcp(texte, n) {
 }
 
 
+/* Coach de golf de poche — identifiants stables des données (roadmap DATA, P01).
+   Chaque partie, coup et série de practice reçoit un identifiant qui ne change plus :
+   - créé à la saisie (aléatoire, horodaté) ;
+   - pour les anciennes données, calculé à partir du contenu et de la position (déterministe : le même
+     résultat à chaque chargement, même si l'écriture précédente a échoué), puis enregistré.
+   Un identifiant déjà présent et valide n'est jamais modifié. Rien n'est supprimé. */
+
+var ID_FORME = /^[pcs]_[0-9a-z]{4,24}$/;
+function idValide(v, prefixe) { return typeof v === "string" && ID_FORME.test(v) && v.charAt(0) === prefixe; }
+function nouvelId(prefixe) { return prefixe + "_" + Date.now().toString(36) + Math.floor(Math.random() * 2176782336).toString(36); }
+/* FNV-1a 32 bits, deux passes, en base 36 : court et stable. */
+function hashTexte(s) {
+  var h1 = 0x811c9dc5, h2 = 0x01000193 ^ s.length;
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charCodeAt(i);
+    h1 ^= c; h1 = Math.imul(h1, 16777619) >>> 0;
+    h2 ^= c + i; h2 = Math.imul(h2, 2246822519) >>> 0;
+  }
+  return h1.toString(36) + h2.toString(36);
+}
+function idDerive(prefixe, texte, vus) {
+  var base = prefixe + "_" + hashTexte(texte).slice(0, 14), id = base, k = 1;
+  while (vus[id]) id = base + (k++).toString(36);
+  vus[id] = true;
+  return id;
+}
+
+/* Attribue les identifiants manquants ou en double. e : { parties, partie, carnet: { series } }.
+   Rend le nombre d'identifiants créés (0 au second passage : l'opération est idempotente). */
+function attribuerIds(e) {
+  var crees = 0, vusP = {}, vusS = {};
+  var coupsDe = function (p, cle) {
+    var vusC = {};
+    (p.coups || []).forEach(function (l, t) {
+      (l || []).forEach(function (c, i) {
+        if (!c || typeof c !== "object") return;
+        if (idValide(c.id, "c") && !vusC[c.id]) { vusC[c.id] = true; return; }
+        c.id = idDerive("c", cle + "|" + t + "|" + i + "|" + c.c + "|" + (c.d == null ? "" : c.d) + "|" + (c.l == null ? "" : c.l), vusC);
+        crees++;
+      });
+    });
+  };
+  var partie = function (p, i, enCours) {
+    if (!p || typeof p !== "object") return;
+    if (idValide(p.id, "p") && !vusP[p.id]) vusP[p.id] = true;
+    else {
+      p.id = idDerive("p", (enCours ? "encours|" : "partie|" + i + "|") + (p.d || "") + "|" + (p.pc || "") + "|" + (p.o || 0) + "|" + JSON.stringify(p.trous || []), vusP);
+      crees++;
+    }
+    coupsDe(p, p.id);
+  };
+  (e.parties || []).forEach(function (p, i) { partie(p, i, false); });
+  if (e.partie) partie(e.partie, -1, true);
+  ((e.carnet || {}).series || []).forEach(function (s, i) {
+    if (!s || typeof s !== "object") return;
+    if (idValide(s.id, "s") && !vusS[s.id]) { vusS[s.id] = true; return; }
+    s.id = idDerive("s", i + "|" + (s.d || "") + "|" + s.c + "|" + (s.v || []).join(","), vusS);
+    crees++;
+  });
+  return crees;
+}
+
+
 /* ============================================================
    INTERFACE : accueil, questionnaire, plan, bilan, exercices, profil.
    Les données du joueur sont gardées sur l'appareil et, quand c'est possible,
@@ -5945,7 +6009,7 @@ function lireHcp(texte, n) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-23T19:32:43.605Z";
+  var VERSION_APPLI = "2026-11-23T19:52:02.972Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -7263,6 +7327,7 @@ function lireHcp(texte, n) {
       if (LIES.some(function (x) { return x.id === c.p; })) r.p = c.p;
       if (c.t && TYPES_COUP.some(function (x) { return x.id === c.t; })) r.t = c.t;
       if (c.dm === 1 && r.d) r.dm = 1;
+      if (idValide(c.id, "c")) r.id = c.id;
       return r;
     }).filter(Boolean);
   }
@@ -7291,6 +7356,7 @@ function lireHcp(texte, n) {
       liste(x.v).forEach(function (d, i) { if (nombre(d) && d >= 5 && d <= 400 && v.length < 30) { v.push(Math.round(d)); l.push(entier(lb[i], -60, 60, null)); } });
       if (!v.length) return null;
       var r = { d: dateOk(x.d), c: x.c, v: v };
+      if (idValide(x.id, "s")) r.id = x.id;
       if (l.some(function (y) { return y != null; })) r.l = l;
       return r;
     }).filter(Boolean);
@@ -7346,6 +7412,7 @@ function lireHcp(texte, n) {
       var tr = idx.map(function (i) { return brut[i]; });
       if (tr.length < 9) return null;
       var r = { d: dateOk(p.d), trous: tr, pc: pc, o: decalage(p, pc, tr.length) }, cp = liste(p.coups);
+      if (idValide(p.id, "p")) r.id = p.id;
       if (pc && entier(p.rep, 0, 7, null) != null) r.rep = p.rep;
       r.validation = idx.map(function (i) { return liste(p.validation)[i] === "confirme" ? "confirme" : "inconnu"; });
       var coups = idx.map(function (i) { return assainirCoups(cp[i]); });
@@ -7366,6 +7433,7 @@ function lireHcp(texte, n) {
       }
       e.partie = { d: dateOk(pc.d), n: pc.n, i: entier(pc.i, 0, pc.n - 1, 0), trous: tr2, pc: pc2, o: decalage(pc, pc2, pc.n), validation: tr2.map(function (tr, i) { return liste(pc.validation)[i] === "confirme" ? "confirme" : "suggere"; }) };
       if (pc2 && entier(pc.rep, 0, 7, null) != null) e.partie.rep = pc.rep;
+      if (idValide(pc.id, "p")) e.partie.id = pc.id;
       var tous = []; for (var k = 0; k < pc.n; k++) tous.push(k);
       var cp2 = liste(pc.coups);
       e.partie.coups = tous.map(function (k) { return assainirCoups(cp2[k]); });
@@ -7388,6 +7456,8 @@ function lireHcp(texte, n) {
       ? { d: co.d, vent: entier(co.vent, 0, 3, 0), temp: entier(co.temp, 0, 3, 0) } : null;
     /* Objectif d'index : il remplace le « joueur cible » des coups gagnés des anciennes sauvegardes. */
     if (e.profil && e.profil.indexVise == null && OBJ_INDEX.indexOf(o.cibleSG) >= 0) e.profil.indexVise = o.cibleSG;
+    /* Identifiants stables : ceux déjà enregistrés sont gardés, les manquants sont calculés (P01). */
+    attribuerIds(e);
   }
 
   /* ---------- Textes ---------- */
@@ -8676,7 +8746,7 @@ function lireHcp(texte, n) {
     }
     p.trous.forEach(function (x, k) { if (x) memoriserPar(p, k); });
     var idx = []; p.trous.forEach(function (x, k) { if (x) idx.push(k); });
-    var pt = { d: p.d, trous: saisis, pc: parcoursDe(p.pc) ? p.pc : null, o: p.o || 0 };
+    var pt = { id: idValide(p.id, "p") ? p.id : nouvelId("p"), d: p.d, trous: saisis, pc: parcoursDe(p.pc) ? p.pc : null, o: p.o || 0 };
     if (pt.pc && p.rep >= 0) pt.rep = p.rep;
     pt.validation = idx.map(function (k) { return (p.validation || [])[k] === "confirme" ? "confirme" : "suggere"; });
     /* Coups et partenaires suivent les trous gardés. */
@@ -8732,7 +8802,7 @@ function lireHcp(texte, n) {
     }
     var n = pc.pars.length === 18 ? (d.jeu === "aller" || d.jeu === "retour" ? 9 : 18) : (d.jeu === "2x9" ? 18 : 9), tr = [];
     for (i = 0; i < n; i++) tr.push(null);
-    etat.partie = { d: auj(), n: n, i: 0, trous: tr, pc: pc.id, o: d.jeu === "retour" && pc.pars.length === 18 ? 9 : 0,
+    etat.partie = { id: nouvelId("p"), d: auj(), n: n, i: 0, trous: tr, pc: pc.id, o: d.jeu === "retour" && pc.pars.length === 18 ? 9 : 0,
       coups: tr.map(function () { return []; }),
       validation: tr.map(function () { return "suggere"; }),
       joueurs: (d.joueurs || []).map(function (nm) { return { nom: nm, s: tr.map(function () { return null; }) }; }) };
@@ -9233,6 +9303,9 @@ function lireHcp(texte, n) {
     if (C.l != null) coup.l = C.l;
     if (C.p) coup.p = C.p;
     if (C.t) coup.t = C.t;
+    /* Identifiant stable : celui du coup modifié, sinon un nouveau. */
+    var ancien = C.i >= 0 && p.coups && p.coups[p.i] ? p.coups[p.i][C.i] : null;
+    coup.id = ancien && idValide(ancien.id, "c") ? ancien.id : nouvelId("c");
     /* Un club joué qui n'est pas dans le sac composé y entre (dans la limite de la règle). */
     var ajoute = sacCompose() && sacActuel().indexOf(C.c) < 0 && sacActuel().length < 13;
     if (ajoute) fixerSac(sacActuel().concat([C.c]));
@@ -10944,7 +11017,7 @@ function lireHcp(texte, n) {
   function enregistrerSerie() {
     var S = ui.serie; if (!S || !S.v.length || !CLUB[S.c]) return null;
     var cb = etat.carnet;
-    var se = { d: auj(), c: S.c, v: S.v.slice() };
+    var se = { id: nouvelId("s"), d: auj(), c: S.c, v: S.v.slice() };
     if (S.l && S.l.some(function (x) { return x != null; })) se.l = S.l.slice(0, S.v.length);
     cb.series = (cb.series || []).concat([se]);
     cb.clubs[S.c] = (cb.clubs[S.c] || []).concat(S.v);

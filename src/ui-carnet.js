@@ -78,6 +78,7 @@
       if (LIES.some(function (x) { return x.id === c.p; })) r.p = c.p;
       if (c.t && TYPES_COUP.some(function (x) { return x.id === c.t; })) r.t = c.t;
       if (c.dm === 1 && r.d) r.dm = 1;
+      if (idValide(c.id, "c")) r.id = c.id;
       return r;
     }).filter(Boolean);
   }
@@ -106,6 +107,7 @@
       liste(x.v).forEach(function (d, i) { if (nombre(d) && d >= 5 && d <= 400 && v.length < 30) { v.push(Math.round(d)); l.push(entier(lb[i], -60, 60, null)); } });
       if (!v.length) return null;
       var r = { d: dateOk(x.d), c: x.c, v: v };
+      if (idValide(x.id, "s")) r.id = x.id;
       if (l.some(function (y) { return y != null; })) r.l = l;
       return r;
     }).filter(Boolean);
@@ -161,6 +163,7 @@
       var tr = idx.map(function (i) { return brut[i]; });
       if (tr.length < 9) return null;
       var r = { d: dateOk(p.d), trous: tr, pc: pc, o: decalage(p, pc, tr.length) }, cp = liste(p.coups);
+      if (idValide(p.id, "p")) r.id = p.id;
       if (pc && entier(p.rep, 0, 7, null) != null) r.rep = p.rep;
       r.validation = idx.map(function (i) { return liste(p.validation)[i] === "confirme" ? "confirme" : "inconnu"; });
       var coups = idx.map(function (i) { return assainirCoups(cp[i]); });
@@ -181,6 +184,7 @@
       }
       e.partie = { d: dateOk(pc.d), n: pc.n, i: entier(pc.i, 0, pc.n - 1, 0), trous: tr2, pc: pc2, o: decalage(pc, pc2, pc.n), validation: tr2.map(function (tr, i) { return liste(pc.validation)[i] === "confirme" ? "confirme" : "suggere"; }) };
       if (pc2 && entier(pc.rep, 0, 7, null) != null) e.partie.rep = pc.rep;
+      if (idValide(pc.id, "p")) e.partie.id = pc.id;
       var tous = []; for (var k = 0; k < pc.n; k++) tous.push(k);
       var cp2 = liste(pc.coups);
       e.partie.coups = tous.map(function (k) { return assainirCoups(cp2[k]); });
@@ -203,6 +207,8 @@
       ? { d: co.d, vent: entier(co.vent, 0, 3, 0), temp: entier(co.temp, 0, 3, 0) } : null;
     /* Objectif d'index : il remplace le « joueur cible » des coups gagnés des anciennes sauvegardes. */
     if (e.profil && e.profil.indexVise == null && OBJ_INDEX.indexOf(o.cibleSG) >= 0) e.profil.indexVise = o.cibleSG;
+    /* Identifiants stables : ceux déjà enregistrés sont gardés, les manquants sont calculés (P01). */
+    attribuerIds(e);
   }
 
   /* ---------- Textes ---------- */

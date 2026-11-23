@@ -255,14 +255,14 @@ Les numéros `Pxx` correspondent aux prompts autonomes ci-dessous ; **l'ordre re
 
 | Prompt | Statut initial | Branche / PR | Tests | Notes |
 |---|---|---|---|---|
-| P01 | **En cours** — sous-livrable 1/3 livré (statuts de distance) | `data/p01-statuts-distance` · PR #3 (brouillon) | npm test, test-startup, essais 3/10/11/13/15/16 : verts | Reprend la PR #2. Restent : identifiants stables des parties et coups, tests de migration 100+ parties |
+| P01 | **En cours** — 1/3 fusionné (PR #3, statuts de distance) ; 2/3 en revue (identifiants stables) | PR #3 fusionnée · `data/p01-identifiants-stables` · PR #4 (brouillon) | npm test, test-startup (41 parties), test-identifiants (120 parties) : verts | Reste 3/3 : croisement des observations par club, trou, parcours et période |
 | P03 | À faire ; prompt dispersion **déjà livré** sur `app` (6afa7da, 23/11) | — | — | Gauche/droite seul, distance non préremplie : fait. Reste : modes Express / Standard / Expert |
 | P05 | À faire / compléter l'existant | — | — | Déjà des indicateurs 5/10/20 |
 | P06 | À faire / compléter l'existant | — | — | Ne pas focaliser sur les mètres |
 | P07 | À faire / compléter l'existant | — | — | Analyse par trou déjà partielle |
 | P09 | À faire / compléter l'existant | — | — | Erreurs évitables déjà partielles |
 | P08 | À faire / compléter l'existant | — | — | Putting agrégé déjà disponible |
-| P04 | Transversal, à stabiliser | PR #2 intégrée dans PR #3 | test-startup vert | Export / restauration JSON avec cartes GPS : repris de la PR #2 |
+| P04 | Transversal, à stabiliser | PR #2 intégrée et fusionnée via PR #3 | test-startup vert | Export / restauration JSON avec cartes GPS en production. PR #2 à fermer |
 | P02 | À faire | — | — | Questionnaire encore central au premier lancement |
 | P10 | À faire / clarifier l'existant | — | — | SG actuels sectoriels et estimatifs |
 | P11 | À faire | — | — | Prévoir import et export sûrs |

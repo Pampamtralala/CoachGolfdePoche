@@ -92,7 +92,7 @@
   function enregistrerSerie() {
     var S = ui.serie; if (!S || !S.v.length || !CLUB[S.c]) return null;
     var cb = etat.carnet;
-    var se = { d: auj(), c: S.c, v: S.v.slice() };
+    var se = { id: nouvelId("s"), d: auj(), c: S.c, v: S.v.slice() };
     if (S.l && S.l.some(function (x) { return x != null; })) se.l = S.l.slice(0, S.v.length);
     cb.series = (cb.series || []).concat([se]);
     cb.clubs[S.c] = (cb.clubs[S.c] || []).concat(S.v);

@@ -5,6 +5,6 @@
   "description": "Coach de golf de poche : parties, carte GPS des greens, sac, programme d'entraînement et statistiques.",
   "scripts": {
     "build": "node build.js",
-    "test": "node test.js && node test-plus.js && node test-strategie.js && node test-carte.js && node test-handicap.js && node test-distances.js"
+    "test": "node test.js && node test-plus.js && node test-strategie.js && node test-carte.js && node test-handicap.js && node test-distances.js && node test-identifiants.js"
   }
 }

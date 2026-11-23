@@ -377,6 +377,9 @@
     if (C.l != null) coup.l = C.l;
     if (C.p) coup.p = C.p;
     if (C.t) coup.t = C.t;
+    /* Identifiant stable : celui du coup modifié, sinon un nouveau. */
+    var ancien = C.i >= 0 && p.coups && p.coups[p.i] ? p.coups[p.i][C.i] : null;
+    coup.id = ancien && idValide(ancien.id, "c") ? ancien.id : nouvelId("c");
     /* Un club joué qui n'est pas dans le sac composé y entre (dans la limite de la règle). */
     var ajoute = sacCompose() && sacActuel().indexOf(C.c) < 0 && sacActuel().length < 13;
     if (ajoute) fixerSac(sacActuel().concat([C.c]));

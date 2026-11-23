@@ -614,7 +614,8 @@ function observationsGolf(parties, carnet) {
       (coups || []).forEach(function (c, ci) {
         if (!c || !c.c) return;
         out.push({
-          id: "p" + pi + "-t" + trou + "-c" + ci, type: "coup",
+          /* Identifiants stables (P01) ; repli sur la position pour une donnée qui n'en a pas encore. */
+          id: (partie.id || "p" + pi) + "/t" + trou + "/" + (c.id || "c" + ci), type: "coup", partieId: partie.id || null, coupId: c.id || null,
           origine: c.source || "inconnu", date: c.mesureLe || partie.d || null,
           partie: pi, trou: (partie.o || 0) + trou + 1, club: c.c,
           distance: typeof c.d === "number" && !c.dm ? c.d : null,   /* une estimation n'est pas une observation */
@@ -630,7 +631,7 @@ function observationsGolf(parties, carnet) {
   ((carnet || {}).series || []).forEach(function (serie, i) {
     (serie.v || []).forEach(function (d, j) {
       if (typeof d !== "number") return;
-      out.push({ id: "s" + i + "-b" + j, type: "practice", origine: "manuel",
+      out.push({ id: (serie.id || "s" + i) + "/b" + j, type: "practice", serieId: serie.id || null, origine: "manuel",
         date: serie.d || null, club: serie.c, distance: d, distanceType: "carry", distanceStatut: "declaree",
         deviation: serie.l && serie.l[j] != null ? serie.l[j] : null, confiance: "declaree" });
     });

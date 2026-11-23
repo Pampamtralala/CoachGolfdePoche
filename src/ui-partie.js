@@ -267,7 +267,7 @@
     }
     p.trous.forEach(function (x, k) { if (x) memoriserPar(p, k); });
     var idx = []; p.trous.forEach(function (x, k) { if (x) idx.push(k); });
-    var pt = { d: p.d, trous: saisis, pc: parcoursDe(p.pc) ? p.pc : null, o: p.o || 0 };
+    var pt = { id: idValide(p.id, "p") ? p.id : nouvelId("p"), d: p.d, trous: saisis, pc: parcoursDe(p.pc) ? p.pc : null, o: p.o || 0 };
     if (pt.pc && p.rep >= 0) pt.rep = p.rep;
     pt.validation = idx.map(function (k) { return (p.validation || [])[k] === "confirme" ? "confirme" : "suggere"; });
     /* Coups et partenaires suivent les trous gardés. */
@@ -323,7 +323,7 @@
     }
     var n = pc.pars.length === 18 ? (d.jeu === "aller" || d.jeu === "retour" ? 9 : 18) : (d.jeu === "2x9" ? 18 : 9), tr = [];
     for (i = 0; i < n; i++) tr.push(null);
-    etat.partie = { d: auj(), n: n, i: 0, trous: tr, pc: pc.id, o: d.jeu === "retour" && pc.pars.length === 18 ? 9 : 0,
+    etat.partie = { id: nouvelId("p"), d: auj(), n: n, i: 0, trous: tr, pc: pc.id, o: d.jeu === "retour" && pc.pars.length === 18 ? 9 : 0,
       coups: tr.map(function () { return []; }),
       validation: tr.map(function () { return "suggere"; }),
       joueurs: (d.joueurs || []).map(function (nm) { return { nom: nm, s: tr.map(function () { return null; }) }; }) };
