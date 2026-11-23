@@ -75,8 +75,9 @@ function partie(g, pars) {
     verifie(r.kpi.length >= 5 && r.kpi.every(x => /\d/.test(x)), nom + ' chiffres clés : ' + r.kpi.join(' | '));
     r.reco = await page.$$eval('.kpi-r', l => l.length);
     r.evolIndex = await page.locator('.evol-index .courbe-index path').count();
-    await page.click('[data-a="fenetre"][data-v="10"]');
-    r.fenetre10 = await page.textContent('.vue-bilan .aide, #vue .aide');
+    await page.click('[data-a="st-derniers"][data-v="10"]');
+    r.fenetre10 = await page.textContent('.stats-echantillon');
+    verifie(/Sur \d+ parties/.test(r.fenetre10), nom + ' filtre 10 parties : ' + r.fenetre10);
     await page.evaluate(() => window.scrollTo(0, 0)); await vue('03-statistiques');
     r.largeurStats = await largeur(); verifie(r.largeurStats <= w, nom + ' statistiques sans débordement');
 

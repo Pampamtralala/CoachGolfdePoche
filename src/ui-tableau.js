@@ -104,8 +104,10 @@
       cartes.push({ t: "Score moyen", v: (e > 0 ? "+" : "") + nb1(e), u: "sur 18 trous", tend: tend(e, ea, false),
         x: "Écart au par ramené à 18 trous.", r: e <= ref.s ? "Au niveau de ton objectif d’index " + obj + " : continue." : "Ton objectif d’index " + obj + " joue environ " + (ref.s > 0 ? "+" : "") + nb1(ref.s) + "." });
     }
-    var jo = 100 * c.J / c.T;
-    cartes.push({ t: "Mises en jeu", v: Math.round(jo) + " %", u: "départs jouables", tend: tend(jo, avant.T ? 100 * avant.J / avant.T : null, true),
+    /* Mises en jeu : par 4 et par 5 renseignés seulement (P03) ; celles de la saisie express sont inconnues. */
+    var mjA = tableauStats(l.slice(l.length - c.n)).mej, mjB = avant.n ? tableauStats(l.slice(Math.max(0, l.length - c.n - avant.n), l.length - c.n)).mej : null;
+    var jo = mjA.part == null ? 0 : mjA.part;
+    if (mjA.n) cartes.push({ t: "Mises en jeu", v: Math.round(jo) + " %", u: "départs jouables (" + mjA.n + ")", tend: tend(jo, mjB && mjB.part != null ? mjB.part : null, true),
       x: "Balle en jeu au départ : fairway, ou rough d’où l’on peut attaquer.", r: jo < repereA("jouable", obj) ? "Vise la sécurité au départ : un bois ou un hybride si le drive part trop souvent." : "Bonne régularité au départ." });
     cartes.push({ t: "Greens en régulation", v: nb1(c.G * k), u: "sur 18", tend: tend(c.G * k, avant.T ? avant.G * ka : null, true),
       x: "Green atteint en (par − 2) coups ou moins.", r: c.G * k < ref.gir ? "Vise le centre du green : c’est la source de GIR la plus rapide." : "Au repère de ton objectif." });

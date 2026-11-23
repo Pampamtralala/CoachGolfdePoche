@@ -113,7 +113,7 @@ Les numéros `Pxx` correspondent aux prompts autonomes ci-dessous ; **l'ordre re
 |---:|---|---|---|---|
 | 1 | P01 | **Terminé** — statuts de distance, identifiants stables, croisements | PR #3, #4, #6 fusionnées | npm test, test-startup : verts | Les écrans qui s'en servent viennent avec P05 / P06 / P07 |
 | 2 | P03 | **En revue** — Express / Standard / Expert, mise en jeu en trois états, partie complétée après coup | `data/p03-trois-niveaux` · PR #7 (brouillon) | npm test, test-startup, essai17 (P03) et essais 1 à 16 : verts | Dispersion gauche/droite et distance facultative déjà livrées le 23/11 |
-| 3 | P05 | Tableau de bord statistique | P0 | P01–P03 |
+| 3 | P05 | **En revue** — tableau de bord filtrable, effectifs, comparaison de périodes | `data/p05-tableau-de-bord` · PR #8 (brouillon, après #7) | npm test (stats : 17 vérifications), test-startup, essai18 : verts | Repose sur P03 (mises en jeu renseignées) |
 | 4 | P06 | Analyse des clubs et des directions | P1 | P01, P03 |
 | 5 | P07 | Analyse des parcours et des trous | P1 | P01, P05 |
 | 6 | P09 | Erreurs récurrentes | P1 | P03, P05, P07 |
@@ -257,7 +257,7 @@ Les numéros `Pxx` correspondent aux prompts autonomes ci-dessous ; **l'ordre re
 |---|---|---|---|---|
 | P01 | **Terminé côté moteur** — 1/3 (PR #3) et 2/3 (PR #4) fusionnés ; 3/3 en revue (croisements) | PR #3, #4 fusionnées · `data/p01-croisements` · PR #6 (brouillon) | npm test (dont croisements 15 vérifications), test-startup : verts | Les écrans qui s'en servent viennent avec P05 / P06 / P07 |
 | P03 | À faire ; prompt dispersion **déjà livré** sur `app` (6afa7da, 23/11) | — | — | Gauche/droite seul, distance non préremplie : fait. Reste : modes Express / Standard / Expert |
-| P05 | À faire / compléter l'existant | — | — | Déjà des indicateurs 5/10/20 |
+| P05 | **En revue** — filtres cumulables (5/10/20/toutes, 9/18 trous, parcours, période libre), comparaison avec les N parties ou la période précédente, effectif sous chaque chiffre, base 18 trous dite, GIR « déduit », état vide | `data/p05-tableau-de-bord` · PR #8 (brouillon) | npm test (stats : 17 vérifications), test-startup, essai18 : verts | L'évolution de l'index reste sur l'écran ; les essais 3 (ancienne sauvegarde), 10 et 14 échouaient déjà sur `app` |
 | P06 | À faire / compléter l'existant | — | — | Ne pas focaliser sur les mètres |
 | P07 | À faire / compléter l'existant | — | — | Analyse par trou déjà partielle |
 | P09 | À faire / compléter l'existant | — | — | Erreurs évitables déjà partielles |

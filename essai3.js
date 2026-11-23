@@ -172,7 +172,9 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   res.texteBilanPartie = await page.$$eval('.partie.bilan > p', l => l.map(x => x.textContent));
   await vue('13-partie-bilan');
   e = await lire();
-  verifie(e.partie === null && e.parties.length === 1 && canon(e.parties[0].trous) === canon(trous.map(complet)), 'partie enregistrée');
+  /* Saisie express (P03) : la mise en jeu n'est pas demandée ; elle est gardée comme non renseignée (bit 1 à 0). */
+  const trousAttendus = trous.map(complet).map(t => [1].concat(t.slice(1)));
+  verifie(e.partie === null && e.parties.length === 1 && canon(e.parties[0].trous) === canon(trousAttendus) && (e.parties[0].renseigne || []).every(b => !(b & 1)), 'partie enregistrée, mises en jeu non renseignées en express');
   const ind = e.profil.indicateurs;
   res.indicateurs = ['drive_jeu', 'fers_gir', 'putt_3', 'strat_penal', 'strat_cata'].map(k => k + '=' + ind[k].val + '/' + ind[k].src).join(' ');
   /* Coups gagnés */

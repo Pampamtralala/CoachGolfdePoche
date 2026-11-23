@@ -1504,3 +1504,31 @@ main.entree { animation: entreeVue .22s ease-out; }
 .pv-mej button[data-v="j"][aria-pressed="true"] { background: var(--action); border-color: var(--action); color: var(--sur-action); }
 .pv-mej button[data-v="r"][aria-pressed="true"] { background: var(--alerte); border-color: var(--alerte); color: #fff; }
 .pv-gir { margin: 2px 4px 0; }
+
+/* P05 : tableau de bord statistique */
+.filtres-stats { display: grid; gap: 8px; margin: 4px 0 6px; }
+.filtres-stats .fenetres { flex-wrap: wrap; }
+.filtres-stats .champ { margin: 0; }
+.periode-libre summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
+.case { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; }
+.case input { width: 22px; height: 22px; accent-color: var(--action); }
+.stats-echantillon { margin-top: 6px; }
+.kpi-n { margin-top: auto; padding-top: 6px; font-size: 12.5px; color: var(--encre-2); border-top: 1px solid var(--filet); }
+.graphe-scores { margin: 8px 0 14px; padding: 12px; border-radius: var(--rayon-s); background: var(--carte); box-shadow: var(--ombre); }
+.graphe-scores svg { display: block; width: 100%; height: auto; }
+.graphe-scores figcaption { margin-top: 6px; font-size: 13px; color: var(--encre-2); }
+.gs-par { stroke: var(--encre-2); stroke-width: 1; stroke-dasharray: 3 3; }
+.gs-lib { font-size: 9px; fill: var(--encre-2); }
+.gs-barre { fill: #C2703D; }
+.gs-barre.sous { fill: #2E9460; }
+.repartition { margin: 0 0 14px; padding: 12px; border-radius: var(--rayon-s); background: var(--carte); box-shadow: var(--ombre); }
+.rep-titre { margin: 0 0 8px; font-weight: 700; }
+.rep-titre small { font-weight: 400; color: var(--encre-2); }
+.rep-barre { display: flex; gap: 2px; height: 30px; border-radius: 8px; overflow: hidden; }
+.rep-barre span { display: flex; align-items: center; justify-content: center; min-width: 22px; font-size: 13px; font-weight: 700; color: #fff; }
+.rep-leg { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0; font-size: 13px; color: var(--encre-2); }
+.rep-leg i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 3px; vertical-align: -1px; }
+.rep-barre .g, .rep-leg .g { background: #3E6FB0; }
+.rep-barre .c, .rep-leg .c { background: #2E9460; }
+.rep-barre .k, .rep-leg .k { background: #9467BD; }
+.rep-barre .d, .rep-leg .d { background: #C2703D; }
