@@ -754,7 +754,7 @@
   VUES.bilan = function () {
     var p = etat.profil, pal = palierDe(p.index), P = PALIERS[pal - 1];
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
-    var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' + tableauStatsHTML() + '</section>' + qualiteGolfHTML() +
+    var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' + tableauStatsHTML() + '</section>' + clubsStatsHTML() + qualiteGolfHTML() +
       '<section class="bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
 
@@ -1260,6 +1260,7 @@
   /*INCLURE:ui-analyse.js*/
   /*INCLURE:ui-tableau.js*/
   /*INCLURE:ui-stats.js*/
+  /*INCLURE:ui-clubs.js*/
   /*INCLURE:ui-apres.js*/
   /*INCLURE:ui-series.js*/
   /*INCLURE:ui-parcours.js*/

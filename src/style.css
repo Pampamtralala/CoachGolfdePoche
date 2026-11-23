@@ -1532,3 +1532,13 @@ main.entree { animation: entreeVue .22s ease-out; }
 .rep-barre .c, .rep-leg .c { background: #2E9460; }
 .rep-barre .k, .rep-leg .k { background: #9467BD; }
 .rep-barre .d, .rep-leg .d { background: #C2703D; }
+
+/* ---------- Profil des clubs (P06) ---------- */
+.clubs-notes { flex-wrap: wrap; }
+.clubs-notes .opt small { font-weight: 400; color: var(--encre-2); margin-left: 2px; }
+.club-ligne { margin: 0 0 10px; font-size: 15px; line-height: 1.45; }
+.club-ligne b { display: block; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--encre-2); }
+.comparaison-clubs td small, .departs-familles th small { display: block; font-size: 12px; font-weight: 400; color: var(--encre-2); }
+.comparaison-clubs th[scope="row"], .departs-familles th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
+.comparaison-clubs, .departs-familles { margin-bottom: 8px; }
+.voir-profil { display: block; margin: 4px 0 10px; text-align: left; }
