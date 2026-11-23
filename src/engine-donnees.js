@@ -60,6 +60,71 @@ function attribuerIds(e) {
   return crees;
 }
 
+/* ---------- Croiser les observations par club, trou, parcours ou période ----------
+   obs : observationsGolf(...). axe : "club" | "trou" | "parcours" | "periode" (mois) | "type" (coup / practice).
+   f (facultatif) : { club, parcours, trou, debut, fin (dates ISO ou AAAA-MM-JJ), type, seuil (m, défaut 5) }.
+   Pour chaque groupe : effectif, distances déclarées (seules à servir de moyenne), distances GPS à part
+   (approximatives, roulé compris), directions gauche / centre / droite parmi les coups où elle est connue.
+   Rien n'est extrapolé : un groupe sans donnée garde des effectifs à 0 et des valeurs null. */
+var AXES_CROISEMENT = ["club", "trou", "parcours", "periode", "type"];
+function jourIso(v) { return typeof v === "string" ? v.slice(0, 10) : typeof v === "number" && isFinite(v) ? new Date(v).toISOString().slice(0, 10) : null; }
+function medianeL(l) { if (!l.length) return null; var s = l.slice().sort(function (a, b) { return a - b; }), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+function resumeDistances(l) {
+  if (!l.length) return { n: 0, moyenne: null, mediane: null, min: null, max: null };
+  var t = 0; l.forEach(function (v) { t += v; });
+  return { n: l.length, moyenne: Math.round(t / l.length), mediane: Math.round(medianeL(l)), min: Math.min.apply(null, l), max: Math.max.apply(null, l) };
+}
+function cleCroisement(o, axe) {
+  if (axe === "club") return o.club || null;
+  if (axe === "parcours") return o.type === "practice" ? "practice" : o.parcours || "sans-parcours";
+  if (axe === "trou") return o.type === "coup" ? (o.parcours || "sans-parcours") + "#" + (o.trouParcours || o.trou) : null;
+  if (axe === "periode") { var j = jourIso(o.jour || o.date); return j ? j.slice(0, 7) : "sans-date"; }
+  if (axe === "type") return o.type;
+  return null;
+}
+function croiserObservations(obs, axe, f) {
+  if (AXES_CROISEMENT.indexOf(axe) < 0) throw new Error("axe inconnu : " + axe);
+  f = f || {};
+  var seuil = f.seuil > 0 ? f.seuil : 5, debut = jourIso(f.debut), fin = jourIso(f.fin), groupes = {}, ordre = [];
+  (obs || []).forEach(function (o) {
+    if (!o) return;
+    if (f.club && o.club !== f.club) return;
+    if (f.parcours && o.parcours !== f.parcours) return;
+    if (f.trou && (o.trouParcours || o.trou) !== f.trou) return;
+    if (f.type && o.type !== f.type) return;
+    var j = jourIso(o.jour || o.date);
+    if ((debut || fin) && !j) return;
+    if (debut && j < debut) return;
+    if (fin && j > fin) return;
+    var k = cleCroisement(o, axe); if (k == null) return;
+    var g = groupes[k];
+    if (!g) { g = groupes[k] = { cle: k, n: 0, dDeclarees: [], dGps: [], dir: [], distancesInconnues: 0, premier: j, dernier: j }; ordre.push(k); }
+    g.n++;
+    if (j && (!g.premier || j < g.premier)) g.premier = j;
+    if (j && (!g.dernier || j > g.dernier)) g.dernier = j;
+    var st = o.distanceStatut || (o.distance != null ? "declaree" : "inconnue");
+    if (o.distance != null && st === "declaree") g.dDeclarees.push(o.distance);
+    else if (o.distance != null && st === "gps") g.dGps.push(o.distance);
+    else g.distancesInconnues++;
+    var d = o.direction != null ? o.direction : o.deviation != null ? o.deviation : null;
+    if (typeof d === "number" && isFinite(d)) g.dir.push(d);
+  });
+  return ordre.map(function (k) {
+    var g = groupes[k], ga = 0, dr = 0, ce = 0, t = 0;
+    g.dir.forEach(function (d) { if (d < -seuil) ga++; else if (d > seuil) dr++; else ce++; t += d; });
+    var nd = g.dir.length;
+    return {
+      cle: k, n: g.n, premier: g.premier || null, dernier: g.dernier || null,
+      distances: resumeDistances(g.dDeclarees),
+      distancesGps: resumeDistances(g.dGps),
+      distancesInconnues: g.distancesInconnues,
+      direction: { n: nd, gauche: ga, centre: ce, droite: dr,
+        partGauche: nd ? Math.round(100 * ga / nd) : null, partDroite: nd ? Math.round(100 * dr / nd) : null,
+        moyenne: nd ? Math.round(t / nd * 10) / 10 : null }
+    };
+  }).sort(function (a, b) { return b.n - a.n || (a.cle < b.cle ? -1 : 1); });
+}
+
 if (typeof module !== "undefined") {
-  module.exports = { idValide, nouvelId, hashTexte, attribuerIds };
+  module.exports = { idValide, nouvelId, hashTexte, attribuerIds, croiserObservations, AXES_CROISEMENT };
 }

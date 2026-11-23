@@ -255,7 +255,7 @@ Les numéros `Pxx` correspondent aux prompts autonomes ci-dessous ; **l'ordre re
 
 | Prompt | Statut initial | Branche / PR | Tests | Notes |
 |---|---|---|---|---|
-| P01 | **En cours** — 1/3 fusionné (PR #3, statuts de distance) ; 2/3 en revue (identifiants stables) | PR #3 fusionnée · `data/p01-identifiants-stables` · PR #4 (brouillon) | npm test, test-startup (41 parties), test-identifiants (120 parties) : verts | Reste 3/3 : croisement des observations par club, trou, parcours et période |
+| P01 | **Terminé côté moteur** — 1/3 (PR #3) et 2/3 (PR #4) fusionnés ; 3/3 en revue (croisements) | PR #3, #4 fusionnées · `data/p01-croisements` · PR #6 (brouillon) | npm test (dont croisements 15 vérifications), test-startup : verts | Les écrans qui s'en servent viennent avec P05 / P06 / P07 |
 | P03 | À faire ; prompt dispersion **déjà livré** sur `app` (6afa7da, 23/11) | — | — | Gauche/droite seul, distance non préremplie : fait. Reste : modes Express / Standard / Expert |
 | P05 | À faire / compléter l'existant | — | — | Déjà des indicateurs 5/10/20 |
 | P06 | À faire / compléter l'existant | — | — | Ne pas focaliser sur les mètres |
