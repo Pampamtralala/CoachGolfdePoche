@@ -42,7 +42,9 @@ function attribuerIds(e) {
   };
   var partie = function (p, i, enCours) {
     if (!p || typeof p !== "object") return;
-    if (idValide(p.id, "p") && !vusP[p.id]) vusP[p.id] = true;
+    /* Une partie terminée rouverte pour être complétée garde l'identifiant de l'originale, qu'elle remplacera. */
+    if (enCours && p.edition && idValide(p.id, "p")) { /* rien */ }
+    else if (idValide(p.id, "p") && !vusP[p.id]) vusP[p.id] = true;
     else {
       p.id = idDerive("p", (enCours ? "encours|" : "partie|" + i + "|") + (p.d || "") + "|" + (p.pc || "") + "|" + (p.o || 0) + "|" + JSON.stringify(p.trous || []), vusP);
       crees++;

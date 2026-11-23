@@ -66,6 +66,23 @@
   function nomClub(id) { return CLUB[id] ? CLUB[id].nom.split(",")[0] : ""; }
   /* Green en régulation : sur le green en par moins deux coups, pénalités comprises. */
   function girDe(v) { return v[4] - v[2] <= v[5] - 2 ? 1 : 0; }
+  /* Ce qui a été renseigné sur le trou en cours (P03) : une partie commencée avant n'a pas le tableau,
+     ses trous déjà notés comptent alors comme renseignés. */
+  function marquerRenseigne(bit, on) {
+    var p = etat.partie; if (!p) return;
+    if (!Array.isArray(p.renseigne)) p.renseigne = p.trous.map(function (x) { return x ? 7 : 0; });
+    while (p.renseigne.length < p.n) p.renseigne.push(0);
+    p.renseigne[p.i] = on ? (p.renseigne[p.i] | bit) : (p.renseigne[p.i] & ~bit);
+  }
+  /* Mise en jeu en trois états : non renseignée (rien d'enfoncé), jouable, ratée (et de quel côté) ; puis le club de départ. */
+  function mejHTML(p, v) {
+    var connu = renseigneTrou(p.renseigne, p.i, RENS_MEJ), j = connu && !!v[0], r = connu && !v[0];
+    var h = '<div class="pv-mej" role="group" aria-label="' + at("Mise en jeu" + (connu ? "" : ", non renseignée")) + '"><span>Mise en jeu</span>' +
+      '<button type="button" data-a="pv-mej" data-v="j" aria-pressed="' + j + '">Jouable ' + TRAIT + '</button>' +
+      '<button type="button" data-a="pv-mej" data-v="r" aria-pressed="' + r + '">Ratée ×</button></div>';
+    if (r) h += sousChoix("Ratée où ?", 6, COTES, v);
+    return h + sousChoix("Club de départ", 7, CLUBS_DEPART, v);
+  }
   function poserTrou(v) {
     var p = etat.partie; v[1] = girDe(v);
     v = assainirTrou(v); if (!v) return null;
@@ -111,8 +128,8 @@
         : '<button class="pv-info" type="button" data-a="pv-long" aria-label="' + at(lg ? "Longueur : " + lg + " mètres. Toucher pour corriger" : "Longueur du trou inconnue. Toucher pour la noter") + '"><small>Longueur</small><b>' + (lg ? lg + '<i>m</i>' : '?') + '</b></button>') +
       '</div>' + bandeHTML(p) + '</div>';
 
-    var expr = modeSaisie() === "express";
-    h += '<div class="pv-corps">' + emfLigneHTML() + (expr ? '' : sjcLigneHTML()) + planDuTrou(p) +
+    var niv = niveauSaisie(), expr = niv === 0, std = niv === 1;
+    h += '<div class="pv-corps">' + emfLigneHTML() + (niv === 2 ? sjcLigneHTML() : '') + planDuTrou(p) +
       '<div class="pv-score" role="group" aria-label="Score du trou"><button class="pv-pm" type="button" data-a="pt-score" data-d="-1" aria-label="Un coup de moins"' + (v[4] <= scoreMini(v[2], v[3]) ? " disabled" : "") + '>−</button>' +
       '<p aria-live="polite"><span class="main">' + v[4] + '</span><small>' + t(nomScore(v[4], v[5])) + '</small>' + recusTrouHTML(p, v) + '</p>' +
       '<button class="pv-pm" type="button" data-a="pt-score" data-d="1" aria-label="Un coup de plus"' + (v[4] >= 15 ? " disabled" : "") + '>+</button></div>' +
@@ -123,17 +140,18 @@
       '<div class="pv-penal-bloc"><button class="pv-penal" type="button" data-a="pv-penal" data-d="1"' + (v[3] >= 3 ? " disabled" : "") + ' aria-label="' + at("Pénalité ou drop : un coup de plus" + (v[3] ? ". " + v[3] + " déjà noté" + (v[3] > 1 ? "es" : "e") : "")) + '">' +
       '<span>Pénalité<br>ou drop</span><b>' + (v[3] ? "+" + v[3] : "+1") + '</b></button>' +
       (v[3] ? '<button class="pv-penal-moins" type="button" data-a="pv-penal" data-d="-1" aria-label="Retirer une pénalité">−1</button>' : '') + '</div></div>' +
-      (v[5] >= 4 ? '<button class="pv-depart" type="button" data-a="pv-depart" aria-pressed="' + !!v[0] + '"><span>Mise en jeu</span><b>' + (v[0] ? "Jouable " + TRAIT : "Ratée ×") + '</b></button>' : '');
+      (!expr && v[5] >= 4 ? mejHTML(p, v) : '') +
+      (!expr ? '<p class="aide pv-gir">' + t("Green en régulation : " + (v[1] ? "oui" : "non") + ", déduit du score et des putts.") + '</p>' : '');
 
     /* Erreurs évitables : la double approche se marque d'un toucher ; le trois-putts court se déduit du premier putt ou se marque. */
     var court = premierPuttMoins(v, 5), p3auto = v[2] >= 3 && court === true, p3 = p3auto || (v[2] >= 3 && (v[9] & EVIT_PUTT3));
-    if (!expr) h += '<div class="pv-evit" role="group" aria-label="Erreurs évitables"><h3>Erreurs évitables</h3><div class="pv-evit-l">' +
+    if (niv === 2) h += '<div class="pv-evit" role="group" aria-label="Erreurs évitables"><h3>Erreurs évitables</h3><div class="pv-evit-l">' +
       '<button type="button" class="pv-evit-b" data-a="pv-evit" data-v="' + EVIT_DOUBLE + '" aria-pressed="' + !!(v[9] & EVIT_DOUBLE) + '">Double approche<small>deux coups pour rejoindre le green</small></button>' +
       '<button type="button" class="pv-evit-b" data-a="pv-evit" data-v="' + EVIT_PUTT3 + '" aria-pressed="' + !!p3 + '"' + (v[2] < 3 || p3auto ? " disabled" : "") + '>3 putts à moins de 5 m<small>' + t(v[2] < 3 ? "avec 3 putts ou plus" : p3auto ? "déduit du premier putt" : "premier putt court") + '</small></button>' +
       (v[3] ? '<p class="pv-evit-pen">' + t(pluriel(v[3], "pénalité") + " comptée" + (v[3] > 1 ? "s" : "")) + '</p>' : '') + '</div></div>';
 
     /* Coups : club et distance, qui nourrissent le sac */
-    if (!expr) h += '<div class="pv-coups"><div class="pv-coups-tete"><h3>Coups</h3><small>' + t(coups.length ? "Touche un coup pour le corriger." : "Club et distance : ton sac se met à jour tout seul.") + '</small></div>' +
+    if (niv === 2) h += '<div class="pv-coups"><div class="pv-coups-tete"><h3>Coups</h3><small>' + t(coups.length ? "Touche un coup pour le corriger." : "Club et distance : ton sac se met à jour tout seul.") + '</small></div>' +
       (coups.length ? '<ol class="pv-coups-liste">' + coups.map(function (c, i) { return '<li><button class="puce neutre" type="button" data-a="pv-coup" data-v="' + i + '">' + t(libCoup(c, i + 1)) + '</button></li>'; }).join("") + '</ol>' : '') +
       '<button class="btn pv-coup-ajout" type="button" data-a="pv-coup" data-v="-1">' + t("Noter le coup " + (coups.length + 1)) + '</button></div>';
 
@@ -149,19 +167,18 @@
     }
 
     /* Détails facultatifs */
-    if (!expr) h += '<details class="pv-plus"' + (detail ? " open" : "") + '><summary data-a="pt-detail">Plus de détails</summary>' +
-      (!v[0] && v[5] >= 4 ? sousChoix("Ratée où ?", 6, COTES, v) : "") +
-      (v[5] >= 4 ? sousChoix("Club de départ", 7, CLUBS_DEPART, v) : "") +
+    if (niv === 2) h += '<details class="pv-plus"' + (detail ? " open" : "") + '><summary data-a="pt-detail">Plus de détails</summary>' +
       (v[2] ? sousChoix("Premier putt", 8, v.length >= 11 ? PUTT1B : PUTT1, v) : "") +
-      (v.length >= 11 ? sousChoix("Bunker près du green", 10, ["", "Sorti sur le green", "Resté à côté"], v) : "") +
-      '<p class="aide">' + t("Green en régulation : " + (v[1] ? "oui" : "non") + ", d'après le score et les putts.") + '</p></details>';
+      (v.length >= 11 ? sousChoix("Bunker près du green", 10, ["", "Sorti sur le green", "Resté à côté"], v) : "") + '</details>';
     h += '<div class="ligne-liens"><button class="lien" type="button" data-a="pv-eveil" aria-pressed="' + (etat.ecranAllume !== false) + '">' + (etat.ecranAllume !== false ? "Écran toujours allumé" : "Garder l’écran allumé") + '</button>' +
       (dernier ? "" : '<button class="lien" type="button" data-a="pt-terminer">Terminer la partie ici</button>') + '</div>' +
       (statsTrous(p.trous).T ? '' : '<p class="pt-cumul">Score et putts sont déjà proposés : un toucher pour corriger, un pour valider. Tu peux aussi glisser le doigt vers la gauche pour valider.</p>') +
       '';
     h += '<div class="pv-validation"><p class="aide">' + t((p.validation || [])[p.i] === "confirme" ? "Score confirmé par toi." : "Score proposé automatiquement : confirme-le avant de terminer le trou.") + '</p>' +
       '<button class="btn" type="button" data-a="pt-confirmer">' + ((p.validation || [])[p.i] === "confirme" ? "Score confirmé ✓" : "Confirmer le score") + '</button></div>';
-    h += '<div class="pv-mode" role="group" aria-label="Mode de saisie"><button type="button" data-a="mode-saisie" data-v="express" aria-pressed="' + expr + '">Score express</button><button type="button" data-a="mode-saisie" data-v="detail" aria-pressed="' + !expr + '">Performance détaillée</button></div></div>';
+    h += '<div class="pv-mode trois" role="group" aria-label="Niveau de saisie">' + MODES_SAISIE.map(function (x) {
+      return '<button type="button" data-a="mode-saisie" data-v="' + x.id + '" aria-pressed="' + (modeSaisie() === x.id) + '">' + x.t + '</button>';
+    }).join("") + '</div>' + (p.edition ? '<p class="aide">' + t("Tu complètes une partie déjà enregistrée : elle sera remplacée quand tu la termineras. « Fermer » garde l'originale telle quelle.") + '</p>' : '') + '</div>';
 
     h += '<footer class="pv-pied"><button class="btn" type="button" data-a="pt-prec"' + (p.i === 0 ? " disabled" : "") + ' aria-label="' + at(p.i === 0 ? "Trou précédent" : "Revenir au trou " + numeroTrou(p, p.i - 1)) + '">' + (p.i === 0 ? "‹" : "‹ " + numeroTrou(p, p.i - 1)) + '</button>' +
       '<button class="btn principal" type="button" data-a="pt-suiv" id="pt-suiv">' + (dernier ? "Terminer la partie" : t("Valider · trou " + numeroTrou(p, p.i + 1))) + '</button></footer>';
@@ -250,10 +267,14 @@
     v[4] = Math.max(1 + v[2] + nx, Math.min(15, v[4] + (nx - v[3]))); v[3] = nx;
     poserTrou(v); rePave(d > 0 ? '[data-a="pv-penal"][data-d="1"]' : '[data-a="pv-penal"]');
   };
-  ACTIONS["pv-depart"] = function () {
+  /* Mise en jeu : un second appui sur le choix enfoncé la remet à « non renseignée ». */
+  ACTIONS["pv-mej"] = function (el) {
     var p = etat.partie; if (!p) return;
-    var v = trouCourant().slice(); v[0] = v[0] ? 0 : 1; if (v[0]) v[6] = 0;
-    poserTrou(v); rePave('[data-a="pv-depart"]');
+    var choix = el.getAttribute("data-v"), v = trouCourant().slice(), connu = renseigneTrou(p.renseigne, p.i, RENS_MEJ);
+    var deja = connu && (choix === "j" ? !!v[0] : !v[0]);
+    if (deja) { v[0] = 1; v[6] = 0; marquerRenseigne(RENS_MEJ, false); }
+    else { v[0] = choix === "j" ? 1 : 0; if (v[0]) v[6] = 0; marquerRenseigne(RENS_MEJ, true); }
+    poserTrou(v); rePave('[data-a="pv-mej"][data-v="' + choix + '"]');
   };
   /* Le par passe de 3 à 4 à 5 ; le score garde le même écart au par. */
   ACTIONS["pv-par"] = function () {

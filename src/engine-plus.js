@@ -169,6 +169,23 @@ function statsTrous(trous) {
   });
   return s;
 }
+/* ---------- Ce qui a été renseigné sur chaque trou (P03) ----------
+   renseigne : un nombre par trou, des bits : 1 mise en jeu, 2 club de départ, 4 premier putt.
+   Une partie sans ce tableau (saisie avant le 23/11) compte comme renseignée, comme avant ;
+   un trou noté en score express n'a pas de mise en jeu : elle reste inconnue, jamais « jouable » ni « ratée ». */
+var RENS_MEJ = 1, RENS_CLUB = 2, RENS_PUTT1 = 4;
+function renseigneTrou(renseigne, k, bit) { return !Array.isArray(renseigne) || !!((renseigne[k] || 0) & bit); }
+function misesEnJeu(trous, renseigne) {
+  var r = { n: 0, jouables: 0, gauche: 0, droite: 0, courtes: 0, ratees: 0, inconnues: 0 };
+  (trous || []).forEach(function (t, k) {
+    if (!t || !(t[5] >= 4)) return;
+    if (!renseigneTrou(renseigne, k, RENS_MEJ)) { r.inconnues++; return; }
+    r.n++;
+    if (t[0]) r.jouables++;
+    else { r.ratees++; if (t[6] === 1) r.gauche++; else if (t[6] === 3) r.droite++; else if (t[6] === 2) r.courtes++; }
+  });
+  return r;
+}
 function ajouterStats(s, x) { Object.keys(x).forEach(function (k) { s[k] += x[k]; }); }
 
 /* Cumul des parties les plus récentes, sans dépasser maxTrous (la dernière compte toujours). */
@@ -706,5 +723,5 @@ function scoreJoueur(scores, pars) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { statutDistance, distanceCoup, observationsGolf, qualiteObservations, coupPlein, bilanLies, COUPS_MAX, AMPLITUDES_COUP, mesuresParcours, fusionMesures, fusionWedges, distanceGPS, quantile, dispersion, pointsCles, topFlopTrous, scoreJoueur, DEFI, CLUB, CLUBS, WEDGES, WEDGES_BASE, LOFT_MIN, LOFT_MAX, definirWedges, wedgeAuLoft, estNombre, statsClub, SAC_ECART, analyseCarnet, analyseWedges, trouNote, scoreSuggere, scoreMini, statsTrous, cumulParties, indicateursParties, scorePartie, repereSG, puttsAttendus, cibleAuto, coupsGagnes, valeursStats, objectifs, statsFenetre, etatObjectif, differentiel, indexEstime, analyseParcours, causesTrou, coteDominant, releveDetail, defiNeuf, niveauVise, cibleDefi, defiCoup, defiFinSeance };
+  module.exports = { RENS_MEJ, RENS_CLUB, RENS_PUTT1, renseigneTrou, misesEnJeu, statutDistance, distanceCoup, observationsGolf, qualiteObservations, coupPlein, bilanLies, COUPS_MAX, AMPLITUDES_COUP, mesuresParcours, fusionMesures, fusionWedges, distanceGPS, quantile, dispersion, pointsCles, topFlopTrous, scoreJoueur, DEFI, CLUB, CLUBS, WEDGES, WEDGES_BASE, LOFT_MIN, LOFT_MAX, definirWedges, wedgeAuLoft, estNombre, statsClub, SAC_ECART, analyseCarnet, analyseWedges, trouNote, scoreSuggere, scoreMini, statsTrous, cumulParties, indicateursParties, scorePartie, repereSG, puttsAttendus, cibleAuto, coupsGagnes, valeursStats, objectifs, statsFenetre, etatObjectif, differentiel, indexEstime, analyseParcours, causesTrou, coteDominant, releveDetail, defiNeuf, niveauVise, cibleDefi, defiCoup, defiFinSeance };
 }

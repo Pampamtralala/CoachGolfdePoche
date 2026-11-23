@@ -76,3 +76,30 @@ BLOCAGES / RISQUES : une partie terminée avec un trou non saisi au milieu déca
   avec P07 (analyse par trou).
 PROCHAINE TÂCHE AUTORISÉE : P03 — trois niveaux de saisie (Express / Standard / Expert).
 ```
+
+## 23 novembre 2026 (fin de soirée)
+
+```text
+DATE : 23/11/2026
+CRÉDITS ALLOUÉS / CONSOMMÉS / RESTANTS : non mesurables (aucun compteur fourni).
+TÂCHE ACTUELLE : P03 — trois niveaux de saisie (demandé avec P05 par le propriétaire)
+FONCTIONNALITÉS LIVRÉES :
+  - PR #5 et #6 fusionnées sur accord explicite.
+  - Branche data/p03-trois-niveaux :
+    · niveaux Express (score, putts, pénalités), Standard (+ mise en jeu, côté, club de départ, GIR
+      déduit), Expert (+ coups, erreurs évitables, premier putt, stratégie) ; « detail » des anciennes
+      sauvegardes = Expert ; changement de niveau en cours de partie sans perte ;
+    · mise en jeu en trois états : non renseignée (rien d'enfoncé), jouable, ratée ; un second appui
+      revient à « non renseignée » ; tableau renseigne par trou (bits : mise en jeu, club, premier putt) ;
+      un trou noté en express a sa mise en jeu inconnue, jamais comptée « jouable » ;
+    · misesEnJeu(trous, renseigne) : jouables parmi les par 4 et 5 renseignés ; la carte de partie
+      montre « ? » pour une mise en jeu non renseignée et « – » pour un par 3 ;
+    · « Compléter ou corriger cette partie » : copie dans le pavé, remplace l'originale (même
+      identifiant, même place) seulement à la fin ; « Fermer » garde l'originale intacte.
+TESTS EXÉCUTÉS ET RÉSULTATS : npm test (identifiants : 15 vérifications) : 0 échec ; test-startup : OK ;
+  essai17 (P03) : OK ; essais 1 à 16 : OK.
+BRANCHE / COMMIT / LIEN PR : data/p03-trois-niveaux · PR #7 (brouillon)
+BLOCAGES / RISQUES : les parties anciennes (sans tableau renseigne) comptent comme renseignées, comme
+  avant ; leurs mises en jeu pré-cochées « jouable » restent dans les statistiques.
+PROCHAINE TÂCHE AUTORISÉE : P05 — tableau de bord statistique (demandé dans la même session).
+```

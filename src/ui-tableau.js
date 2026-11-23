@@ -212,16 +212,24 @@
   /* ---------- Jouer : mode de saisie ---------- */
   /* Express par défaut, comme au chargement d'une sauvegarde : avant, un premier lancement affichait le mode détaillé
      puis basculait en express au rechargement suivant. */
-  function modeSaisie() { return etat.modeSaisie === "detail" ? "detail" : "express"; }
+  /* Trois niveaux de saisie (P03) : express, standard, expert (identifiant « detail », celui des anciennes sauvegardes).
+     Changer de niveau en cours de partie ne perd rien : les champs déjà notés restent, ils sont seulement masqués. */
+  var MODES_SAISIE = [
+    { id: "express", t: "Express", d: "Score, putts et pénalités" },
+    { id: "standard", t: "Standard", d: "En plus : mise en jeu, gauche ou droite, club de départ, green en régulation" },
+    { id: "detail", t: "Expert", d: "En plus : chaque coup (club, direction, position de la balle, distance facultative), erreurs, stratégie" }];
+  function modeSaisie() { return etat.modeSaisie === "detail" || etat.modeSaisie === "standard" ? etat.modeSaisie : "express"; }
+  function niveauSaisie() { var m = modeSaisie(); return m === "detail" ? 2 : m === "standard" ? 1 : 0; }
   function modesHTML() {
     var m = modeSaisie();
-    return '<div class="modes" role="group" aria-label="Mode de saisie">' +
-      '<button class="mode" type="button" data-a="mode-saisie" data-v="express" aria-pressed="' + (m === "express") + '"><b>Score express</b><small>Score, putts et pénalités : deux touchers par trou</small></button>' +
-      '<button class="mode" type="button" data-a="mode-saisie" data-v="detail" aria-pressed="' + (m === "detail") + '"><b>Performance détaillée</b><small>En plus : coups, clubs, distances, stratégie, erreurs</small></button></div>';
+    return '<div class="modes trois" role="group" aria-label="Niveau de saisie">' + MODES_SAISIE.map(function (x) {
+      return '<button class="mode" type="button" data-a="mode-saisie" data-v="' + x.id + '" aria-pressed="' + (m === x.id) + '"><b>' + x.t + '</b><small>' + t(x.d) + '</small></button>';
+    }).join("") + '</div>';
   }
   ACTIONS["mode-saisie"] = function (el) {
-    etat.modeSaisie = el.getAttribute("data-v") === "express" ? "express" : "detail"; sauver();
+    var v = el.getAttribute("data-v");
+    etat.modeSaisie = v === "detail" || v === "standard" ? v : "express"; sauver();
     if (ui.partie) { ui.pvCoup = null; ui.pvPanneau = null; rendrePartie(); focusPartie('[data-a="mode-saisie"][data-v="' + etat.modeSaisie + '"]'); }
     else rendreEtFocus(el);
-    message(etat.modeSaisie === "express" ? "Mode score express" : "Mode performance détaillée");
+    message("Saisie " + MODES_SAISIE.filter(function (x) { return x.id === etat.modeSaisie; })[0].t.toLowerCase());
   };
