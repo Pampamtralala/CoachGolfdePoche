@@ -164,6 +164,7 @@
       if (tr.length < 9) return null;
       var r = { d: dateOk(p.d), trous: tr, pc: pc, o: decalage(p, pc, tr.length) }, cp = liste(p.coups);
       if (idValide(p.id, "p")) r.id = p.id;
+      if (Array.isArray(p.renseigne)) r.renseigne = idx.map(function (i) { return entier(p.renseigne[i], 0, 7, 0); });
       if (pc && entier(p.rep, 0, 7, null) != null) r.rep = p.rep;
       r.validation = idx.map(function (i) { return liste(p.validation)[i] === "confirme" ? "confirme" : "inconnu"; });
       var coups = idx.map(function (i) { return assainirCoups(cp[i]); });
@@ -185,6 +186,9 @@
       e.partie = { d: dateOk(pc.d), n: pc.n, i: entier(pc.i, 0, pc.n - 1, 0), trous: tr2, pc: pc2, o: decalage(pc, pc2, pc.n), validation: tr2.map(function (tr, i) { return liste(pc.validation)[i] === "confirme" ? "confirme" : "suggere"; }) };
       if (pc2 && entier(pc.rep, 0, 7, null) != null) e.partie.rep = pc.rep;
       if (idValide(pc.id, "p")) e.partie.id = pc.id;
+      if (Array.isArray(pc.renseigne)) e.partie.renseigne = tr2.map(function (x, i) { return entier(pc.renseigne[i], 0, 7, 0); });
+      /* Partie terminée rouverte pour être complétée : elle remplacera l'originale (même identifiant) à la fin. */
+      if (pc.edition === true && e.partie.id) e.partie.edition = true;
       var tous = []; for (var k = 0; k < pc.n; k++) tous.push(k);
       var cp2 = liste(pc.coups);
       e.partie.coups = tous.map(function (k) { return assainirCoups(cp2[k]); });
@@ -195,7 +199,7 @@
     }
     e.detail = o.detail === true;
     e.cartePhoto = o.cartePhoto !== false;
-    e.modeSaisie = o.modeSaisie === "detail" ? "detail" : "express";
+    e.modeSaisie = o.modeSaisie === "detail" || o.modeSaisie === "standard" ? o.modeSaisie : "express";
     /* Historique de l'index : dates et valeurs ; sans historique, le point de départ est l'index actuel. */
     e.indexHist = liste(o.indexHist).map(function (x) { return x && nombre(x.v) && x.v >= -10 && x.v <= 54 ? { d: dateOk(x.d), v: Math.round(x.v * 10) / 10 } : null; }).filter(function (x) { return x && x.d; });
     if (!e.indexHist.length && e.profil && !e.profil.sansIndex && nombre(e.profil.index)) {

@@ -117,21 +117,21 @@
 
   /* ---------- Carte de score d'une partie, dans le calque des fiches ---------- */
   function cartePartieHTML(i) {
-    var pt = etat.parties[i], s = statsTrous(pt.trous), sc = scorePartie(pt), o = pt.o || 0, n = pt.trous.length, R = recusPartie(pt);
+    var pt = etat.parties[i], s = statsTrous(pt.trous), sc = scorePartie(pt), o = pt.o || 0, n = pt.trous.length, R = recusPartie(pt), MJ = misesEnJeu(pt.trous, pt.renseigne);
     function pts(k) { var tr = pt.trous[k]; return R && trouNote(tr) ? pointsStableford(tr[4], tr[5], R.recus[k] || 0) : null; }
     function ptsTotal(a, b) { var x = 0; for (var k = a; k < b; k++) x += pts(k) || 0; return x; }
     function oui(v) { return v ? '<span class="main" aria-label="oui">' + TRAIT + '</span>' : '<span class="non" aria-label="non">×</span>'; }
     function total(lib, a, b) {
       var x = statsTrous(pt.trous.slice(a, b)), note = x.N === x.T;
       return '<tr class="total"><th scope="row">' + lib + '</th><td class="num rep">' + (note ? x.PAR : "–") + '</td><td class="num"><span class="main">' + (note ? x.S : "–") + '</span></td>' +
-        '<td class="num">' + x.J + '</td><td class="num">' + x.G + '</td><td class="num">' + x.P + '</td><td class="num">' + x.X + '</td>' + (R ? '<td class="num">' + ptsTotal(a, b) + '</td>' : '') + '</tr>';
+        '<td class="num">' + (function () { var m = misesEnJeu(pt.trous.slice(a, b), Array.isArray(pt.renseigne) ? pt.renseigne.slice(a, b) : null); return m.n ? m.jouables + '/' + m.n : '–'; })() + '</td><td class="num">' + x.G + '</td><td class="num">' + x.P + '</td><td class="num">' + x.X + '</td>' + (R ? '<td class="num">' + ptsTotal(a, b) + '</td>' : '') + '</tr>';
     }
     var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer la carte" tabindex="-1"></button>' +
       '<section class="feuille" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
       '<header><p class="surtitre">' + t(nomPartie(pt)) + '</p><h2 id="f-titre">' +
       (sc.complet ? t(sc.coups + " coups") + ' <span class="main">' + ecartLib(sc.ecart) + '</span>' : 'Carte de score') + '</h2>' +
       '<button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>' +
-      '<dl class="stats"><div><dt>Mises en jeu jouables</dt><dd>' + s.J + '/' + s.T + '</dd></div><div><dt>Greens en régulation</dt><dd>' + s.G + '</dd></div>' +
+      '<dl class="stats"><div><dt>Mises en jeu jouables</dt><dd>' + (MJ.n ? MJ.jouables + '/' + MJ.n : '–') + (MJ.inconnues ? '<small>' + t(MJ.inconnues + " non renseignée" + (MJ.inconnues > 1 ? "s" : "")) + '</small>' : '') + '</dd></div><div><dt>Greens en régulation</dt><dd>' + s.G + '</dd></div>' +
       '<div><dt>Putts</dt><dd>' + s.P + '</dd></div><div><dt>Coups de pénalité</dt><dd>' + s.X + '</dd></div></dl>' +
       '<div class="defile"><table class="carte-score trous"><thead><tr><th scope="col">Trou</th><th scope="col" class="num">Par</th><th scope="col" class="num">Score</th>' +
       '<th scope="col" class="num">Dép.</th><th scope="col" class="num">Green</th><th scope="col" class="num">Putts</th><th scope="col" class="num">Pén.</th>' + (R ? '<th scope="col" class="num">Pts</th>' : '') + '</tr></thead><tbody>';
@@ -139,7 +139,7 @@
       var note = trouNote(tr), d = tr[4] - tr[5];
       h += '<tr><th scope="row">' + (o + k + 1) + '</th><td class="num rep">' + (tr[5] || "–") + '</td>' +
         '<td class="num">' + (note ? '<span class="marque ' + (d < 0 ? "dessus" : d > 0 ? "dessous" : "") + '" aria-label="' + at(tr[4] + ", " + nomScore(tr[4], tr[5])) + '">' + tr[4] + '</span>' : '<span class="marque inconnu">–</span>') + '</td>' +
-        '<td class="num">' + oui(tr[0]) + (tr[0] ? (tr[7] ? '<small>' + t(CLUBS_DEPART[tr[7]].toLowerCase()) + '</small>' : '') : (tr[6] ? '<small>' + t(COTES[tr[6]].toLowerCase().replace("à ", "")) + '</small>' : '')) + '</td>' +
+        '<td class="num">' + (tr[5] < 4 ? '<span class="non" aria-label="par 3">–</span>' : !renseigneTrou(pt.renseigne, k, RENS_MEJ) ? '<span class="non" aria-label="non renseignée">?</span>' : oui(tr[0]) + (tr[0] ? (tr[7] ? '<small>' + t(CLUBS_DEPART[tr[7]].toLowerCase()) + '</small>' : '') : (tr[6] ? '<small>' + t(COTES[tr[6]].toLowerCase().replace("à ", "")) + '</small>' : ''))) + '</td>' +
         '<td class="num">' + oui(tr[1]) + '</td>' +
         '<td class="num">' + tr[2] + (tr[8] ? '<small>' + t((tr.length >= 11 ? PUTT1B : PUTT1)[tr[8]] || "") + '</small>' : '') + '</td><td class="num">' + (tr[3] || "") + '</td>' +
         (R ? '<td class="num">' + (pts(k) == null ? "–" : pts(k)) + (R.recus[k] > 0 ? '<small>' + t(R.recus[k] > 1 ? R.recus[k] + " reçus" : "1 reçu") + '</small>' : '') + '</td>' : '') + '</tr>';
@@ -152,6 +152,8 @@
     else h += '<p class="aide">Cette partie a été saisie avant la carte de score : elle n’a pas de score par trou.</p>';
     h += carteCompleteHTML(pt, i);
     if (sc.N && s.C) h += '<p>' + t(pluriel(s.C, "trou") + " à triple bogey ou pire.") + '</p>';
+    h += '<p style="margin-top:16px"><button class="btn large" type="button" data-a="pt-editer" data-v="' + i + '">Compléter ou corriger cette partie</button></p>' +
+      '<p class="aide">' + t("Ajoute ce que tu n'as pas noté sur le parcours (mises en jeu, clubs, coups) ou corrige un trou. Rien n'est écrasé tant que tu n'as pas terminé.") + '</p>';
     return h + '<p style="margin-top:16px"><button class="btn danger large" type="button" data-a="pt-suppr" data-v="' + i + '">Supprimer cette partie</button></p></section>';
   }
 
@@ -268,13 +270,16 @@
     p.trous.forEach(function (x, k) { if (x) memoriserPar(p, k); });
     var idx = []; p.trous.forEach(function (x, k) { if (x) idx.push(k); });
     var pt = { id: idValide(p.id, "p") ? p.id : nouvelId("p"), d: p.d, trous: saisis, pc: parcoursDe(p.pc) ? p.pc : null, o: p.o || 0 };
+    if (Array.isArray(p.renseigne)) pt.renseigne = idx.map(function (k) { return p.renseigne[k] || 0; });
     if (pt.pc && p.rep >= 0) pt.rep = p.rep;
     pt.validation = idx.map(function (k) { return (p.validation || [])[k] === "confirme" ? "confirme" : "suggere"; });
     /* Coups et partenaires suivent les trous gardés. */
     var coups = idx.map(function (k) { return (p.coups && p.coups[k]) || []; });
     if (coups.some(function (l) { return l.length; })) pt.coups = coups;
     if (p.joueurs && p.joueurs.length) pt.joueurs = p.joueurs.map(function (j) { return { nom: j.nom, s: idx.map(function (k) { return j.s[k] == null ? null : j.s[k]; }) }; });
-    etat.parties.push(pt);
+    /* Partie complétée après coup : elle remplace l'originale, à sa place ; sinon elle s'ajoute. */
+    var deja = p.edition ? etat.parties.map(function (x) { return x.id; }).indexOf(pt.id) : -1;
+    if (deja >= 0) etat.parties[deja] = pt; else etat.parties.push(pt);
     etat.partie = null;
     majIndicateursParties();
     sauver();
@@ -323,7 +328,7 @@
     }
     var n = pc.pars.length === 18 ? (d.jeu === "aller" || d.jeu === "retour" ? 9 : 18) : (d.jeu === "2x9" ? 18 : 9), tr = [];
     for (i = 0; i < n; i++) tr.push(null);
-    etat.partie = { id: nouvelId("p"), d: auj(), n: n, i: 0, trous: tr, pc: pc.id, o: d.jeu === "retour" && pc.pars.length === 18 ? 9 : 0,
+    etat.partie = { id: nouvelId("p"), d: auj(), n: n, i: 0, trous: tr, pc: pc.id, renseigne: tr.map(function () { return 0; }), o: d.jeu === "retour" && pc.pars.length === 18 ? 9 : 0,
       coups: tr.map(function () { return []; }),
       validation: tr.map(function () { return "suggere"; }),
       joueurs: (d.joueurs || []).map(function (nm) { return { nom: nm, s: tr.map(function () { return null; }) }; }) };
@@ -331,6 +336,27 @@
     ui.depart = null;
     sauver(); garderEcran(true);
     ui.partie = "saisie"; rendre(); rendrePartie(); focusPartie("#pt-suiv");
+  };
+  /* Rouvrir une partie terminée dans le pavé (P03) : une copie, qui remplace l'originale seulement à la fin. */
+  ACTIONS["pt-editer"] = function (el) {
+    var i = parseInt(el.getAttribute("data-v"), 10), pt = etat.parties[i]; if (!pt) return;
+    if (etat.partie) { message("Termine ou ferme d'abord la partie en cours."); return; }
+    if (!idValide(pt.id, "p")) { pt.id = nouvelId("p"); }
+    var L = pt.trous.length, n = L <= 9 ? 9 : 18, tr = [], cp = [], va = [], rs = [];
+    for (var k = 0; k < n; k++) {
+      tr.push(k < L ? trouOnze(pt.trous[k].slice()) : null);
+      cp.push(k < L && pt.coups && pt.coups[k] ? JSON.parse(JSON.stringify(pt.coups[k])) : []);
+      va.push(k < L && pt.validation && pt.validation[k] === "confirme" ? "confirme" : "suggere");
+      rs.push(k < L ? (Array.isArray(pt.renseigne) ? pt.renseigne[k] || 0 : 7) : 0);
+    }
+    etat.partie = { id: pt.id, d: pt.d, n: n, i: 0, trous: tr, pc: pt.pc, o: pt.o || 0, coups: cp, validation: va, renseigne: rs, edition: true,
+      joueurs: (pt.joueurs || []).map(function (j) { var s = []; for (var k = 0; k < n; k++) s.push(k < L ? j.s[k] : null); return { nom: j.nom, s: s }; }) };
+    if (pt.rep >= 0) etat.partie.rep = pt.rep;
+    sauver();
+    ui.feuille = null; rendreFeuille();
+    ui.partie = "saisie"; ui.pvCoup = null; ui.pvLong = false; ui.pvPanneau = null;
+    rendrePartie(); rendre(); focusPartie("#pt-suiv");
+    message("Partie rouverte : complète-la puis termine-la.");
   };
   ACTIONS["pt-reprendre"] = function () { if (!etat.partie) return; ui.partie = "saisie"; ui.pvCoup = null; ui.pvLong = false; garderEcran(true); rendrePartie(); focusPartie("#pt-suiv"); };
   ACTIONS["pt-fermer"] = function () {
@@ -344,6 +370,10 @@
     if (!(k >= 0 && k <= 10) || k === 4 || k === 9 || isNaN(val)) return;
     var suit = v[4] === scoreSuggere(v[5], v[1], v[2], v[3]);
     v[k] = k >= 6 && v[k] === val ? 0 : val;
+    /* Côté d'une mise en jeu ratée : la mise en jeu est renseignée (ratée) ; club de départ, premier putt : renseignés. */
+    if (k === 6) { if (v[6]) v[0] = 0; marquerRenseigne(RENS_MEJ, true); }
+    if (k === 7) marquerRenseigne(RENS_CLUB, !!v[7]);
+    if (k === 8) marquerRenseigne(RENS_PUTT1, !!v[8]);
     if (k === 2 && v.length >= 11 && v[2] < 3) v[9] &= ~EVIT_PUTT3;
     if (suit) v[4] = scoreSuggere(v[5], v[1], v[2], v[3]);
     v = assainirTrou(v); if (!v) return;
@@ -385,8 +415,11 @@
   };
   ACTIONS["pt-suiv"] = function () {
     var p = etat.partie; if (!p) return;
-    apprendreFinTrou();
-    poserTrou(trouCourant().slice());
+    if (!p.edition) apprendreFinTrou();   /* une partie complétée après coup : le joueur n'est plus au drapeau */
+    var vs = trouCourant().slice();
+    /* Club de départ repris du trou précédent et laissé tel quel en standard ou expert : accepté. */
+    if (niveauSaisie() >= 1 && vs[5] >= 4 && vs[7]) marquerRenseigne(RENS_CLUB, true);
+    poserTrou(vs);
     if (!p.validation) p.validation = p.trous.map(function () { return "suggere"; });
     p.validation[p.i] = "confirme";
     memoriserPar(p, p.i);

@@ -23,12 +23,14 @@ async function menuAction(page, action) {
 function lirePave(page) {
   return page.evaluate(() => {
     const q = s => document.querySelector('#calque-partie ' + s);
-    const moins = q('.pv-penal-moins'), dep = q('.pv-depart');
+    const moins = q('.pv-penal-moins'), mej = q('.pv-mej');
+    const mejJ = q('.pv-mej [data-v="j"][aria-pressed="true"]'), mejR = q('.pv-mej [data-v="r"][aria-pressed="true"]');
     const sel = k => { const b = q(`[data-a="pt-set"][data-k="${k}"][aria-pressed="true"]`); return b ? +b.dataset.v : 0; };
     return {
       par: parseInt(q('.pv-info b').textContent, 10), score: parseInt(q('.pv-score .main').textContent, 10),
       putts: parseInt(q('.pv-putts .main').textContent, 10), pen: moins ? parseInt(q('.pv-penal b').textContent.replace('+', ''), 10) : 0,
-      j: dep ? (dep.getAttribute('aria-pressed') === 'true' ? 1 : 0) : 1, k6: sel(6), k7: sel(7), k8: sel(8), detail: !!q('.pv-plus[open]'),
+      /* Mise en jeu : 1 jouable, 0 ratée, null non renseignée (P03) ; sans bloc (express, par 3) : 1. */
+      j: mej ? (mejJ ? 1 : mejR ? 0 : null) : 1, k6: sel(6), k7: sel(7), k8: sel(8), detail: !!q('.pv-plus[open]'),
       a6: !!q('[data-a="pt-set"][data-k="6"]'), a7: !!q('[data-a="pt-set"][data-k="7"]'), a8: !!q('[data-a="pt-set"][data-k="8"]')
     };
   });
@@ -42,9 +44,10 @@ async function saisirTrou(page, t, valider = true) {
   for (let n = 0; n < 6 && v.putts !== t[2]; n++) { await page.click(`${P}[data-a="pv-putts"][data-d="${v.putts < t[2] ? 1 : -1}"]`); v = await lirePave(page); }
   for (let n = 0; n < 4 && v.pen !== t[3]; n++) { await page.click(v.pen < t[3] ? P + '[data-a="pv-penal"][data-d="1"]' : P + '.pv-penal-moins'); v = await lirePave(page); }
   for (let n = 0; n < 15 && v.score !== t[4]; n++) { await page.click(`${P}[data-a="pt-score"][data-d="${v.score < t[4] ? 1 : -1}"]`); v = await lirePave(page); }
-  if (t[5] >= 4 && v.j !== t[0]) { await page.click(P + '[data-a="pv-depart"]'); v = await lirePave(page); }
+  if (t[5] >= 4 && v.j !== t[0] && await page.locator(P + '.pv-mej').count()) { await page.click(P + `[data-a="pv-mej"][data-v="${t[0] ? 'j' : 'r'}"]`); v = await lirePave(page); }
   const ecart = k => v['a' + k] && v['k' + k] !== (t[k] || 0);
-  if ((ecart(6) || ecart(7) || ecart(8)) && !v.detail) { await page.click(P + '.pv-plus summary'); v = await lirePave(page); }
+  /* Côté et club de départ sont avec la mise en jeu ; seul le premier putt est dans « Plus de détails ». */
+  if (ecart(8) && !v.detail) { await page.click(P + '.pv-plus summary'); v = await lirePave(page); }
   for (const k of [6, 7, 8]) if (ecart(k)) { await page.click(`${P}[data-a="pt-set"][data-k="${k}"][data-v="${t[k] || v['k' + k]}"]`); v = await lirePave(page); }
   if (valider) await page.click('#pt-suiv');
   return v;

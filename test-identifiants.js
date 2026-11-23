@@ -42,6 +42,11 @@ ok(c5 === 3 && e5.parties[0].id === e1.parties[0].id && e5.parties[1].id !== e5.
 /* Les deux parties identiques (indices 0 et 118 ont la même date ; score différent ou non) restent distinctes. */
 const jumelles = copie(legacy); jumelles.parties[118] = copie(jumelles.parties[0]); I.attribuerIds(jumelles);
 ok(jumelles.parties[0].id !== jumelles.parties[118].id, 'deux parties identiques : deux identifiants');
+/* Partie terminée rouverte pour être complétée : même identifiant que l'originale, gardé */
+const e6 = copie(e1); e6.partie = { id: e6.parties[5].id, edition: true, d: '2026-11-23', trous: [], coups: [] };
+ok(I.attribuerIds(e6) === 0 && e6.partie.id === e6.parties[5].id, 'partie en cours d\'édition : identifiant de l\'originale gardé');
+const e7 = copie(e1); e7.partie = { id: e7.parties[5].id, d: '2026-11-23', trous: [], coups: [] };
+ok(I.attribuerIds(e7) === 1 && e7.partie.id !== e7.parties[5].id, 'sans édition, un doublon est remplacé');
 /* Nouvel identifiant à la saisie */
 const a = I.nouvelId('p'), b = I.nouvelId('c');
 ok(I.idValide(a, 'p') && I.idValide(b, 'c') && !I.idValide(a, 'c') && !I.idValide('p_x', 'p'), 'identifiant de saisie');

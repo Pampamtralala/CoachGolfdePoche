@@ -121,12 +121,12 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   res.scoreMini = (await scoreAffiche()) + ' · moins désactivé : ' + await page.$eval(P + '[data-a="pt-score"][data-d="-1"]', b => b.disabled);
   verifie(parseInt(res.scoreMini, 10) === 3, 'score minimum = putts + 1 : ' + res.scoreMini);
   await page.click(P + '[data-a="pt-score"][data-d="1"]'); await page.click(P + '[data-a="pt-score"][data-d="1"]');
-  res.girDeduit = await page.textContent(P + '.pv-plus .aide');
+  res.girDeduit = await page.textContent(P + '.pv-gir');
   await vue('21-saisie-simple');
   /* Saisie détaillée */
   await page.click(P + '.pv-plus summary');
   res.detailJouable = await page.$$eval(P + '.pt-sous > span', l => l.map(x => x.textContent).join(' | '));
-  await page.click(P + '[data-a="pv-depart"]');
+  await page.click(P + '[data-a="pv-mej"][data-v="r"]');
   await pt(6, 3); await pt(7, 1); await pt(8, 3);
   res.detailRatee = await page.$$eval(P + '.pt-sous > span', l => l.map(x => x.textContent).join(' | '));
   await pt(7, 1); const sansClub = await page.$$eval(P + '[data-k="7"][aria-pressed="true"]', l => l.length); await pt(7, 1);
@@ -134,7 +134,7 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   res.partieDetail = await page.evaluate(() => { const p = document.querySelector('.partie'); return { large: p.scrollWidth, haut: p.scrollHeight, ecran: innerHeight }; });
   await haut('#calque-partie', '22-saisie-detail', 2);
   await page.click(P + '[data-a="pv-par"]'); await page.click(P + '[data-a="pv-par"]');
-  res.par3SansClub = await page.$$eval(P + '.pt-sous > span', l => l.map(x => x.textContent).join(' | ')) + ' · mise en jeu : ' + await page.locator(P + '.pv-depart').count();
+  res.par3SansClub = await page.$$eval(P + '.pt-sous > span', l => l.map(x => x.textContent).join(' | ')) + ' · mise en jeu : ' + await page.locator(P + '.pv-mej').count();
   /* Partie complète : le trou 1 d'abord, puis les autres. */
   const jeu = partieType(11).map(trouPave);
   const saisir = async (i) => { await saisirTrou(page, jeu[i]); };
@@ -163,7 +163,9 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   res.carteTitre = (await page.textContent('#feuille .surtitre')) + ' · ' + await page.textContent('#f-titre');
   res.carteTotaux = await page.$$eval('#feuille tr.total', l => l.map(r => Array.from(r.cells).map(c => c.textContent).join(' ')));
   /* Avec un index, la carte ajoute la colonne des points Stableford (depuis le 17/11). */
-  verifie(res.carteTotaux[2].startsWith(['Total', stJeu.PAR, stJeu.S, stJeu.J, stJeu.G, stJeu.P, stJeu.X].join(' ')) && /^\d+$/.test(res.carteTotaux[2].split(' ')[7] || '0'), 'totaux de la carte : ' + res.carteTotaux[2]);
+  /* Mises en jeu : jouables parmi les par 4 et 5 renseignés (P03), et non plus parmi tous les trous. */
+  const mjJeu = E.misesEnJeu(jeu);
+  verifie(res.carteTotaux[2].startsWith(['Total', stJeu.PAR, stJeu.S, mjJeu.jouables + '/' + mjJeu.n, stJeu.G, stJeu.P, stJeu.X].join(' ')) && /^\d+$/.test(res.carteTotaux[2].split(' ')[7] || '0'), 'totaux de la carte : ' + res.carteTotaux[2]);
   res.carteBalise = await page.$$eval('#feuille b', l => l.length);
   await haut('#feuille', '24-carte', 2);
   await page.keyboard.press('Escape');
@@ -338,7 +340,7 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   await vue('33-carte-360');
   await page.keyboard.press('Escape');
   await page.click('[data-a="dp-ouvrir"]'); await page.click('[data-a="pt-nouvelle"]');
-  await page.click(P + '[data-a="pv-depart"]');
+  await page.click(P + '[data-a="pv-mej"][data-v="r"]');
   res.partie360 = await page.evaluate(() => { const p = document.querySelector('.partie'); return { large: p.scrollWidth, haut: p.scrollHeight, ecran: innerHeight }; });
   res.debordements360 = await page.$$eval('#calque-partie button', l => l.filter(b => b.scrollWidth > b.clientWidth + 1).map(b => b.textContent).join(' | '));
   await haut('#calque-partie', '34-saisie-360', 2);

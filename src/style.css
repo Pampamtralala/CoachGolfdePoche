@@ -1494,3 +1494,13 @@ main.entree { animation: entreeVue .22s ease-out; }
 /* Accueil « Mon jeu » : les accès rapides tiennent dans la largeur du téléphone (le libellé passe à la ligne). */
 .acces-rapides { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .acces-rapides .btn { white-space: normal; min-width: 0; line-height: 1.2; }
+
+/* P03 : trois niveaux de saisie, mise en jeu en trois états (non renseignée, jouable, ratée). */
+.modes.trois { grid-template-columns: 1fr; }
+.pv-mode.trois { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pv-mej { display: grid; grid-template-columns: auto 1fr 1fr; align-items: center; gap: 8px; min-height: 58px; padding: 6px 8px 6px 16px; border-radius: var(--rayon); background: var(--papier-2); }
+.pv-mej span { font: 600 13px/1.2 var(--f-titre); letter-spacing: .08em; text-transform: uppercase; color: var(--encre-2); }
+.pv-mej button { min-height: 46px; border: 1px solid var(--filet-fort); border-radius: 999px; background: transparent; color: inherit; font: inherit; font-weight: 700; font-size: 16px; }
+.pv-mej button[data-v="j"][aria-pressed="true"] { background: var(--action); border-color: var(--action); color: var(--sur-action); }
+.pv-mej button[data-v="r"][aria-pressed="true"] { background: var(--alerte); border-color: var(--alerte); color: #fff; }
+.pv-gir { margin: 2px 4px 0; }

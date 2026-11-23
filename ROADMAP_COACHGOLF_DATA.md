@@ -111,8 +111,8 @@ Les numéros `Pxx` correspondent aux prompts autonomes ci-dessous ; **l'ordre re
 
 | Ordre | Prompt | Chantier | Priorité | Dépendances clés |
 |---:|---|---|---|---|
-| 1 | P01 | Modèle de données fiable | P0 | État réel du dépôt, sauvegardes |
-| 2 | P03 | Saisie progressive | P0 | P01, prompt sur dispersion déjà envoyé |
+| 1 | P01 | **Terminé** — statuts de distance, identifiants stables, croisements | PR #3, #4, #6 fusionnées | npm test, test-startup : verts | Les écrans qui s'en servent viennent avec P05 / P06 / P07 |
+| 2 | P03 | **En revue** — Express / Standard / Expert, mise en jeu en trois états, partie complétée après coup | `data/p03-trois-niveaux` · PR #7 (brouillon) | npm test, test-startup, essai17 (P03) et essais 1 à 16 : verts | Dispersion gauche/droite et distance facultative déjà livrées le 23/11 |
 | 3 | P05 | Tableau de bord statistique | P0 | P01–P03 |
 | 4 | P06 | Analyse des clubs et des directions | P1 | P01, P03 |
 | 5 | P07 | Analyse des parcours et des trous | P1 | P01, P05 |
