@@ -53,18 +53,18 @@ function partie(g, pars) {
     r.barre = await page.$$eval('#barre .barre-item', l => l.map(b => b.textContent + (b.getAttribute('aria-current') ? ' ●' : '')).join(' | '));
     verifie(/^Accueil ● \| Jouer \| Progresser \| Statistiques \| Mon sac$/.test(r.barre), nom + ' barre : ' + r.barre);
     r.statut = await page.textContent('#statut-tete');
-    r.index = await page.textContent('.index-carte .ic-val');
-    r.evolution = await page.textContent('.index-carte .ic-evol');
-    verifie(/▼ 1,4 depuis le \d+ \S+/.test(r.evolution), nom + ' évolution de l\'index : ' + r.evolution);
-    r.objectif = await page.textContent('.ic-obj');
-    r.cartes = await page.$$eval('#vue .carte-tb .surtitre', l => l.map(x => x.textContent));
-    verifie(r.cartes.some(x => /Prochaine séance|rattraper/.test(x)) && r.cartes.some(x => /Priorité technique/.test(x)) && r.cartes.some(x => /Dernière partie/.test(x)), nom + ' cartes du tableau de bord : ' + r.cartes.join(' | '));
+    /* Accueil « Mon jeu » (refonte du 19/11) : accès rapides, dernière partie, tendances, qualité du carnet. */
+    r.accueil = (await page.textContent('.mon-jeu h1')).replace(/\s+/g, ' ').trim() + ' · ' + await page.$$eval('.mon-jeu .acces-rapides button', l => l.map(b => b.textContent.trim()).join(' | '));
+    r.cartes = await page.$$eval('#vue h2', l => l.map(x => x.textContent));
+    verifie(/^Mon jeu/.test(r.accueil) && /Nouvelle partie|Reprendre/.test(r.accueil) && r.cartes.includes('Dernière partie') && r.cartes.includes('Mes tendances') && r.cartes.includes('Qualité de mon carnet'), nom + ' accueil Mon jeu : ' + r.accueil + ' · ' + r.cartes.join(' | '));
     await vue('01-accueil');
-    await page.evaluate(() => document.querySelector('.index-carte').scrollIntoView({ block: 'start' })); await page.waitForTimeout(80);
+    await page.evaluate(() => document.querySelector('#qualite-donnees').scrollIntoView({ block: 'start' })); await page.waitForTimeout(80);
     await vue('02-tableau-de-bord');
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await page.waitForTimeout(80);
     await vue('02b-tableau-bas');
-    r.largeurAccueil = await largeur(); verifie(r.largeurAccueil <= w, nom + ' accueil sans débordement');
+    r.largeurAccueil = await largeur();
+    r.deborde = await page.evaluate(w => Array.from(document.querySelectorAll('#vue *')).filter(x => x.getBoundingClientRect().right > w + 1).slice(0, 4).map(x => x.tagName + '.' + x.className + ' ' + Math.round(x.getBoundingClientRect().right)).join(' | '), w);
+    verifie(r.largeurAccueil <= w, nom + ' accueil sans débordement : ' + r.largeurAccueil + ' · ' + r.deborde);
     /* Dernière partie : la carte s'ouvre */
     await page.click('.carte-tb.derniere'); await page.waitForSelector('#feuille .carte-score');
     await page.keyboard.press('Escape'); await page.waitForSelector('#feuille', { state: 'detached' });
@@ -130,7 +130,7 @@ function partie(g, pars) {
     r.bandeau = await page.textContent('.bandeau-partie');
     await allerVue(page, 'accueil');
     r.accesReprendre = await page.textContent('.acces-rapides .btn.principal');
-    verifie(/Reprendre au trou 2/.test(r.accesReprendre), nom + ' accès rapide reprend la partie : ' + r.accesReprendre);
+    verifie(/Reprendre ma partie/.test(r.accesReprendre), nom + ' accès rapide reprend la partie : ' + r.accesReprendre);   /* libellé de l'accueil « Mon jeu » */
 
     /* ---- Profil : objectif et données ---- */
     await allerVue(page, 'profil');

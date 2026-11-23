@@ -98,7 +98,7 @@ function partieType(graine, pars) {
     for (const n of ['Léa', 'Marc']) { await page.fill('#dp-joueur', n); await page.click('[data-a="dp-joueur-ajout"]'); }
     r.partenaires = await page.$$eval('.dp-joueurs .puce', l => l.map(x => x.textContent.replace('×', '').trim()).join(', '));
     await page.evaluate(() => document.querySelector('.dp-joueurs').scrollIntoView({ block: 'center' })); await vue('04-depart-partenaires');
-    await page.click('[data-a="pt-nouvelle"]'); await page.waitForSelector('#calque-partie .pave');
+    await page.click('[data-a="pt-nouvelle"]'); await page.waitForSelector('#calque-partie .pave'); await (require('./nav-essai').modeDetail)(page);
     await page.waitForTimeout(100);
     r.eveilPris = await page.evaluate(() => window.__eveil.pris);
     verifie(r.eveilPris >= 1, nom + ' écran allumé demandé au départ');

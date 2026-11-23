@@ -103,6 +103,8 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   await vue('20-depart');
   await page.click('[data-a="pt-nouvelle"]');
   await page.waitForSelector(P + '.partie');
+  /* Depuis le 19/11, la saisie démarre en score express : ce scénario teste le mode détaillé. */
+  await page.click(P + '[data-a="mode-saisie"][data-v="detail"]');
   res.trou1 = (await page.textContent('#pt-titre')) + ' · par ' + (await page.textContent(P + '.pv-info b')) + ' · ' + await scoreAffiche();
   res.surtitre = await page.textContent(P + '.pv-cumul');
   /* Le pavé : par, putts et pénalités déplacent le score d'autant ; le moins s'arrête au minimum possible. */
@@ -160,7 +162,8 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   await page.waitForSelector('#feuille .carte-score.trous');
   res.carteTitre = (await page.textContent('#feuille .surtitre')) + ' · ' + await page.textContent('#f-titre');
   res.carteTotaux = await page.$$eval('#feuille tr.total', l => l.map(r => Array.from(r.cells).map(c => c.textContent).join(' ')));
-  verifie(res.carteTotaux[2] === ['Total', stJeu.PAR, stJeu.S, stJeu.J, stJeu.G, stJeu.P, stJeu.X].join(' '), 'totaux de la carte : ' + res.carteTotaux[2]);
+  /* Avec un index, la carte ajoute la colonne des points Stableford (depuis le 17/11). */
+  verifie(res.carteTotaux[2].startsWith(['Total', stJeu.PAR, stJeu.S, stJeu.J, stJeu.G, stJeu.P, stJeu.X].join(' ')) && /^\d+$/.test(res.carteTotaux[2].split(' ')[7] || '0'), 'totaux de la carte : ' + res.carteTotaux[2]);
   res.carteBalise = await page.$$eval('#feuille b', l => l.length);
   await haut('#feuille', '24-carte', 2);
   await page.keyboard.press('Escape');
@@ -339,6 +342,8 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   res.partie360 = await page.evaluate(() => { const p = document.querySelector('.partie'); return { large: p.scrollWidth, haut: p.scrollHeight, ecran: innerHeight }; });
   res.debordements360 = await page.$$eval('#calque-partie button', l => l.filter(b => b.scrollWidth > b.clientWidth + 1).map(b => b.textContent).join(' | '));
   await haut('#calque-partie', '34-saisie-360', 2);
+  /* Depuis le 19/11, la saisie démarre en mode express : « Plus de détails » n'existe qu'en mode détail. */
+  if (!(await page.locator(P + '[data-a="pt-detail"]').count())) await page.click(P + '[data-a="mode-saisie"][data-v="detail"]');
   await page.click(P + '[data-a="pt-detail"]');
   res.partie360Simple = await page.evaluate(() => { const p = document.querySelector('.partie'); return { haut: p.scrollHeight, ecran: innerHeight }; });
   await vue('35-saisie-simple-360');
