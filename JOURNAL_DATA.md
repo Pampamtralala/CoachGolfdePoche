@@ -28,3 +28,26 @@ BLOCAGES / RISQUES : aucun blocage. Fusion sur app non faite (ALLOW_PRODUCTION_M
 PROCHAINE TÂCHE AUTORISÉE : P01 sous-livrable 2/3 — identifiants stables des parties, trous et coups,
   avec migration non destructive et test sur 100+ parties.
 ```
+
+## 23 novembre 2026 (soir)
+
+```text
+DATE : 23/11/2026
+CRÉDITS ALLOUÉS / CONSOMMÉS / RESTANTS : non mesurables (aucun compteur fourni). Une tâche, puis arrêt.
+TÂCHE ACTUELLE : P01, sous-livrable 2/3 — identifiants stables des parties, coups et séries
+FONCTIONNALITÉS LIVRÉES :
+  - PR #3 fusionnée sur app sur accord explicite du propriétaire (statuts de distance, reprise de la PR #2,
+    panneau d'un coup qui reste sur l'ellipse).
+  - Branche data/p01-identifiants-stables : src/engine-donnees.js (attribuerIds, nouvelId, idValide).
+    Anciennes données : identifiant calculé à partir du contenu (déterministe, identique à chaque chargement),
+    puis enregistré ; identifiant existant jamais modifié ; doublons et formes invalides remplacés.
+    Saisie : identifiant aléatoire horodaté pour chaque nouvelle partie, coup et série ; un coup modifié
+    garde le sien. Observations : identifiants partie / trou / coup, insensibles à la position.
+TESTS EXÉCUTÉS ET RÉSULTATS : npm test (dont test-identifiants : 120 parties, 13 vérifications) : 0 échec ;
+  test-startup : 41 parties + identifiants stables après rechargement et après restauration JSON : OK ;
+  essais 2, 3, 10, 11, 15, 16 : OK. essai4 échoue aussi sur app avant ce changement (écran de saisie
+  refondu le 19/11) : test à mettre à jour, sans lien avec cette PR.
+BRANCHE / COMMIT / LIEN PR : data/p01-identifiants-stables · PR #4 (brouillon)
+BLOCAGES / RISQUES : la taille des sauvegardes augmente un peu (un identifiant par coup).
+PROCHAINE TÂCHE AUTORISÉE : P01 3/3 — croisement des observations par club, trou, parcours et période.
+```

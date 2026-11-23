@@ -91,6 +91,12 @@ async function main() {
       }, {timeout: 8000});
       etat = await lire();
       exiger(etat.parties.length === 41, "le stockage IndexedDB n'a pas restauré les 41 anciennes parties.");
+      /* Identifiants stables : attribués aux anciennes parties, inchangés après rechargement. */
+      const idsAvant = etat.parties.map(p => p.id);
+      exiger(idsAvant.every(x => /^p_[0-9a-z]{4,24}$/.test(x)) && new Set(idsAvant).size === 41, "identifiants des anciennes parties absents ou en double.");
+      exiger(/^p_/.test(etat.partie.id) && etat.partie.coups[0].every(c => /^c_/.test(c.id)), "partie en cours ou coups sans identifiant.");
+      await page.reload({waitUntil: "domcontentloaded"}); await page.waitForTimeout(600);
+      exiger(JSON.stringify((await lire()).parties.map(p => p.id)) === JSON.stringify(idsAvant), "les identifiants ont changé au rechargement.");
       // Fermeture du pavé puis restauration d'un export JSON incluant une carte.
       if (await page.locator('#calque-partie [data-a="pt-fermer"]').count())
         await page.locator('#calque-partie [data-a="pt-fermer"]').click();
@@ -104,6 +110,7 @@ async function main() {
       await page.locator('#calque-dialogue [data-a="ok-importer-fichier"]').click();
       etat = await lire();
       exiger(etat.parties.length === 41, "la restauration JSON a tronqué l'historique.");
+      exiger(etat.parties.every(p => /^p_/.test(p.id)), "parties restaurées sans identifiant.");
       const geo = await page.evaluate(() => JSON.parse(localStorage.getItem("coachgolf.geo.v1") || "null"));
       exiger(geo && geo.pcs && geo.pcs.p1 && geo.pcs.p1.nom === "Parcours GPS de test",
         "la carte GPS du fichier n'a pas été restaurée.");
