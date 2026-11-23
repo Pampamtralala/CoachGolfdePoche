@@ -4669,7 +4669,10 @@ function mesuresParcours(parties) {
       (l || []).forEach(function (c) {
         if (!c || !estNombre(c.d) || !CLUB[c.c]) return;
         /* Recentrage, sécurité, approche, bunker, arbres : la distance ne dit rien de la portée du club. */
-        if (!coupPlein(c) || c.dm) return;   /* distance moyenne notée faute de mieux : pas une mesure */
+        if (!coupPlein(c) || c.dm) return;   /* ancienne estimation enregistrée le 23/11 : pas une mesure */
+        /* Une distance GPS entre deux balles est une distance totale, pas un carry. */
+        /* On la conserve dans les observations sans l’utiliser comme distance de vol du sac. */
+        if (c.distanceType === "total") return;
         if (!c.a || c.a === "plein") (clubs[c.c] = clubs[c.c] || []).push(c.d);
         else if (CLUB[c.c].fam === "w") { var w = wedges[c.c] = wedges[c.c] || {}; (w[c.a] = w[c.a] || []).push(c.d); }
       });
@@ -4717,6 +4720,31 @@ function dispersion(mesures) {
   return { n: n, moy: Math.round(moy), sigma: Math.round(Math.sqrt(v)), p10: Math.round(quantile(tri, 0.1)), p90: Math.round(quantile(tri, 0.9)), min: tri[0], max: tri[n - 1] };
 }
 
+/* ---------- Statut d'une distance de coup ----------
+   Quatre statuts, jamais mélangés :
+   - "gps"      : mesurée entre deux positions du téléphone (approximative, distance totale roulée comprise) ;
+   - "declaree" : saisie par le joueur (ou importée) ;
+   - "estimee"  : remplacée par la moyenne historique du club, faute de distance ; jamais une mesure ;
+   - "inconnue" : aucune distance et aucune moyenne fiable.
+   Une ancienne distance sans provenance enregistrée compte comme déclarée, ou GPS si les deux positions existent. */
+function statutDistance(c) {
+  if (!c) return "inconnue";
+  if (c.dm) return "estimee";
+  if (!estNombre(c.d)) return "inconnue";
+  if (c.source === "gps" || c.distanceType === "total") return "gps";
+  if (c.source === "manuel" || c.source === "import") return "declaree";
+  return Array.isArray(c.g) && c.g[2] != null ? "gps" : "declaree";
+}
+/* Distance utilisable dans un calcul ou un affichage. moyennes : { club: distance moyenne } (mesures seulement).
+   L'estimation n'est proposée que pour un plein coup ; elle n'est jamais enregistrée ni réinjectée dans une moyenne. */
+function distanceCoup(c, moyennes) {
+  var st = statutDistance(c);
+  if (st !== "inconnue") return { v: c.d, statut: st };
+  var m = moyennes && c && moyennes[c.c];
+  if (estNombre(m) && m > 0 && (!c.a || c.a === "plein") && coupPlein(c)) return { v: Math.round(m), statut: "estimee" };
+  return { v: null, statut: "inconnue" };
+}
+
 /* Modèle unifié, non destructif, des observations golfiques.
    Les données historiques restent intactes ; les champs inconnus ne sont pas inventés. */
 function observationsGolf(parties, carnet) {
@@ -4729,7 +4757,9 @@ function observationsGolf(parties, carnet) {
           id: "p" + pi + "-t" + trou + "-c" + ci, type: "coup",
           origine: c.source || "inconnu", date: c.mesureLe || partie.d || null,
           partie: pi, trou: (partie.o || 0) + trou + 1, club: c.c,
-          distance: typeof c.d === "number" && !c.dm ? c.d : null,   /* moyenne notée faute de distance : inconnue */
+          distance: typeof c.d === "number" && !c.dm ? c.d : null,   /* une estimation n'est pas une observation */
+          distanceStatut: statutDistance(c) === "estimee" ? "inconnue" : statutDistance(c),
+          direction: estNombre(c.l) ? c.l : null,   /* mètres, négatif à gauche ; null : non renseignée */
           distanceType: c.distanceType || "inconnu", positions: c.g || null,
           lie: c.p || null, typeCoup: c.t || null,
           confiance: c.source === "gps" ? "mesuree" : c.source === "manuel" ? "declaree" : "inconnue"
@@ -4741,16 +4771,19 @@ function observationsGolf(parties, carnet) {
     (serie.v || []).forEach(function (d, j) {
       if (typeof d !== "number") return;
       out.push({ id: "s" + i + "-b" + j, type: "practice", origine: "manuel",
-        date: serie.d || null, club: serie.c, distance: d, distanceType: "carry",
+        date: serie.d || null, club: serie.c, distance: d, distanceType: "carry", distanceStatut: "declaree",
         deviation: serie.l && serie.l[j] != null ? serie.l[j] : null, confiance: "declaree" });
     });
   });
   return out;
 }
 function qualiteObservations(observations) {
-  var a = observations || [], q = { total: a.length, distance: 0, gps: 0, dates: 0, origineConnue: 0, typeConnu: 0 };
+  var a = observations || [], q = { total: a.length, distance: 0, gps: 0, dates: 0, origineConnue: 0, typeConnu: 0, direction: 0,
+    statuts: { gps: 0, declaree: 0, inconnue: 0 } };
   a.forEach(function (o) {
     if (o.distance != null) q.distance++;
+    if (o.distanceStatut && q.statuts[o.distanceStatut] != null) q.statuts[o.distanceStatut]++;
+    if (o.direction != null || o.deviation != null) q.direction++;
     if (o.origine === "gps") q.gps++;
     if (o.date) q.dates++;
     if (o.origine !== "inconnu") q.origineConnue++;
@@ -5912,7 +5945,7 @@ function lireHcp(texte, n) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-23T14:43:34.567Z";
+  var VERSION_APPLI = "2026-11-23T15:04:33.061Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -6866,6 +6899,34 @@ function lireHcp(texte, n) {
     var premier = c.querySelector("textarea:not([readonly]), .dialogue .btn"); if (premier) premier.focus();
     synchroHisto();
   }
+  /* Les cartes GPS sont conservées à part : l'export JSON doit les inclure explicitement. */
+  function archiveComplete() {
+    var archive = JSON.parse(JSON.stringify(etat));
+    archive.cartesGeo = cartesStock();
+    return archive;
+  }
+  function lireCartesArchive(brut, restaure) {
+    if (!brut || !Object.prototype.hasOwnProperty.call(brut, "cartesGeo")) return null; /* ancien export : conserver les cartes locales */
+    var r = brut.cartesGeo;
+    if (!r || typeof r !== "object" || Array.isArray(r)) throw new Error("Cartes GPS invalides");
+    var ids = {};
+    (restaure.parcours || []).forEach(function (pc) { ids[pc.id] = true; });
+    var cartes = {};
+    Object.keys(r).slice(0, 20).forEach(function (id) {
+      if (!ids[id] || !/^p\d{1,6}$/.test(id)) return;
+      var c = assainirCarte(r[id]);
+      if (c) cartes[id] = c;
+    });
+    return cartes;
+  }
+  function restaurerCartesArchive(cartes) {
+    if (cartes === null) return true;
+    var avant = cartesStock();
+    GEO.cartes = cartes;
+    if (ecrireCartes()) return true;
+    GEO.cartes = avant;
+    return false;
+  }
   function codeSauvegarde() { return btoa(unescape(encodeURIComponent(JSON.stringify(etat)))); }
 
   /* ============================================================
@@ -7011,19 +7072,23 @@ function lireHcp(texte, n) {
       rendreDialogue(); rendreFeuille(); rendrePartie(); rendre(); window.scrollTo(0, 0);
     },
     "exporter-fichier": function () {
-      var blob = new Blob([JSON.stringify(etat, null, 2)], { type: "application/json" });
+      var blob = new Blob([JSON.stringify(archiveComplete(), null, 2)], { type: "application/json" });
       var url = URL.createObjectURL(blob), lien = document.createElement("a");
       lien.href = url; lien.download = "coachgolf-" + auj().slice(0, 10) + ".json";
       document.body.appendChild(lien); lien.click(); lien.remove();
       setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
-      message("Sauvegarde téléchargée.");
+      message("Export JSON préparé, avec les cartes GPS.");
     },
     "ok-importer-fichier": function () {
       if (!ui.importPrete) return;
-      etat = ui.importPrete; ui.importPrete = null; ui.dialogue = null; ui.feuille = null;
-      verifierPlan(); sauver(); rendreDialogue(); rendreFeuille();
+      var cartes = ui.importCartesPretes;
+      etat = ui.importPrete; ui.importPrete = null; ui.importCartesPretes = null; ui.dialogue = null; ui.feuille = null;
+      verifierPlan(); sauver();
+      var cartesOK = restaurerCartesArchive(cartes);
+      rendreDialogue(); rendreFeuille();
       ui.vue = "auto"; ui.partie = etat.partie ? "saisie" : null;
-      rendre(); rendrePartie(); message("Données restaurées depuis le fichier.");
+      rendre(); rendrePartie();
+      message(cartesOK ? "Données et cartes GPS du fichier restaurées." : "Données restaurées, mais les cartes GPS n’ont pas pu être enregistrées sur cet appareil.");
     },
     exporter: function () {
       dialogue({ titre: "Copier une sauvegarde", corps: '<p>Copie ce texte et garde-le dans une note ou un message. Il permet de restaurer tes données ici ou sur un autre appareil.</p><div class="champ"><label for="d-code">Ta sauvegarde</label><textarea id="d-code" readonly>' + codeSauvegarde() + '</textarea></div>',
@@ -8859,7 +8924,13 @@ function lireHcp(texte, n) {
   }
   function nomLie(id) { var x = LIES.filter(function (l) { return l.id === id; })[0]; return x ? x.nom : ""; }
   function nomType(id) { var x = TYPES_COUP.filter(function (l) { return l.id === id; })[0]; return x && id ? x.nom : ""; }
-  function libCoup(c, n) { return n + " · " + (c.t ? nomType(c.t).toLowerCase() + " · " : "") + (c.p && c.p !== "dep" ? nomLie(c.p).toLowerCase() + " · " : "") + nomClub(c.c) + (c.a && c.a !== "plein" ? " " + AMPLITUDES.filter(function (x) { return x.id === c.a; })[0].nom : "") + (c.d ? (c.dm ? " · ≈ " : " · ") + c.d + " m" : "") + (c.l != null ? " · " + libLat(c.l).toLowerCase() : ""); }
+  /* Distance d'un coup avec son statut : « 150 m », « 182 m GPS », « ≈ 150 m (moyenne) », rien si inconnue. */
+  function moyennesSac() { var m = mesuresTout(), r = {}; Object.keys(m).forEach(function (id) { var v = moyenneClub(m, id); if (v) r[id] = v; }); return r; }
+  function libDistanceCoup(c) {
+    var D = distanceCoup(c, moyennesSac());
+    return D.statut === "declaree" ? " · " + D.v + " m" : D.statut === "gps" ? " · " + D.v + " m GPS" : D.statut === "estimee" ? " · ≈ " + D.v + " m (moyenne)" : "";
+  }
+  function libCoup(c, n) { return n + " · " + (c.t ? nomType(c.t).toLowerCase() + " · " : "") + (c.p && c.p !== "dep" ? nomLie(c.p).toLowerCase() + " · " : "") + nomClub(c.c) + (c.a && c.a !== "plein" ? " " + AMPLITUDES.filter(function (x) { return x.id === c.a; })[0].nom : "") + libDistanceCoup(c) + (c.l != null ? " · " + libLat(c.l).toLowerCase() : ""); }
   /* Résumé du trou en cours, pour le bandeau : « Trou 7 · par 4 · 5 + 2 putts ». */
   function resumeTrou(p) {
     var x = p.trous[p.i], par = x ? x[5] : trouCourant()[5];
@@ -8987,11 +9058,11 @@ function lireHcp(texte, n) {
       }).join("") + '</div>';
     }
     var moyC = club && (C.a || "plein") === "plein" ? moyenneClub(mesuresTout(), C.c) : null;
-    h += '<div class="pv-dist"><label for="pv-dist">Distance de vol, en mètres</label><div class="pv-dist-reglage">' +
+    h += '<div class="pv-dist"><label for="pv-dist">Distance mesurée, en mètres (facultatif)</label><div class="pv-dist-reglage">' +
       [-5, -1].map(function (d) { return '<button class="pv-pm petit" type="button" data-a="pv-dist" data-d="' + d + '" aria-label="' + at(Math.abs(d) + " mètre" + (d < -1 ? "s" : "") + " de moins") + '">' + d + '</button>'; }).join("") +
       '<input id="pv-dist" type="text" inputmode="numeric" maxlength="3" autocomplete="off" data-i="pv-dist" value="' + (C.d || "") + '" placeholder="' + (moyC ? "moy. " + moyC : "m") + '" aria-describedby="pv-dist-aide">' +
       [1, 5].map(function (d) { return '<button class="pv-pm petit" type="button" data-a="pv-dist" data-d="' + d + '" aria-label="' + at(d + " mètre" + (d > 1 ? "s" : "") + " de plus") + '">+' + d + '</button>'; }).join("") + '</div></div>';
-    h += '<p class="aide" id="pv-dist-aide">' + t(moyC ? "Laisse vide si tu ne la connais pas : l'appli note ta moyenne au " + nomClub(C.c).replace(/^Fer /, "fer ") + " (" + moyC + " m), sans la compter dans les distances du sac." : "Facultatif.") + '</p>';
+    h += '<p class="aide" id="pv-dist-aide">' + t(moyC ? "Facultatif. Laisse vide si tu ne la connais pas : la distance reste inconnue, et ta moyenne au " + nomClub(C.c).replace(/^Fer /, "fer ") + " (" + moyC + " m) sert seulement d'estimation dans les calculs, sans jamais compter comme une mesure." : "Facultatif : laisse vide si tu ne la connais pas.") + '</p>';
     if (club) {
       var el = ellipseDe(C.c);
       h += poseurHTML({ ell: el, ctx: "coup", l: C.l, dd: C.d != null && el ? C.d - el.d : 0, titre: "À gauche ou à droite ?" });
@@ -9079,8 +9150,10 @@ function lireHcp(texte, n) {
     var prec = i < 0 ? l[l.length - 1] : l[i - 1];
     /* Le départ d'un coup reprend l'arrivée du coup précédent, quand elle a été marquée. */
     var g = c && c.g ? c.g.slice() : (prec && prec.g && prec.g[2] != null ? [prec.g[2], prec.g[3], null, null] : null);
-    ui.pvCoup = c ? { i: i, c: c.c, d: c.dm ? null : c.d, a: c.a, g: g, l: c.l != null ? c.l : null, p: c.p || null, t: c.t || "" }
-      : { i: -1, c: null, d: null, a: "plein", g: g, l: null, p: l.length ? lieDepuisCarte(g) : "dep", t: "" };
+    ui.pvCoup = c ? { i: i, c: c.c, d: c.dm ? null : c.d, a: c.a, g: g, l: c.l != null ? c.l : null, p: c.p || null, t: c.t || "",
+        source: c.source || "inconnu", distanceType: c.distanceType || "inconnu", mesureLe: c.mesureLe || null }
+      : { i: -1, c: null, d: null, a: "plein", g: g, l: null, p: l.length ? lieDepuisCarte(g) : "dep", t: "",
+        source: "inconnu", distanceType: "inconnu", mesureLe: null };
     ui.pvRetour = i >= 0 ? '[data-a="pv-coup"][data-v="' + i + '"]' : '[data-a="pv-coup"][data-v="-1"]';
     rendrePartie();
     focusPartie(ui.pvCoup.c ? '[data-a="pv-club"][aria-pressed="true"]' : '[data-a="pv-club"]');
@@ -9105,7 +9178,7 @@ function lireHcp(texte, n) {
     var C = ui.pvCoup, id = el.getAttribute("data-id"); if (!C || !CLUB[id]) return;
     var avant = C.c; C.c = id;
     if (CLUB[id].fam !== "w") C.a = "plein";
-    /* Pas de distance pré-remplie : vide, la moyenne du club sera notée à l'enregistrement. */
+    /* Pas de distance pré-remplie : la moyenne du sac est un repère affiché en grisé, jamais une mesure. */
     if (avant !== id) { rendrePartie(); focusPartie('[data-a="pv-club"][data-id="' + id + '"]'); }
   };
   ACTIONS["pv-amplitude"] = function (el) {
@@ -9116,10 +9189,13 @@ function lireHcp(texte, n) {
   SAISIES["pv-dist"] = function (el) {
     var C = ui.pvCoup; if (!C) return;
     var v = el.value.trim(); C.d = /^\d{1,3}$/.test(v) ? parseInt(v, 10) : null;
+    C.source = C.d != null ? "manuel" : "inconnu";
+    C.distanceType = C.d != null ? "carry" : "inconnu"; C.mesureLe = C.d != null ? Date.now() : null;
   };
   ACTIONS["pv-dist"] = function (el) {
     var C = ui.pvCoup; if (!C) return;
     C.d = Math.max(1, Math.min(400, (C.d || moyenneClub(mesuresTout(), C.c) || 100) + parseInt(el.getAttribute("data-d"), 10)));
+    C.source = "manuel"; C.distanceType = "carry"; C.mesureLe = Date.now();
     var i = document.getElementById("pv-dist"); if (i) i.value = C.d;
   };
   ACTIONS["pv-gps"] = function (el) {
@@ -9133,7 +9209,7 @@ function lireHcp(texte, n) {
       else {
         g[2] = pos[0]; g[3] = pos[1];
         var d = distanceGPS([g[0], g[1]], [g[2], g[3]]);
-        if (d >= 1 && d <= 400) C.d = d;
+        if (d >= 1 && d <= 400) { C.d = d; C.source = "gps"; C.distanceType = "total"; C.mesureLe = Date.now(); }
         C.gpsMsg = "Distance mesurée : " + d + " m, à " + prec + " m près.";
       }
       C.g = g; rendrePartie(); focusPartie(k === "a" ? '[data-a="pv-gps"][data-v="b"]' : "#pv-coup-ok");
@@ -9145,9 +9221,9 @@ function lireHcp(texte, n) {
     if (!C.c) { if (err) { err.textContent = "Choisis le club joué."; err.hidden = false; } focusPartie('[data-a="pv-club"]'); return; }
     if (C.d != null && !(C.d >= 1 && C.d <= 400)) { if (err) { err.textContent = "Distance entre 1 et 400 m, ou laisse vide."; err.hidden = false; } focusPartie("#pv-dist"); return; }
     var coup = { c: C.c, d: C.d || null, a: C.a || "plein", g: C.g && C.g[0] != null && C.g[2] != null ? C.g.slice() : null,
-      source: C.g && C.g[2] != null ? "gps" : "manuel", distanceType: C.g && C.g[2] != null ? "total" : "carry", mesureLe: Date.now() };
-    /* Sans distance : la moyenne du club (plein coup), marquée comme telle pour ne pas fausser le sac ni les observations. */
-    if (!coup.d && coup.a === "plein") { var moy = moyenneClub(mesuresTout(), C.c); if (moy) { coup.d = moy; coup.dm = 1; coup.distanceType = "inconnu"; } }
+      source: C.d != null ? (C.source || "inconnu") : "inconnu",
+      distanceType: C.d != null ? (C.distanceType || "inconnu") : "inconnu",
+      mesureLe: C.d != null ? (C.mesureLe || null) : null };
     if (C.l != null) coup.l = C.l;
     if (C.p) coup.p = C.p;
     if (C.t) coup.t = C.t;
@@ -9168,8 +9244,9 @@ function lireHcp(texte, n) {
     ui.pvCoup = null; ui.pvRetour = null;
     sauver(); rendrePartie(); focusPartie('[data-a="pv-coup"][data-v="-1"]');
     if (ajoute) message(nomClub(coup.c) + " ajouté à ton sac.");
-    else if (coup.dm) message(nomClub(coup.c) + " noté à ta distance moyenne : " + coup.d + " m.");
-    else if (coup.d && coupPlein(coup)) message(nomClub(coup.c) + " : " + coup.d + " m notés. Ton sac est à jour.");
+    else if (!coup.d) message("Coup noté, distance inconnue.");
+    else if (coup.d && coupPlein(coup) && coup.distanceType !== "total") message(nomClub(coup.c) + " : " + coup.d + " m notés. Ton sac est à jour.");
+    else if (coup.d && coup.distanceType === "total") message("Distance totale GPS enregistrée : elle ne remplace pas ta distance de vol.");
     else if (coup.d) message("Coup noté. Il ne compte pas dans les distances du sac.");
   };
   ACTIONS["pv-coup-suppr"] = function () {
@@ -10441,7 +10518,8 @@ function lireHcp(texte, n) {
       });
     });
     return '<section class="bloc" id="qualite-donnees"><h2>Qualité de mon carnet</h2>' +
-      '<p class="aide">' + t(q.total ? q.total + " observations · " + q.distance + " distances mesurées ou déclarées · " + q.gps + " relevés GPS." : "Les observations apparaîtront après tes premières mesures et tes premiers coups.") + '</p>' +
+      '<p class="aide">' + t(q.total ? q.total + " observations · distances : " + q.statuts.declaree + " déclarées, " + q.statuts.gps + " GPS (approximatives, roulé compris), " + q.statuts.inconnue + " inconnues · " + q.direction + " directions gauche / droite connues." : "Les observations apparaîtront après tes premières mesures et tes premiers coups.") + '</p>' +
+      (q.total ? '<p class="aide">' + t("Une distance inconnue peut être remplacée par ta moyenne du club, affichée « ≈ … (moyenne) » : c'est une estimation, jamais comptée comme une mesure ni réintégrée dans ta moyenne.") + '</p>' : '') +
       '<p class="aide">' + t(suivis ? confirmes + " scores confirmés sur " + suivis + " trous historiques. Les anciens scores restent utilisables, mais leur confirmation n’est pas connue." : "Aucun trou historique pour le moment.") + '</p>' +
       '<p class="aide">Chaque coup peut conserver sa source (manuel, GPS, import), sa date, son type de distance et son niveau de confiance. Les anciennes données non documentées restent marquées comme inconnues.</p></section>';
   }
@@ -12378,10 +12456,14 @@ function lireHcp(texte, n) {
     if (fichier.size > 40e6) { message("Fichier trop volumineux."); return; }
     var fr = new FileReader();
     fr.onload = function () {
-      var r = null;
-      try { r = assainir(JSON.parse(String(fr.result))); } catch (e) { r = null; }
+      var r = null, cartes = null;
+      try {
+        var brut = JSON.parse(String(fr.result));
+        r = assainir(brut);
+        if (r && r.profil) cartes = lireCartesArchive(brut, r);
+      } catch (e) { r = null; }
       if (!r || !r.profil) { message("Fichier de sauvegarde invalide."); return; }
-      ui.importPrete = r;
+      ui.importPrete = r; ui.importCartesPretes = cartes;
       dialogue({ titre: "Remplacer les données actuelles ?", corps: "<p>Cette restauration remplacera toutes les données actuellement présentes sur cet appareil. Télécharge d’abord une sauvegarde si nécessaire.</p>", boutons: [{ l: "Annuler", a: "fermer-dialogue" }, { l: "Restaurer", a: "ok-importer-fichier", c: "principal" }] });
     };
     fr.onerror = function () { message("Impossible de lire le fichier."); };

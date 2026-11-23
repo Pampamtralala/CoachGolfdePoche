@@ -74,7 +74,13 @@
   }
   function nomLie(id) { var x = LIES.filter(function (l) { return l.id === id; })[0]; return x ? x.nom : ""; }
   function nomType(id) { var x = TYPES_COUP.filter(function (l) { return l.id === id; })[0]; return x && id ? x.nom : ""; }
-  function libCoup(c, n) { return n + " · " + (c.t ? nomType(c.t).toLowerCase() + " · " : "") + (c.p && c.p !== "dep" ? nomLie(c.p).toLowerCase() + " · " : "") + nomClub(c.c) + (c.a && c.a !== "plein" ? " " + AMPLITUDES.filter(function (x) { return x.id === c.a; })[0].nom : "") + (c.d ? (c.dm ? " · ≈ " : " · ") + c.d + " m" : "") + (c.l != null ? " · " + libLat(c.l).toLowerCase() : ""); }
+  /* Distance d'un coup avec son statut : « 150 m », « 182 m GPS », « ≈ 150 m (moyenne) », rien si inconnue. */
+  function moyennesSac() { var m = mesuresTout(), r = {}; Object.keys(m).forEach(function (id) { var v = moyenneClub(m, id); if (v) r[id] = v; }); return r; }
+  function libDistanceCoup(c) {
+    var D = distanceCoup(c, moyennesSac());
+    return D.statut === "declaree" ? " · " + D.v + " m" : D.statut === "gps" ? " · " + D.v + " m GPS" : D.statut === "estimee" ? " · ≈ " + D.v + " m (moyenne)" : "";
+  }
+  function libCoup(c, n) { return n + " · " + (c.t ? nomType(c.t).toLowerCase() + " · " : "") + (c.p && c.p !== "dep" ? nomLie(c.p).toLowerCase() + " · " : "") + nomClub(c.c) + (c.a && c.a !== "plein" ? " " + AMPLITUDES.filter(function (x) { return x.id === c.a; })[0].nom : "") + libDistanceCoup(c) + (c.l != null ? " · " + libLat(c.l).toLowerCase() : ""); }
   /* Résumé du trou en cours, pour le bandeau : « Trou 7 · par 4 · 5 + 2 putts ». */
   function resumeTrou(p) {
     var x = p.trous[p.i], par = x ? x[5] : trouCourant()[5];
