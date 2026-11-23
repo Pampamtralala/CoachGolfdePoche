@@ -77,6 +77,7 @@
       if (l != null) r.l = l;
       if (LIES.some(function (x) { return x.id === c.p; })) r.p = c.p;
       if (c.t && TYPES_COUP.some(function (x) { return x.id === c.t; })) r.t = c.t;
+      if (c.dm === 1 && r.d) r.dm = 1;
       return r;
     }).filter(Boolean);
   }

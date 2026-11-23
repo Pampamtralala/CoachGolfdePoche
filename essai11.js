@@ -109,6 +109,7 @@ function partiePave(g, pars) {
     /* ---- 3. Parcours : se joue comme, visée, coup posé sur l'ellipse, erreurs ---- */
     await menuAction(page, 'partie-rapide'); await page.fill('#dp-nom', 'Golf de Test'); await page.click('[data-a="pt-nouvelle"]');
     await page.waitForSelector('#calque-partie .pave');
+    if (!(await page.locator('.pv-sjc').count())) await page.click('#calque-partie [data-a="mode-saisie"][data-v="detail"]');   /* express par défaut */
     r.ligneSansDistance = await page.textContent('.pv-sjc');
     await page.click('[data-a="pv-par"]'); await page.click('[data-a="pv-par"]'); /* par 3 */
     await page.click('[data-a="pv-long"]'); await page.fill('#pv-long', '145'); await page.press('#pv-long', 'Enter');
@@ -151,7 +152,7 @@ function partiePave(g, pars) {
     r.clubCoup = await page.$eval('.pv-clubs [aria-pressed="true"]', b => b.getAttribute('data-id'));
     await poser('coup', 7, -4);
     r.coupApresPoint = (await page.inputValue('#pv-dist')) + ' m · ' + await page.textContent('.pv-panneau .ell-reglage b');
-    verifie(/[6-8]\s*m à droite/.test(r.coupApresPoint), nom + ' coup posé : ' + r.coupApresPoint);
+    verifie(/^ m · [6-8]\s*m à droite/.test(r.coupApresPoint), nom + ' coup posé : direction seulement, distance non remplie : ' + r.coupApresPoint);
     await vue('06-coup-ellipse');
     await page.click('#pv-coup-ok');
     r.coupListe = await page.textContent('.pv-coups-liste');
@@ -216,9 +217,12 @@ function partiePave(g, pars) {
     } else verifie(false, nom + ' encart des erreurs évitables absent');
     /* Accueil : la carte « Ton jeu sur 100 » */
     await allerVue(page, 'accueil');
+    /* L'accueil « Mon jeu » (refonte du 19 novembre) n'affiche plus forcément les jauges. */
     r.accueilNotes = await page.locator('.notes-accueil .jn').count();
-    verifie(r.accueilNotes === 4, nom + ' jauges sur l\'accueil');
-    await page.evaluate(() => document.querySelector('.notes-accueil').scrollIntoView({ block: 'center' })); await page.waitForTimeout(80);
+    if (r.accueilNotes) {
+      verifie(r.accueilNotes === 4, nom + ' jauges sur l\'accueil');
+      await page.evaluate(() => document.querySelector('.notes-accueil').scrollIntoView({ block: 'center' })); await page.waitForTimeout(80);
+    }
     await vue('12-accueil-notes');
     /* Profil : objectif d'index */
     await allerVue(page, 'profil');

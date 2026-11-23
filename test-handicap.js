@@ -53,6 +53,7 @@ ok(H.lireHcp('5 9 1 3 7 2 8 4 6', 9).join() === '5,9,1,3,7,2,8,4,6' && H.lireHcp
 const parties = [{ coups: [[{ c: 'f7', d: 150, a: 'plein', p: 'fw' }, { c: 'f7', d: 60, a: 'plein', t: 'rec', p: 'ar' }, { c: 'f7', d: 120, a: 'plein', p: 'bk' }, { c: 'f7', d: 145, a: 'plein', p: 'ro' }, { c: 'sw', d: 20, a: 'plein', t: 'app', p: 'fr' }]] }];
 const m = E.mesuresParcours(parties);
 ok(m.clubs.f7.join() === '150,145' && !m.clubs.sw, 'distances du sac : recentrage, bunker et approche écartés, rough gardé : ' + JSON.stringify(m.clubs));
+ok(E.mesuresParcours([{ coups: [[{ c: 'f7', d: 151, a: 'plein', dm: 1 }, { c: 'f7', d: 140, a: 'plein' }]] }]).clubs.f7.join() === '140', 'distance moyenne notée faute de mieux : pas comptée dans le sac');
 const bl = E.bilanLies(parties);
 ok(bl.coups === 5 && bl.notes === 5 && bl.lies.ar === 1 && bl.types.rec === 1 && bl.types.app === 1 && bl.parties === 1, 'bilan des positions de jeu');
 ok(E.coupPlein({ c: 'f7' }) && !E.coupPlein({ c: 'f7', t: 'sec' }) && !E.coupPlein({ c: 'f7', p: 'bk' }) && E.coupPlein({ c: 'f7', p: 'ro' }), 'coup plein ou non');

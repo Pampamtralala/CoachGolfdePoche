@@ -4669,7 +4669,7 @@ function mesuresParcours(parties) {
       (l || []).forEach(function (c) {
         if (!c || !estNombre(c.d) || !CLUB[c.c]) return;
         /* Recentrage, sécurité, approche, bunker, arbres : la distance ne dit rien de la portée du club. */
-        if (!coupPlein(c)) return;
+        if (!coupPlein(c) || c.dm) return;   /* distance moyenne notée faute de mieux : pas une mesure */
         if (!c.a || c.a === "plein") (clubs[c.c] = clubs[c.c] || []).push(c.d);
         else if (CLUB[c.c].fam === "w") { var w = wedges[c.c] = wedges[c.c] || {}; (w[c.a] = w[c.a] || []).push(c.d); }
       });
@@ -4729,7 +4729,7 @@ function observationsGolf(parties, carnet) {
           id: "p" + pi + "-t" + trou + "-c" + ci, type: "coup",
           origine: c.source || "inconnu", date: c.mesureLe || partie.d || null,
           partie: pi, trou: (partie.o || 0) + trou + 1, club: c.c,
-          distance: typeof c.d === "number" ? c.d : null,
+          distance: typeof c.d === "number" && !c.dm ? c.d : null,   /* moyenne notée faute de distance : inconnue */
           distanceType: c.distanceType || "inconnu", positions: c.g || null,
           lie: c.p || null, typeCoup: c.t || null,
           confiance: c.source === "gps" ? "mesuree" : c.source === "manuel" ? "declaree" : "inconnue"
@@ -5912,7 +5912,7 @@ function lireHcp(texte, n) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-19T10:50:56.768Z";
+  var VERSION_APPLI = "2026-11-23T14:43:34.567Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -7197,6 +7197,7 @@ function lireHcp(texte, n) {
       if (l != null) r.l = l;
       if (LIES.some(function (x) { return x.id === c.p; })) r.p = c.p;
       if (c.t && TYPES_COUP.some(function (x) { return x.id === c.t; })) r.t = c.t;
+      if (c.dm === 1 && r.d) r.dm = 1;
       return r;
     }).filter(Boolean);
   }
@@ -8858,7 +8859,7 @@ function lireHcp(texte, n) {
   }
   function nomLie(id) { var x = LIES.filter(function (l) { return l.id === id; })[0]; return x ? x.nom : ""; }
   function nomType(id) { var x = TYPES_COUP.filter(function (l) { return l.id === id; })[0]; return x && id ? x.nom : ""; }
-  function libCoup(c, n) { return n + " · " + (c.t ? nomType(c.t).toLowerCase() + " · " : "") + (c.p && c.p !== "dep" ? nomLie(c.p).toLowerCase() + " · " : "") + nomClub(c.c) + (c.a && c.a !== "plein" ? " " + AMPLITUDES.filter(function (x) { return x.id === c.a; })[0].nom : "") + (c.d ? " · " + c.d + " m" : "") + (c.l != null ? " · " + libLat(c.l).toLowerCase() : ""); }
+  function libCoup(c, n) { return n + " · " + (c.t ? nomType(c.t).toLowerCase() + " · " : "") + (c.p && c.p !== "dep" ? nomLie(c.p).toLowerCase() + " · " : "") + nomClub(c.c) + (c.a && c.a !== "plein" ? " " + AMPLITUDES.filter(function (x) { return x.id === c.a; })[0].nom : "") + (c.d ? (c.dm ? " · ≈ " : " · ") + c.d + " m" : "") + (c.l != null ? " · " + libLat(c.l).toLowerCase() : ""); }
   /* Résumé du trou en cours, pour le bandeau : « Trou 7 · par 4 · 5 + 2 putts ». */
   function resumeTrou(p) {
     var x = p.trous[p.i], par = x ? x[5] : trouCourant()[5];
@@ -8985,13 +8986,15 @@ function lireHcp(texte, n) {
         return '<button type="button" data-a="pv-amplitude" data-v="' + am.id + '" aria-pressed="' + ((C.a || "plein") === am.id) + '">' + t(am.nom) + '</button>';
       }).join("") + '</div>';
     }
+    var moyC = club && (C.a || "plein") === "plein" ? moyenneClub(mesuresTout(), C.c) : null;
     h += '<div class="pv-dist"><label for="pv-dist">Distance de vol, en mètres</label><div class="pv-dist-reglage">' +
       [-5, -1].map(function (d) { return '<button class="pv-pm petit" type="button" data-a="pv-dist" data-d="' + d + '" aria-label="' + at(Math.abs(d) + " mètre" + (d < -1 ? "s" : "") + " de moins") + '">' + d + '</button>'; }).join("") +
-      '<input id="pv-dist" type="text" inputmode="numeric" maxlength="3" autocomplete="off" data-i="pv-dist" value="' + (C.d || "") + '" placeholder="m">' +
+      '<input id="pv-dist" type="text" inputmode="numeric" maxlength="3" autocomplete="off" data-i="pv-dist" value="' + (C.d || "") + '" placeholder="' + (moyC ? "moy. " + moyC : "m") + '" aria-describedby="pv-dist-aide">' +
       [1, 5].map(function (d) { return '<button class="pv-pm petit" type="button" data-a="pv-dist" data-d="' + d + '" aria-label="' + at(d + " mètre" + (d > 1 ? "s" : "") + " de plus") + '">+' + d + '</button>'; }).join("") + '</div></div>';
+    h += '<p class="aide" id="pv-dist-aide">' + t(moyC ? "Laisse vide si tu ne la connais pas : l'appli note ta moyenne au " + nomClub(C.c).replace(/^Fer /, "fer ") + " (" + moyC + " m), sans la compter dans les distances du sac." : "Facultatif.") + '</p>';
     if (club) {
       var el = ellipseDe(C.c);
-      h += poseurHTML({ ell: el, ctx: "coup", l: C.l, dd: C.d != null && el ? C.d - el.d : C.dd || 0 });
+      h += poseurHTML({ ell: el, ctx: "coup", l: C.l, dd: C.d != null && el ? C.d - el.d : 0, titre: "À gauche ou à droite ?" });
     }
     if (gps) {
       var g = C.g || [];
@@ -9076,7 +9079,7 @@ function lireHcp(texte, n) {
     var prec = i < 0 ? l[l.length - 1] : l[i - 1];
     /* Le départ d'un coup reprend l'arrivée du coup précédent, quand elle a été marquée. */
     var g = c && c.g ? c.g.slice() : (prec && prec.g && prec.g[2] != null ? [prec.g[2], prec.g[3], null, null] : null);
-    ui.pvCoup = c ? { i: i, c: c.c, d: c.d, a: c.a, g: g, l: c.l != null ? c.l : null, p: c.p || null, t: c.t || "" }
+    ui.pvCoup = c ? { i: i, c: c.c, d: c.dm ? null : c.d, a: c.a, g: g, l: c.l != null ? c.l : null, p: c.p || null, t: c.t || "" }
       : { i: -1, c: null, d: null, a: "plein", g: g, l: null, p: l.length ? lieDepuisCarte(g) : "dep", t: "" };
     ui.pvRetour = i >= 0 ? '[data-a="pv-coup"][data-v="' + i + '"]' : '[data-a="pv-coup"][data-v="-1"]';
     rendrePartie();
@@ -9102,22 +9105,21 @@ function lireHcp(texte, n) {
     var C = ui.pvCoup, id = el.getAttribute("data-id"); if (!C || !CLUB[id]) return;
     var avant = C.c; C.c = id;
     if (CLUB[id].fam !== "w") C.a = "plein";
-    /* Distance proposée : la moyenne du club, tant que le joueur n'en a pas tapé une. */
-    if (!C.d || C.dAuto) { var m = moyenneClub(mesuresTout(), id); C.d = m; C.dAuto = m != null; }
+    /* Pas de distance pré-remplie : vide, la moyenne du club sera notée à l'enregistrement. */
     if (avant !== id) { rendrePartie(); focusPartie('[data-a="pv-club"][data-id="' + id + '"]'); }
   };
   ACTIONS["pv-amplitude"] = function (el) {
     var C = ui.pvCoup; if (!C) return;
-    C.a = el.getAttribute("data-v"); if (C.dAuto) { C.d = null; C.dAuto = false; }
+    C.a = el.getAttribute("data-v");
     rendrePartie(); focusPartie('[data-a="pv-amplitude"][data-v="' + C.a + '"]');
   };
   SAISIES["pv-dist"] = function (el) {
     var C = ui.pvCoup; if (!C) return;
-    var v = el.value.trim(); C.d = /^\d{1,3}$/.test(v) ? parseInt(v, 10) : null; C.dAuto = false; C.dTap = false;
+    var v = el.value.trim(); C.d = /^\d{1,3}$/.test(v) ? parseInt(v, 10) : null;
   };
   ACTIONS["pv-dist"] = function (el) {
     var C = ui.pvCoup; if (!C) return;
-    C.d = Math.max(1, Math.min(400, (C.d || moyenneClub(mesuresTout(), C.c) || 100) + parseInt(el.getAttribute("data-d"), 10))); C.dAuto = false; C.dTap = false;
+    C.d = Math.max(1, Math.min(400, (C.d || moyenneClub(mesuresTout(), C.c) || 100) + parseInt(el.getAttribute("data-d"), 10)));
     var i = document.getElementById("pv-dist"); if (i) i.value = C.d;
   };
   ACTIONS["pv-gps"] = function (el) {
@@ -9131,7 +9133,7 @@ function lireHcp(texte, n) {
       else {
         g[2] = pos[0]; g[3] = pos[1];
         var d = distanceGPS([g[0], g[1]], [g[2], g[3]]);
-        if (d >= 1 && d <= 400) { C.d = d; C.dAuto = false; }
+        if (d >= 1 && d <= 400) C.d = d;
         C.gpsMsg = "Distance mesurée : " + d + " m, à " + prec + " m près.";
       }
       C.g = g; rendrePartie(); focusPartie(k === "a" ? '[data-a="pv-gps"][data-v="b"]' : "#pv-coup-ok");
@@ -9144,6 +9146,8 @@ function lireHcp(texte, n) {
     if (C.d != null && !(C.d >= 1 && C.d <= 400)) { if (err) { err.textContent = "Distance entre 1 et 400 m, ou laisse vide."; err.hidden = false; } focusPartie("#pv-dist"); return; }
     var coup = { c: C.c, d: C.d || null, a: C.a || "plein", g: C.g && C.g[0] != null && C.g[2] != null ? C.g.slice() : null,
       source: C.g && C.g[2] != null ? "gps" : "manuel", distanceType: C.g && C.g[2] != null ? "total" : "carry", mesureLe: Date.now() };
+    /* Sans distance : la moyenne du club (plein coup), marquée comme telle pour ne pas fausser le sac ni les observations. */
+    if (!coup.d && coup.a === "plein") { var moy = moyenneClub(mesuresTout(), C.c); if (moy) { coup.d = moy; coup.dm = 1; coup.distanceType = "inconnu"; } }
     if (C.l != null) coup.l = C.l;
     if (C.p) coup.p = C.p;
     if (C.t) coup.t = C.t;
@@ -9164,6 +9168,7 @@ function lireHcp(texte, n) {
     ui.pvCoup = null; ui.pvRetour = null;
     sauver(); rendrePartie(); focusPartie('[data-a="pv-coup"][data-v="-1"]');
     if (ajoute) message(nomClub(coup.c) + " ajouté à ton sac.");
+    else if (coup.dm) message(nomClub(coup.c) + " noté à ta distance moyenne : " + coup.d + " m.");
     else if (coup.d && coupPlein(coup)) message(nomClub(coup.c) + " : " + coup.d + " m notés. Ton sac est à jour.");
     else if (coup.d) message("Coup noté. Il ne compte pas dans les distances du sac.");
   };
@@ -9280,13 +9285,14 @@ function lireHcp(texte, n) {
   }
 
   /* ---------- Poser un point sur l'ellipse : où la balle s'est arrêtée ----------
-     Le point donne l'écart latéral et, si la distance n'a pas été tapée, la distance du coup. */
+     Coup en partie : le point ne donne que la direction (gauche ou droite), la distance se tape à part.
+     Série au practice : le point donne aussi la distance si elle n'a pas été tapée. */
   function poseurHTML(o) {
     var e = o.ell, pts = (o.pts || []).map(function (p) { return { x: p.l, y: e ? p.d - e.d : 0, src: p.src }; });
     var sc = echelleEll(e, pts), nv = o.l != null ? { x: o.l, y: o.dd || 0 } : null;
     return '<div class="ell-poseur"><p class="ell-titre">' + t(o.titre || "Où la balle s'est-elle arrêtée ?") + '</p>' +
       '<button class="ell-cible" type="button" data-a="ell-poser" data-ctx="' + o.ctx + '" data-rx="' + sc.rx + '" data-ry="' + sc.ry + '" data-ref="' + (e ? e.d : "") + '" aria-label="' +
-      at("Touche l'endroit où la balle s'est arrêtée : à gauche ou à droite de la ligne de visée, plus court ou plus long que d'habitude. " + libLat(o.l) + ".") + '">' +
+      at((o.ctx === "coup" ? "Touche l'ellipse à gauche ou à droite de la ligne de visée, là où la balle est partie. " : "Touche l'endroit où la balle s'est arrêtée : à gauche ou à droite de la ligne de visée, plus court ou plus long que d'habitude. ") + libLat(o.l) + ".") + '">' +
       ellipseSVG({ ell: e, pts: pts, sc: sc, nouveau: nv, ref: e ? e.d : null }) + '</button>' +
       '<div class="ell-reglage"><button class="pv-pm petit" type="button" data-a="ell-l" data-ctx="' + o.ctx + '" data-d="-1" aria-label="Un mètre plus à gauche">◀</button>' +
       '<p aria-live="polite"><b>' + t(libLat(o.l)) + '</b>' + (o.l != null ? '<button class="lien" type="button" data-a="ell-l" data-ctx="' + o.ctx + '" data-d="x">Effacer</button>' : '<small>' + t("facultatif : un toucher sur l'ellipse") + '</small>') + '</p>' +
@@ -9310,10 +9316,8 @@ function lireHcp(texte, n) {
   function poserPoint(ctx, l, dd, ref) {
     if (ctx === "coup") {
       var C = ui.pvCoup; if (!C) return;
+      /* Seule la direction compte : la hauteur du toucher ne change pas la distance. */
       C.l = l;
-      if (l == null) { C.dd = null; }
-      else if (dd !== undefined && ref > 0 && (C.d == null || C.dAuto || C.dTap)) { C.d = Math.max(1, Math.min(400, ref + dd)); C.dTap = true; C.dAuto = false; C.dd = dd; }
-      else if (dd !== undefined) C.dd = C.d != null && ref > 0 ? C.d - ref : dd;
       rendrePartie();
     } else if (ctx === "serie") {
       var S = ui.serie; if (!S) return;

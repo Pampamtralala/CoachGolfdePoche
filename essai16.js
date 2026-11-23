@@ -95,7 +95,7 @@ async function toucherCarte(page, dx, dy) {
     await page.click('.cta-partie'); await page.waitForSelector('[data-a="pt-nouvelle"]');
     await page.click('[data-a="pt-nouvelle"]'); await page.waitForSelector('#calque-partie .pave');
     for (let i = 0; i < 3; i++) await page.click('#pt-suiv');
-    await page.click('[data-a="mode-saisie"][data-v="detail"]').catch(() => {});
+    if (!(await page.locator('[data-a="pv-coup"][data-v="-1"]').count())) await page.click('#calque-partie [data-a="mode-saisie"][data-v="detail"]');   /* express par défaut */
     /* 1. Panneau d'un coup */
     await page.click('[data-a="pv-coup"][data-v="-1"]'); await page.waitForSelector('.pv-panneau [data-a="pv-lie"]');
     r.clubs = await page.$$eval('.pv-panneau > .pv-clubs [data-a="pv-club"]', l => l.map(b => b.getAttribute('data-id')).join(','));

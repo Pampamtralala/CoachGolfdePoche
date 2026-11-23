@@ -77,13 +77,14 @@
   }
 
   /* ---------- Poser un point sur l'ellipse : où la balle s'est arrêtée ----------
-     Le point donne l'écart latéral et, si la distance n'a pas été tapée, la distance du coup. */
+     Coup en partie : le point ne donne que la direction (gauche ou droite), la distance se tape à part.
+     Série au practice : le point donne aussi la distance si elle n'a pas été tapée. */
   function poseurHTML(o) {
     var e = o.ell, pts = (o.pts || []).map(function (p) { return { x: p.l, y: e ? p.d - e.d : 0, src: p.src }; });
     var sc = echelleEll(e, pts), nv = o.l != null ? { x: o.l, y: o.dd || 0 } : null;
     return '<div class="ell-poseur"><p class="ell-titre">' + t(o.titre || "Où la balle s'est-elle arrêtée ?") + '</p>' +
       '<button class="ell-cible" type="button" data-a="ell-poser" data-ctx="' + o.ctx + '" data-rx="' + sc.rx + '" data-ry="' + sc.ry + '" data-ref="' + (e ? e.d : "") + '" aria-label="' +
-      at("Touche l'endroit où la balle s'est arrêtée : à gauche ou à droite de la ligne de visée, plus court ou plus long que d'habitude. " + libLat(o.l) + ".") + '">' +
+      at((o.ctx === "coup" ? "Touche l'ellipse à gauche ou à droite de la ligne de visée, là où la balle est partie. " : "Touche l'endroit où la balle s'est arrêtée : à gauche ou à droite de la ligne de visée, plus court ou plus long que d'habitude. ") + libLat(o.l) + ".") + '">' +
       ellipseSVG({ ell: e, pts: pts, sc: sc, nouveau: nv, ref: e ? e.d : null }) + '</button>' +
       '<div class="ell-reglage"><button class="pv-pm petit" type="button" data-a="ell-l" data-ctx="' + o.ctx + '" data-d="-1" aria-label="Un mètre plus à gauche">◀</button>' +
       '<p aria-live="polite"><b>' + t(libLat(o.l)) + '</b>' + (o.l != null ? '<button class="lien" type="button" data-a="ell-l" data-ctx="' + o.ctx + '" data-d="x">Effacer</button>' : '<small>' + t("facultatif : un toucher sur l'ellipse") + '</small>') + '</p>' +
@@ -107,10 +108,8 @@
   function poserPoint(ctx, l, dd, ref) {
     if (ctx === "coup") {
       var C = ui.pvCoup; if (!C) return;
+      /* Seule la direction compte : la hauteur du toucher ne change pas la distance. */
       C.l = l;
-      if (l == null) { C.dd = null; }
-      else if (dd !== undefined && ref > 0 && (C.d == null || C.dAuto || C.dTap)) { C.d = Math.max(1, Math.min(400, ref + dd)); C.dTap = true; C.dAuto = false; C.dd = dd; }
-      else if (dd !== undefined) C.dd = C.d != null && ref > 0 ? C.d - ref : dd;
       rendrePartie();
     } else if (ctx === "serie") {
       var S = ui.serie; if (!S) return;

@@ -103,12 +103,12 @@ function partieType(graine, pars) {
     r.eveilPris = await page.evaluate(() => window.__eveil.pris);
     verifie(r.eveilPris >= 1, nom + ' écran allumé demandé au départ');
     await vue('05-pave');
-    /* Un coup au fer 7 : la distance proposée est la moyenne du club */
+    /* Un coup au fer 7 : la distance reste vide, la moyenne du club est indiquée en grisé */
     await page.click('#calque-partie [data-a="pv-coup"][data-v="-1"]'); await page.waitForSelector('.pv-panneau');
     await page.click('.pv-panneau [data-a="pv-club"][data-id="f7"]');
-    r.distanceProposee = await page.inputValue('#pv-dist');
+    r.distanceProposee = await page.inputValue('#pv-dist') + ' / ' + await page.getAttribute('#pv-dist', 'placeholder');
     const moyF7 = Math.round(e.carnet.clubs.f7.reduce((a, b) => a + b, 0) / e.carnet.clubs.f7.length);
-    verifie(r.distanceProposee === String(moyF7), nom + ' distance proposée = moyenne du fer 7 : ' + r.distanceProposee + ' / ' + moyF7);
+    verifie(r.distanceProposee === ' / moy. ' + moyF7, nom + ' distance vide, moyenne du fer 7 en indication : ' + r.distanceProposee + ' / ' + moyF7);
     await page.click('.pv-panneau [data-a="pv-dist"][data-d="5"]'); await page.click('.pv-panneau [data-a="pv-dist"][data-d="1"]');
     r.apresReglage = await page.inputValue('#pv-dist');
     /* GPS : départ ici, arrivée 150 m plus au nord */

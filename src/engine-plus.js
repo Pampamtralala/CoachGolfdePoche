@@ -529,7 +529,7 @@ function mesuresParcours(parties) {
       (l || []).forEach(function (c) {
         if (!c || !estNombre(c.d) || !CLUB[c.c]) return;
         /* Recentrage, sécurité, approche, bunker, arbres : la distance ne dit rien de la portée du club. */
-        if (!coupPlein(c)) return;
+        if (!coupPlein(c) || c.dm) return;   /* distance moyenne notée faute de mieux : pas une mesure */
         if (!c.a || c.a === "plein") (clubs[c.c] = clubs[c.c] || []).push(c.d);
         else if (CLUB[c.c].fam === "w") { var w = wedges[c.c] = wedges[c.c] || {}; (w[c.a] = w[c.a] || []).push(c.d); }
       });
@@ -589,7 +589,7 @@ function observationsGolf(parties, carnet) {
           id: "p" + pi + "-t" + trou + "-c" + ci, type: "coup",
           origine: c.source || "inconnu", date: c.mesureLe || partie.d || null,
           partie: pi, trou: (partie.o || 0) + trou + 1, club: c.c,
-          distance: typeof c.d === "number" ? c.d : null,
+          distance: typeof c.d === "number" && !c.dm ? c.d : null,   /* moyenne notée faute de distance : inconnue */
           distanceType: c.distanceType || "inconnu", positions: c.g || null,
           lie: c.p || null, typeCoup: c.t || null,
           confiance: c.source === "gps" ? "mesuree" : c.source === "manuel" ? "declaree" : "inconnue"
