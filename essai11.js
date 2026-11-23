@@ -150,7 +150,13 @@ function partiePave(g, pars) {
     /* Noter le coup avec le club conseillé, direction posée sur l'ellipse */
     await page.click('[data-a="strat-noter"]'); await page.waitForSelector('.pv-panneau .ell-cible[data-ctx="coup"]');
     r.clubCoup = await page.$eval('.pv-clubs [aria-pressed="true"]', b => b.getAttribute('data-id'));
+    /* Le panneau reste sur l'ellipse après le toucher (il ne remonte pas en haut). */
+    await page.evaluate(() => document.querySelector('.pv-panneau .ell-cible[data-ctx="coup"]').scrollIntoView({ block: 'center' }));
+    const hautAvant = await page.$eval('.pv-panneau', p => p.scrollTop);
     await poser('coup', 7, -4);
+    const hautApres = await page.$eval('.pv-panneau', p => p.scrollTop);
+    r.defilement = hautAvant + ' → ' + hautApres;
+    verifie(hautAvant > 0 && Math.abs(hautApres - hautAvant) <= 2, nom + ' le panneau reste sur l\'ellipse : ' + r.defilement);
     r.coupApresPoint = (await page.inputValue('#pv-dist')) + ' m · ' + await page.textContent('.pv-panneau .ell-reglage b');
     verifie(/^ m · [6-8]\s*m à droite/.test(r.coupApresPoint), nom + ' coup posé : direction seulement, distance non remplie : ' + r.coupApresPoint);
     await vue('06-coup-ellipse');

@@ -5945,7 +5945,7 @@ function lireHcp(texte, n) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-23T15:04:33.061Z";
+  var VERSION_APPLI = "2026-11-23T19:32:43.605Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -8649,7 +8649,13 @@ function lireHcp(texte, n) {
     if (!ui.partie || !etat.profil) { ui.partie = null; c.innerHTML = ""; c.hidden = true; majFige(); majSuivi(); return; }
     c.hidden = false;
     c.className = etat.ecranClair ? "clair" : "";
+    /* Le panneau ouvert (coup, carte…) garde sa position de défilement quand il est redessiné :
+       toucher l'ellipse ou un choix ne ramène plus en haut. Un autre panneau repart du haut. */
+    var pan = c.querySelector(".pv-panneau"), cle = pan ? pan.className + "|" + (pan.getAttribute("aria-labelledby") || "") : null, haut = pan ? pan.scrollTop : 0, hautCalque = c.scrollTop;
     c.innerHTML = ui.partie === "bilan" ? bilanPartieHTML() : ui.partie === "express" ? expressHTML() : paveHTML();
+    var pan2 = c.querySelector(".pv-panneau");
+    if (pan2 && cle && pan2.className + "|" + (pan2.getAttribute("aria-labelledby") || "") === cle) pan2.scrollTop = haut;
+    if (pan2 || cle) c.scrollTop = hautCalque;
     majFige(); majSuivi();
   }
   function focusPartie(sel) { var b = document.querySelector("#calque-partie " + sel); if (b) b.focus({ preventScroll: true }); }

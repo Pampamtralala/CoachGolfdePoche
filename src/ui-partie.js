@@ -240,7 +240,13 @@
     if (!ui.partie || !etat.profil) { ui.partie = null; c.innerHTML = ""; c.hidden = true; majFige(); majSuivi(); return; }
     c.hidden = false;
     c.className = etat.ecranClair ? "clair" : "";
+    /* Le panneau ouvert (coup, carte…) garde sa position de défilement quand il est redessiné :
+       toucher l'ellipse ou un choix ne ramène plus en haut. Un autre panneau repart du haut. */
+    var pan = c.querySelector(".pv-panneau"), cle = pan ? pan.className + "|" + (pan.getAttribute("aria-labelledby") || "") : null, haut = pan ? pan.scrollTop : 0, hautCalque = c.scrollTop;
     c.innerHTML = ui.partie === "bilan" ? bilanPartieHTML() : ui.partie === "express" ? expressHTML() : paveHTML();
+    var pan2 = c.querySelector(".pv-panneau");
+    if (pan2 && cle && pan2.className + "|" + (pan2.getAttribute("aria-labelledby") || "") === cle) pan2.scrollTop = haut;
+    if (pan2 || cle) c.scrollTop = hautCalque;
     majFige(); majSuivi();
   }
   function focusPartie(sel) { var b = document.querySelector("#calque-partie " + sel); if (b) b.focus({ preventScroll: true }); }
