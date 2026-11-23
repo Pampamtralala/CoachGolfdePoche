@@ -4751,8 +4751,9 @@ function distanceCoup(c, moyennes) {
 
 /* Modèle unifié, non destructif, des observations golfiques.
    Les données historiques restent intactes ; les champs inconnus ne sont pas inventés. */
-function observationsGolf(parties, carnet) {
-  var out = [];
+function observationsGolf(parties, carnet, parcours) {
+  var out = [], longueur = {};
+  (parcours || []).forEach(function (pc) { if (pc && pc.id && pc.pars) longueur[pc.id] = pc.pars.length; });
   (parties || []).forEach(function (partie, pi) {
     (partie.coups || []).forEach(function (coups, trou) {
       (coups || []).forEach(function (c, ci) {
@@ -4762,6 +4763,9 @@ function observationsGolf(parties, carnet) {
           id: (partie.id || "p" + pi) + "/t" + trou + "/" + (c.id || "c" + ci), type: "coup", partieId: partie.id || null, coupId: c.id || null,
           origine: c.source || "inconnu", date: c.mesureLe || partie.d || null,
           partie: pi, trou: (partie.o || 0) + trou + 1, club: c.c,
+          /* Pour croiser par parcours et par trou : le trou du parcours (un 9 trous joué deux fois reste 1 à 9). */
+          parcours: partie.pc || null, jour: partie.d || null,
+          trouParcours: longueur[partie.pc] ? ((partie.o || 0) + trou) % longueur[partie.pc] + 1 : (partie.o || 0) + trou + 1,
           distance: typeof c.d === "number" && !c.dm ? c.d : null,   /* une estimation n'est pas une observation */
           distanceStatut: statutDistance(c) === "estimee" ? "inconnue" : statutDistance(c),
           direction: estNombre(c.l) ? c.l : null,   /* mètres, négatif à gauche ; null : non renseignée */
@@ -6001,6 +6005,71 @@ function attribuerIds(e) {
   return crees;
 }
 
+/* ---------- Croiser les observations par club, trou, parcours ou période ----------
+   obs : observationsGolf(...). axe : "club" | "trou" | "parcours" | "periode" (mois) | "type" (coup / practice).
+   f (facultatif) : { club, parcours, trou, debut, fin (dates ISO ou AAAA-MM-JJ), type, seuil (m, défaut 5) }.
+   Pour chaque groupe : effectif, distances déclarées (seules à servir de moyenne), distances GPS à part
+   (approximatives, roulé compris), directions gauche / centre / droite parmi les coups où elle est connue.
+   Rien n'est extrapolé : un groupe sans donnée garde des effectifs à 0 et des valeurs null. */
+var AXES_CROISEMENT = ["club", "trou", "parcours", "periode", "type"];
+function jourIso(v) { return typeof v === "string" ? v.slice(0, 10) : typeof v === "number" && isFinite(v) ? new Date(v).toISOString().slice(0, 10) : null; }
+function medianeL(l) { if (!l.length) return null; var s = l.slice().sort(function (a, b) { return a - b; }), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+function resumeDistances(l) {
+  if (!l.length) return { n: 0, moyenne: null, mediane: null, min: null, max: null };
+  var t = 0; l.forEach(function (v) { t += v; });
+  return { n: l.length, moyenne: Math.round(t / l.length), mediane: Math.round(medianeL(l)), min: Math.min.apply(null, l), max: Math.max.apply(null, l) };
+}
+function cleCroisement(o, axe) {
+  if (axe === "club") return o.club || null;
+  if (axe === "parcours") return o.type === "practice" ? "practice" : o.parcours || "sans-parcours";
+  if (axe === "trou") return o.type === "coup" ? (o.parcours || "sans-parcours") + "#" + (o.trouParcours || o.trou) : null;
+  if (axe === "periode") { var j = jourIso(o.jour || o.date); return j ? j.slice(0, 7) : "sans-date"; }
+  if (axe === "type") return o.type;
+  return null;
+}
+function croiserObservations(obs, axe, f) {
+  if (AXES_CROISEMENT.indexOf(axe) < 0) throw new Error("axe inconnu : " + axe);
+  f = f || {};
+  var seuil = f.seuil > 0 ? f.seuil : 5, debut = jourIso(f.debut), fin = jourIso(f.fin), groupes = {}, ordre = [];
+  (obs || []).forEach(function (o) {
+    if (!o) return;
+    if (f.club && o.club !== f.club) return;
+    if (f.parcours && o.parcours !== f.parcours) return;
+    if (f.trou && (o.trouParcours || o.trou) !== f.trou) return;
+    if (f.type && o.type !== f.type) return;
+    var j = jourIso(o.jour || o.date);
+    if ((debut || fin) && !j) return;
+    if (debut && j < debut) return;
+    if (fin && j > fin) return;
+    var k = cleCroisement(o, axe); if (k == null) return;
+    var g = groupes[k];
+    if (!g) { g = groupes[k] = { cle: k, n: 0, dDeclarees: [], dGps: [], dir: [], distancesInconnues: 0, premier: j, dernier: j }; ordre.push(k); }
+    g.n++;
+    if (j && (!g.premier || j < g.premier)) g.premier = j;
+    if (j && (!g.dernier || j > g.dernier)) g.dernier = j;
+    var st = o.distanceStatut || (o.distance != null ? "declaree" : "inconnue");
+    if (o.distance != null && st === "declaree") g.dDeclarees.push(o.distance);
+    else if (o.distance != null && st === "gps") g.dGps.push(o.distance);
+    else g.distancesInconnues++;
+    var d = o.direction != null ? o.direction : o.deviation != null ? o.deviation : null;
+    if (typeof d === "number" && isFinite(d)) g.dir.push(d);
+  });
+  return ordre.map(function (k) {
+    var g = groupes[k], ga = 0, dr = 0, ce = 0, t = 0;
+    g.dir.forEach(function (d) { if (d < -seuil) ga++; else if (d > seuil) dr++; else ce++; t += d; });
+    var nd = g.dir.length;
+    return {
+      cle: k, n: g.n, premier: g.premier || null, dernier: g.dernier || null,
+      distances: resumeDistances(g.dDeclarees),
+      distancesGps: resumeDistances(g.dGps),
+      distancesInconnues: g.distancesInconnues,
+      direction: { n: nd, gauche: ga, centre: ce, droite: dr,
+        partGauche: nd ? Math.round(100 * ga / nd) : null, partDroite: nd ? Math.round(100 * dr / nd) : null,
+        moyenne: nd ? Math.round(t / nd * 10) / 10 : null }
+    };
+  }).sort(function (a, b) { return b.n - a.n || (a.cle < b.cle ? -1 : 1); });
+}
+
 
 /* ============================================================
    INTERFACE : accueil, questionnaire, plan, bilan, exercices, profil.
@@ -6013,7 +6082,7 @@ function attribuerIds(e) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-23T21:26:07.662Z";
+  var VERSION_APPLI = "2026-11-23T21:40:13.940Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -10591,7 +10660,7 @@ function attribuerIds(e) {
 
   /* Qualité des données : transparence sur l'échantillon et les sources. */
   function qualiteGolfHTML() {
-    var obs = observationsGolf(etat.parties, etat.carnet), q = qualiteObservations(obs);
+    var obs = observationsGolf(etat.parties, etat.carnet, etat.parcours), q = qualiteObservations(obs);
     var confirmes = 0, suivis = 0;
     etat.parties.forEach(function (p) {
       (p.trous || []).forEach(function (tr, i) {

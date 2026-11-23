@@ -51,3 +51,28 @@ BRANCHE / COMMIT / LIEN PR : data/p01-identifiants-stables · PR #4 (brouillon)
 BLOCAGES / RISQUES : la taille des sauvegardes augmente un peu (un identifiant par coup).
 PROCHAINE TÂCHE AUTORISÉE : P01 3/3 — croisement des observations par club, trou, parcours et période.
 ```
+
+## 23 novembre 2026 (nuit)
+
+```text
+DATE : 23/11/2026
+CRÉDITS ALLOUÉS / CONSOMMÉS / RESTANTS : non mesurables (aucun compteur fourni). Une tâche, puis arrêt.
+TÂCHE ACTUELLE : P01, sous-livrable 3/3 — croiser les observations par club, trou, parcours et période
+FONCTIONNALITÉS LIVRÉES :
+  - PR #4 fusionnée sur app sur accord explicite (identifiants stables).
+  - PR #5 ouverte, non fusionnée (fusion refusée sans accord explicite sur les deux changements de
+    comportement) : tests navigateur remis à jour après la refonte du 19/11, mode express cohérent
+    au premier lancement, accès rapides de l'accueil qui débordaient de l'écran.
+  - Branche data/p01-croisements : croiserObservations(obs, axe, filtres) dans engine-donnees.js —
+    axes club / trou / parcours / période (mois) / type ; filtres club, parcours, trou, période, type,
+    seuil gauche / droite ; distances déclarées seules en moyenne, GPS à part, inconnues comptées,
+    directions gauche / centre / droite ; null quand les données manquent.
+  - Observations : parcours, jour et trou du parcours (un 9 trous joué deux fois reste 1 à 9).
+TESTS EXÉCUTÉS ET RÉSULTATS : npm test (dont test-croisements : 15 vérifications) : 0 échec ;
+  test-startup : OK ; essais 3 et 15 : OK.
+BRANCHE / COMMIT / LIEN PR : data/p01-croisements · PR #6 (brouillon)
+BLOCAGES / RISQUES : une partie terminée avec un trou non saisi au milieu décale la numérotation des
+  trous suivants dans les observations (les trous vides sont retirés à l'enregistrement) : à traiter
+  avec P07 (analyse par trou).
+PROCHAINE TÂCHE AUTORISÉE : P03 — trois niveaux de saisie (Express / Standard / Expert).
+```

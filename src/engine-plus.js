@@ -607,8 +607,9 @@ function distanceCoup(c, moyennes) {
 
 /* Modèle unifié, non destructif, des observations golfiques.
    Les données historiques restent intactes ; les champs inconnus ne sont pas inventés. */
-function observationsGolf(parties, carnet) {
-  var out = [];
+function observationsGolf(parties, carnet, parcours) {
+  var out = [], longueur = {};
+  (parcours || []).forEach(function (pc) { if (pc && pc.id && pc.pars) longueur[pc.id] = pc.pars.length; });
   (parties || []).forEach(function (partie, pi) {
     (partie.coups || []).forEach(function (coups, trou) {
       (coups || []).forEach(function (c, ci) {
@@ -618,6 +619,9 @@ function observationsGolf(parties, carnet) {
           id: (partie.id || "p" + pi) + "/t" + trou + "/" + (c.id || "c" + ci), type: "coup", partieId: partie.id || null, coupId: c.id || null,
           origine: c.source || "inconnu", date: c.mesureLe || partie.d || null,
           partie: pi, trou: (partie.o || 0) + trou + 1, club: c.c,
+          /* Pour croiser par parcours et par trou : le trou du parcours (un 9 trous joué deux fois reste 1 à 9). */
+          parcours: partie.pc || null, jour: partie.d || null,
+          trouParcours: longueur[partie.pc] ? ((partie.o || 0) + trou) % longueur[partie.pc] + 1 : (partie.o || 0) + trou + 1,
           distance: typeof c.d === "number" && !c.dm ? c.d : null,   /* une estimation n'est pas une observation */
           distanceStatut: statutDistance(c) === "estimee" ? "inconnue" : statutDistance(c),
           direction: estNombre(c.l) ? c.l : null,   /* mètres, négatif à gauche ; null : non renseignée */

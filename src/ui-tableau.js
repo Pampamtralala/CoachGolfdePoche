@@ -71,7 +71,7 @@
 
   /* Qualité des données : transparence sur l'échantillon et les sources. */
   function qualiteGolfHTML() {
-    var obs = observationsGolf(etat.parties, etat.carnet), q = qualiteObservations(obs);
+    var obs = observationsGolf(etat.parties, etat.carnet, etat.parcours), q = qualiteObservations(obs);
     var confirmes = 0, suivis = 0;
     etat.parties.forEach(function (p) {
       (p.trous || []).forEach(function (tr, i) {
