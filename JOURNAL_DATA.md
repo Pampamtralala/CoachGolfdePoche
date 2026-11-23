@@ -103,3 +103,30 @@ BLOCAGES / RISQUES : les parties anciennes (sans tableau renseigne) comptent com
   avant ; leurs mises en jeu pré-cochées « jouable » restent dans les statistiques.
 PROCHAINE TÂCHE AUTORISÉE : P05 — tableau de bord statistique (demandé dans la même session).
 ```
+
+## 23 novembre 2026 (nuit)
+
+```text
+DATE : 23/11/2026
+CRÉDITS ALLOUÉS / CONSOMMÉS / RESTANTS : non mesurables (aucun compteur fourni).
+TÂCHE ACTUELLE : P05 — tableau de bord statistique (demandé avec P03 par le propriétaire)
+FONCTIONNALITÉS LIVRÉES (branche data/p05-tableau-de-bord, partie de data/p03-trois-niveaux) :
+  - moteur engine-stats.js (fonctions pures) : sélection par parcours, format 9/18, période,
+    N dernières parties ; période précédente de même durée ; tableau de chiffres avec effectifs ;
+    comparaison de deux sélections ;
+  - écran Statistiques : filtres cumulables, six chiffres (score, putts, trois-putts, pénalités,
+    mises en jeu, GIR) avec effectif et tendance, graphique de l'écart au par par partie,
+    répartition des mises en jeu (gauche / jouables / courtes / droite) et direction des coups notés ;
+  - parties de 9 et 18 trous ramenées à 18 trous, et dit en clair ; GIR marqué « déduit, pas observé » ;
+    mises en jeu non renseignées (saisie express) exclues et comptées à part ;
+  - courbe d'évolution de l'index gardée sur l'écran ; carte « Mises en jeu » de l'accueil alignée sur P03.
+TESTS EXÉCUTÉS ET RÉSULTATS : npm test (stats : 17 vérifications) : 0 échec ; test-startup : OK ;
+  essai18 (P05) : OK ; essais 4, 5, 8, 9, 11, 12, 13, 15, 16, 17 : OK.
+  Échecs déjà présents sur app (a298e0a), non liés à P03/P05 : essai3 (une ancienne sauvegarde est
+  normalisée au chargement), essai10 (une distance GPS est « totale » et n'entre plus dans le sac
+  depuis la PR #3), essai14 (libellé du message hors réseau). La vérification « partie enregistrée »
+  d'essai3 a été alignée sur P03 (mise en jeu non renseignée en express).
+BRANCHE / COMMIT / LIEN PR : data/p05-tableau-de-bord · PR #8 (brouillon)
+BLOCAGES / RISQUES : PR à fusionner après la #7 (elle en contient les commits).
+PROCHAINE TÂCHE AUTORISÉE : aucune sans accord ; candidats P06 (clubs) ou P07 (parcours).
+```
