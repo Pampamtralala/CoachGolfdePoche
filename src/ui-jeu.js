@@ -169,6 +169,7 @@
     /* Détails facultatifs */
     if (niv === 2) h += '<details class="pv-plus"' + (detail ? " open" : "") + '><summary data-a="pt-detail">Plus de détails</summary>' +
       (v[2] ? sousChoix("Premier putt", 8, v.length >= 11 ? PUTT1B : PUTT1, v) : "") +
+      (v[2] >= 2 && v.length >= 11 ? sousChoix("Second putt difficile, laissé par le premier", 11, ["", "Oui"], v) : "") +
       (v.length >= 11 ? sousChoix("Bunker près du green", 10, ["", "Sorti sur le green", "Resté à côté"], v) : "") + '</details>';
     h += '<div class="ligne-liens"><button class="lien" type="button" data-a="pv-eveil" aria-pressed="' + (etat.ecranAllume !== false) + '">' + (etat.ecranAllume !== false ? "Écran toujours allumé" : "Garder l’écran allumé") + '</button>' +
       (dernier ? "" : '<button class="lien" type="button" data-a="pt-terminer">Terminer la partie ici</button>') + '</div>' +

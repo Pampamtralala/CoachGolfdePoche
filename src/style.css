@@ -1581,3 +1581,11 @@ main.entree { animation: entreeVue .22s ease-out; }
 .erreurs-manque { margin: 0 0 8px; padding-left: 18px; font-size: 14.5px; line-height: 1.45; color: var(--encre-2); }
 .erreurs-manque li { margin-bottom: 4px; }
 .erreurs-manque b { color: var(--encre); font-weight: 600; }
+
+/* ---------- Putting (P08) ---------- */
+.putt-ligne { margin: 0 0 10px; font-size: 15px; line-height: 1.45; }
+.putt-ligne b { display: block; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--encre-2); }
+.putt-gir th small, .putt-gir td small, .putt-longueur th small, .putt-longueur td small, .putt-parcours td small { display: block; font-size: 12px; font-weight: 400; color: var(--encre-2); }
+.putt-gir thead th.num, .putt-gir td.num, .putt-longueur thead th.num, .putt-longueur td.num, .putt-parcours thead th.num, .putt-parcours td.num { width: auto; padding-left: 6px; padding-right: 6px; }
+.putt-gir th[scope="row"], .putt-longueur th[scope="row"], .putt-parcours th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
+.putt-longueur th[scope="row"] small { max-width: 13em; }

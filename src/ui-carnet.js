@@ -6,13 +6,15 @@
      Les parties d'avant la carte de score n'ont que les quatre premières valeurs ; celles notées avec le pavé
      en ont onze : le premier putt y suit l'échelle en cinq rangs, puis viennent les erreurs évitables et le bunker. */
   function assainirTrou(tr) {
-    if (!Array.isArray(tr) || (tr.length !== 4 && tr.length !== 9 && tr.length !== 11)) return null;
+    if (!Array.isArray(tr) || (tr.length !== 4 && tr.length !== 9 && tr.length !== 11 && tr.length !== 12)) return null;
     var j = entier(tr[0], 0, 1, null), g = entier(tr[1], 0, 1, null), p = entier(tr[2], 0, 5, null), x = entier(tr[3], 0, 3, null);
     if (j == null || g == null || p == null || x == null) return null;
-    var par = entier(tr[5], 3, 5, 0), sc = par ? entier(tr[4], 1, 15, 0) : 0, onze = tr.length === 11;
+    var par = entier(tr[5], 3, 5, 0), sc = par ? entier(tr[4], 1, 15, 0) : 0, onze = tr.length >= 11;
     if (sc) sc = Math.max(sc, scoreMini(p, x));
     var v = [j, g, p, x, sc, par, j ? 0 : entier(tr[6], 0, 3, 0), par === 3 ? 0 : entier(tr[7], 0, 4, 0), p ? entier(tr[8], 0, onze ? 5 : 4, 0) : 0];
     if (onze) v.push(entier(tr[9], 0, 7, 0) & (EVIT_DOUBLE | EVIT_PUTT3), entier(tr[10], 0, 2, 0));
+    /* Douzième case (P08), seulement quand elle a servi : le premier putt a laissé un second putt difficile. */
+    if (tr.length === 12) v.push(p >= 2 ? entier(tr[11], 0, 1, 0) : 0);
     return v;
   }
   /* Un trou noté avant le pavé, repris dans le pavé : onze cases ; seul un premier putt de moins d'un mètre garde son rang. */
