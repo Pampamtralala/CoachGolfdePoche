@@ -28,19 +28,20 @@
   function puceStat(action, v, lib, actif) { return '<button class="opt" type="button" data-a="' + action + '" data-v="' + v + '" aria-pressed="' + actif + '">' + t(lib) + '</button>'; }
 
   /* Score de chaque partie, écart au par ramené à 18 trous : barres au-dessus (en bleu) ou au-dessous du par. */
-  function grapheScoresHTML(l) {
+  /* legende : remplace « ramené à 18 trous » quand les écarts sont bruts (un seul tracé). */
+  function grapheScoresHTML(l, legende) {
     if (l.length < 2) return "";
     var W = 320, H = 120, pad = 18, max = 0;
     l.forEach(function (x) { max = Math.max(max, Math.abs(x.ecart18)); });
     max = Math.max(4, Math.ceil(max / 4) * 4);
     var y0 = H / 2, ky = (H / 2 - pad) / max, bw = Math.min(22, (W - 20) / l.length - 4);
-    var h = '<figure class="graphe-scores"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + at("Écart au par de chaque partie, ramené à 18 trous : " + l.map(function (x) { return dateCourte(x.d) + " " + nbStat(x.ecart18, true); }).join(" ; ")) + '">' +
+    var h = '<figure class="graphe-scores"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + at((legende || "Écart au par de chaque partie, ramené à 18 trous") + " : " + l.map(function (x) { return dateCourte(x.d) + " " + nbStat(x.ecart18, true); }).join(" ; ")) + '">' +
       '<line class="gs-par" x1="0" x2="' + W + '" y1="' + y0 + '" y2="' + y0 + '"/><text class="gs-lib" x="2" y="' + (y0 - 4) + '">par</text>';
     l.forEach(function (x, i) {
       var cx = 20 + (i + 0.5) * (W - 20) / l.length, hgt = Math.max(1.5, Math.abs(x.ecart18) * ky), y = x.ecart18 >= 0 ? y0 - hgt : y0;
-      h += '<rect class="gs-barre' + (x.ecart18 < 0 ? " sous" : "") + '" x="' + (cx - bw / 2).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hgt.toFixed(1) + '" rx="3"><title>' + at(dateCourte(x.d) + " · " + x.score + " coups sur " + x.trous + " trous · " + nbStat(x.ecart18, true) + " sur 18") + '</title></rect>';
+      h += '<rect class="gs-barre' + (x.ecart18 < 0 ? " sous" : "") + '" x="' + (cx - bw / 2).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hgt.toFixed(1) + '" rx="3"><title>' + at(dateCourte(x.d) + " · " + x.score + " coups sur " + x.trous + " trous · " + nbStat(x.ecart18, true) + (legende ? " au par" : " sur 18")) + '</title></rect>';
     });
-    return h + '</svg><figcaption>' + t("Écart au par de chaque partie (" + l.length + "), ramené à 18 trous. Une barre haute : plus de coups.") + '</figcaption></figure>';
+    return h + '</svg><figcaption>' + t(legende ? legende + " (" + l.length + "). Une barre haute : plus de coups." : "Écart au par de chaque partie (" + l.length + "), ramené à 18 trous. Une barre haute : plus de coups.") + '</figcaption></figure>';
   }
   /* Une barre empilée gauche / centre (ou jouable) / droite, avec les effectifs écrits. */
   function barreRepartitionHTML(titre, parts, n, note) {

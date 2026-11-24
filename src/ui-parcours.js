@@ -187,30 +187,95 @@
     var b = document.getElementById("f-fermer"); if (b) b.focus({ preventScroll: true });
   };
 
+  /* ---------- Fiche du parcours (P07) : passages, scores par tracé, évolution, passages sur un trou ---------- */
+  function passagesParcoursHTML(pc, F) {
+    if (!F.parties) return "";
+    var h = '<h3 class="titre-bloc">Tes passages</h3><p class="aide pc-passages">' + t(pluriel(F.parties, "partie") + " sur ce parcours" + (F.premiere ? (F.premiere === F.derniere ? ", le " + dateCourte(F.premiere) : ", du " + dateCourte(F.premiere) + " au " + dateCourte(F.derniere)) : "") + (F.premiere && /\.$/.test(dateCourte(F.derniere)) ? "" : ".") +
+      (F.incompletes ? " " + pluriel(F.incompletes, "partie") + " sans score sur chaque trou : comptée" + (F.incompletes > 1 ? "s" : "") + " dans les passages, pas dans les scores." : "")) + '</p>';
+    h += '<div class="defile"><table class="carte-score traces"><thead><tr><th scope="col">Tracé</th><th scope="col" class="num">Parties</th><th scope="col" class="num">Moyenne</th><th scope="col" class="num">Meilleur</th></tr></thead><tbody>' +
+      F.traces.map(function (T) {
+        return '<tr><th scope="row">' + t(T.lib) + '</th><td class="num">' + T.parties + (T.n < T.parties ? '<small>' + t(T.n + " avec score") + '</small>' : '') + '</td>' +
+          '<td class="num">' + (T.n ? t(String(Math.round(T.moyenneScore))) + '<small>' + t(Math.abs(T.moyenne) < 0.05 ? "par" : signe(T.moyenne)) + '</small>' : "–") + '</td>' +
+          '<td class="num">' + (T.meilleur ? t(String(T.meilleur.score)) + '<small>' + t(ecartLib(T.meilleur.ecart) + " · " + dateCourte(T.meilleur.d)) + '</small>' : "–") + '</td></tr>';
+      }).join("") + '</tbody></table></div><p class="aide">' + t("Score brut ; en dessous, l'écart au par. L'aller, le retour et le parcours complet sont comptés à part ; l'évolution est dans le graphique.") + '</p>';
+    var T0 = F.traces.filter(function (T) { return T.n >= 2; })[0];
+    if (T0) {
+      h += grapheScoresHTML(T0.scores.map(function (x) { return { d: x.d, id: x.id, ecart: x.ecart, ecart18: x.ecart, score: x.score, trous: T0.trous }; }), "Écart au par de chaque partie, " + T0.lib.charAt(0).toLowerCase() + T0.lib.slice(1));
+      if (T0.tendance) h += '<p class="pc-tendance">' + t("Tendance (" + T0.lib.toLowerCase() + ") : " + signe(T0.tendance.avant) + " sur tes " + T0.tendance.n + " premières parties, " + signe(T0.tendance.apres) + " sur les " + T0.tendance.n + " dernières" + (Math.abs(T0.tendance.d) < 1 ? ", à peu près stable." : T0.tendance.d < 0 ? " : tu progresses." : " : en recul.")) + '</p>';
+    }
+    return h;
+  }
+  function departLib(x) {
+    if (x.par < 4) return "–";
+    if (!x.mej) return "non noté";
+    return x.mej.j ? "jouable" : ["raté", "raté à gauche", "court", "raté à droite"][x.mej.cote || 0];
+  }
+  function coupsPassageLib(l) {
+    return l.map(function (c) { return nomClub(c.c) + (c.d != null ? " " + Math.round(c.d) + " m" + (c.gps ? " GPS" : "") : ""); }).join(" → ");
+  }
+  function trouParcoursHTML(pc, h) {
+    var P = passagesTrou(etat.parties, pc, h), R = bilanPassages(P), l = P.passages;
+    var s = '<div class="pc-trou" id="pc-trou-detail"><h4>' + t("Trou " + (h + 1) + (pc.pars[h] ? " · par " + pc.pars[h] : "") + " · " + pluriel(R.n, "passage")) + '</h4>';
+    if (!R.n) return s + '<p class="aide">' + t(P.sansScore ? "Joué sans score : pas encore de passage à comparer." : "Pas encore joué.") + '</p></div>';
+    var bouts = ["moyenne " + signe(R.moyenne), "meilleur " + ecartLib(R.meilleur), "pire " + ecartLib(R.pire), nb1(R.putts) + " putts par passage"];
+    if (R.doubles) bouts.push(R.doubles + (R.doubles > 1 ? " doubles bogeys" : " double bogey") + " ou pire");
+    if (R.troisPutts) bouts.push(R.troisPutts + " trois-putts");
+    if (R.avecPenalite) bouts.push("pénalité sur " + pluriel(R.avecPenalite, "passage"));
+    if (P.par >= 4) bouts.push(R.mej.n ? "départ jouable " + R.mej.jouables + " fois sur " + R.mej.n + (R.mej.ratees ? " (" + [R.mej.gauche ? R.mej.gauche + " à gauche" : "", R.mej.droite ? R.mej.droite + " à droite" : "", R.mej.courtes ? R.mej.courtes + " court" + (R.mej.courtes > 1 ? "s" : "") : ""].filter(Boolean).join(", ") + ")" : "") : "mises en jeu non notées");
+    s += '<p class="pc-trou-resume">' + t(bouts.join(" · ") + ".") + '</p>';
+    s += '<div class="defile"><table class="carte-score passages"><thead><tr><th scope="col">Passage</th><th scope="col" class="num">Score</th><th scope="col">Départ</th><th scope="col" class="num">Putts</th><th scope="col" class="num">Pén.</th></tr></thead><tbody>' +
+      l.slice().reverse().map(function (x) {
+        return '<tr' + (x.coups.length ? ' class="avec-coups"' : '') + '><th scope="row">' + t(dateCourte(x.jour) + (x.tour > 1 ? " · 2e tour" : "")) + '</th>' +
+          '<td class="num"><b>' + x.score + '</b><small>' + t(ecartLib(x.ecart)) + '</small></td><td>' + t(departLib(x)) + '</td><td class="num">' + x.putts + '</td><td class="num">' + (x.pen || "–") + '</td></tr>' +
+          (x.coups.length ? '<tr class="coups-passage"><td colspan="5">' + t("Coups : " + coupsPassageLib(x.coups)) + '</td></tr>' : '');
+      }).join("") + '</tbody></table></div>' +
+      '<p class="aide">' + t("Du plus récent au plus ancien." + (P.sansScore ? " " + pluriel(P.sansScore, "passage") + " sans score, non compté" + (P.sansScore > 1 ? "s" : "") + "." : "") + " Les distances affichées sont seulement celles mesurées ; aucune trajectoire n'est reconstituée.") + '</p>';
+    return s + '</div>';
+  }
+  function trousParcoursHTML(pc, an) {
+    if (!an.N) return "";
+    var sel = ui.pcTrou && ui.pcTrou.id === pc.id ? ui.pcTrou.h : null;
+    var h = '<h3 class="titre-bloc">Compare tes passages sur un trou</h3><div class="trous-choix" role="group" aria-label="Trou">' +
+      an.trous.map(function (x) {
+        return '<button class="opt" type="button" data-a="pc-trou" data-v="' + x.h + '" aria-pressed="' + (x.h === sel) + '"' + (x.N ? "" : " disabled") + ' aria-label="' + at("Trou " + (x.h + 1) + (x.N ? ", " + pluriel(x.N, "passage") : ", pas encore joué")) + '">' + (x.h + 1) + '</button>';
+      }).join("") + '</div>';
+    return h + (sel != null ? trouParcoursHTML(pc, sel) : '<p class="aide">' + t("Touche un trou pour voir chaque passage : score, départ, putts, pénalités et clubs joués.") + '</p>');
+  }
+  ACTIONS["pc-trou"] = function (el) {
+    var f = ui.feuille; if (!f || !f.parcours) return;
+    var h = +el.getAttribute("data-v");
+    ui.pcTrou = ui.pcTrou && ui.pcTrou.id === f.parcours && ui.pcTrou.h === h ? null : { id: f.parcours, h: h };
+    var feuille = document.getElementById("feuille"), y = feuille ? feuille.scrollTop : 0;
+    rendreFeuille();
+    feuille = document.getElementById("feuille"); if (feuille) feuille.scrollTop = y;
+    var b = document.querySelector('#feuille [data-a="pc-trou"][data-v="' + h + '"]'); if (b) b.focus({ preventScroll: true });
+  };
+
   /* Fiche d'un parcours, dans le calque des fiches. */
   function parcoursHTML(id) {
-    var pc = parcoursDe(id), an = analyseParcours(etat.parties, pc);
+    var pc = parcoursDe(id), an = analyseParcours(etat.parties, pc), F = ficheParcours(etat.parties, pc);
     var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer le parcours" tabindex="-1"></button>' +
       '<section class="feuille" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
       '<header><p class="surtitre">' + t("Parcours · " + resumeParcours(pc, an)) + '</p><h2 id="f-titre">' + t(pc.nom) + '</h2>' +
       '<button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>';
+    h += passagesParcoursHTML(pc, F);
     if (an.N) {
       h += '<h3 class="titre-bloc">Ton score trou par trou</h3>' + grapheTrous(an) +
         '<p class="legende"><span><svg class="cle large" viewBox="0 0 24 14" aria-hidden="true"><rect class="g-moins" x="1" y="1" width="22" height="12" rx="3"/></svg> trou noir</span>' +
         '<span>' + t("Moyenne par trou : " + signe(an.moyTrou) + " sur " + pluriel(an.n, "partie")) + '</span></p>' +
         topFlopHTML(an) +
-        '<h3 class="titre-bloc">Tes trous noirs</h3>' + trousNoirsHTML(an);
+        '<h3 class="titre-bloc">Tes trous noirs</h3>' + trousNoirsHTML(an) + trousParcoursHTML(pc, an);
     } else {
       h += '<p>Joue une partie sur ce parcours : l’appli tracera ton score moyen trou par trou.</p>';
     }
     h += carteBlocParcours(pc) + carteScoreParcoursHTML(pc);
     if (an.N) {
       h += '<details><summary>Tes chiffres trou par trou</summary><div class="defile"><table class="carte-score trous"><thead><tr><th scope="col">Trou</th><th scope="col" class="num">Par</th><th scope="col" class="num">Score</th>' +
-        '<th scope="col" class="num">Dép.</th><th scope="col" class="num">Green</th><th scope="col" class="num">Putts</th><th scope="col" class="num">Pén.</th></tr></thead><tbody>' +
+        '<th scope="col" class="num">Pass.</th><th scope="col" class="num">Dép.</th><th scope="col" class="num">Green</th><th scope="col" class="num">Putts</th><th scope="col" class="num">Pén.</th></tr></thead><tbody>' +
         an.trous.map(function (x) {
           return '<tr><th scope="row">' + (x.h + 1) + '</th><td class="num rep">' + (x.par || "–") + '</td><td class="num">' + (x.moy == null ? "–" : signe(x.moy)) + '</td>' +
-            (x.n ? '<td class="num">' + x.J + "/" + x.n + '</td><td class="num">' + x.G + "/" + x.n + '</td><td class="num">' + nb1(x.putts) + '</td><td class="num">' + nb1(x.pen) + '</td>' : '<td class="num" colspan="4">pas encore joué</td>') + '</tr>';
-        }).join("") + '</tbody></table></div><p class="aide" style="margin-top:8px">Score : moyenne par rapport au par. Départs et greens : réussites sur le nombre de passages. Putts et pénalités : moyenne par passage.</p></details>';
+            (x.N ? '<td class="num">' + x.N + '</td><td class="num">' + (x.par >= 4 && x.M ? x.J + "/" + x.M : "–") + '</td><td class="num">' + x.G + "/" + x.N + '</td><td class="num">' + nb1(x.putts) + '</td><td class="num">' + nb1(x.pen) + '</td>' : '<td class="num" colspan="5">' + (x.n ? "joué sans score" : "pas encore joué") + '</td>') + '</tr>';
+        }).join("") + '</tbody></table></div><p class="aide" style="margin-top:8px">Passages : trous joués avec un score. Score : moyenne par rapport au par. Départs : mises en jeu jouables sur celles renseignées (par 4 et 5). Greens : en régulation, sur les passages. Putts et pénalités : moyenne par passage.</p></details>';
     }
     h += '<details><summary>Nom du parcours</summary><form data-f="pc-infos" data-id="' + pc.id + '" novalidate>' +
       '<div class="champ"><label for="pc-nom">Nom du parcours</label><input id="pc-nom" type="text" maxlength="40" autocomplete="off" value="' + at(pc.nom) + '"></div>' +
@@ -220,7 +285,7 @@
 
   ACTIONS["pc-ouvrir"] = function (el) {
     var id = el.getAttribute("data-id"); if (!parcoursDe(id)) return;
-    ui.retourFocus = el; ui.pcCarte = null;
+    ui.retourFocus = el; ui.pcCarte = null; ui.pcTrou = null;
     ui.feuille = { parcours: id };
     rendreFeuille();
     var b = document.getElementById("f-fermer"); if (b) b.focus();
