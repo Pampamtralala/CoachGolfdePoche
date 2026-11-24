@@ -379,24 +379,30 @@ function indexEstime(parties, parcours, index) {
 /* ---------- Parcours : score trou par trou et trous noirs ---------- */
 function analyseParcours(parties, pc) {
   var L = pc.pars.length, trous = [], n = 0, i;
-  for (i = 0; i < L; i++) trous.push({ h: i, par: pc.pars[i], n: 0, N: 0, S: 0, J: 0, G: 0, P: 0, X: 0, E: 0, cotes: [0, 0, 0, 0], clubs: [null, [0, 0], [0, 0], [0, 0], [0, 0]] });
+  for (i = 0; i < L; i++) trous.push({ h: i, par: pc.pars[i], n: 0, N: 0, S: 0, M: 0, J: 0, G: 0, P: 0, X: 0, E: 0, cotes: [0, 0, 0, 0], clubs: [null, [0, 0], [0, 0], [0, 0], [0, 0]] });
   (parties || []).forEach(function (p) {
     if (p.pc !== pc.id) return;
     n++;
     p.trous.forEach(function (t, k) {
+      if (!t) return;
       var x = trous[((p.o || 0) + k) % L];
-      x.n++; x.J += t[0]; x.G += t[1]; x.P += t[2]; x.X += t[3];
-      if (!t[0] && t[6]) x.cotes[t[6]]++;
-      if (t[7]) { x.clubs[t[7]][0]++; x.clubs[t[7]][1] += t[0]; }
-      if (trouNote(t)) { x.N++; x.S += t[4] - t[5]; x.E += t[4] - (t[5] - 2 + (t[1] ? 0 : 1) + t[2] + t[3]); }
+      x.n++;
+      /* Passage réel : un trou avec un score. Les moyennes du trou ne portent que sur eux. */
+      if (!trouNote(t)) return;
+      x.N++; x.S += t[4] - t[5]; x.E += t[4] - (t[5] - 2 + (t[1] ? 0 : 1) + t[2] + t[3]);
+      x.G += t[1]; x.P += t[2]; x.X += t[3];
+      /* Mise en jeu : par 4 et 5, renseignée seulement (une saisie express ne la note pas). */
+      var mej = t[5] >= 4 && renseigneTrou(p.renseigne, k, RENS_MEJ);
+      if (mej) { x.M++; x.J += t[0]; if (!t[0] && t[6]) x.cotes[t[6]]++; }
+      if (t[7] && t[5] >= 4 && renseigneTrou(p.renseigne, k, RENS_CLUB)) { x.clubs[t[7]][0]++; if (mej) x.clubs[t[7]][1] += t[0]; }
     });
   });
   var N = 0, S = 0;
   trous.forEach(function (x) {
     N += x.N; S += x.S;
     x.moy = x.N ? x.S / x.N : null;
-    x.jeu = x.n ? x.J / x.n : null; x.gir = x.n ? x.G / x.n : null;
-    x.putts = x.n ? x.P / x.n : null; x.pen = x.n ? x.X / x.n : null;
+    x.jeu = x.M ? x.J / x.M : null; x.gir = x.N ? x.G / x.N : null;
+    x.putts = x.N ? x.P / x.N : null; x.pen = x.N ? x.X / x.N : null;
     x.extra = x.N ? x.E / x.N : null;
   });
   var moyTrou = N ? S / N : null;
@@ -411,8 +417,8 @@ function analyseParcours(parties, pc) {
 function causesTrou(x) {
   var c = [];
   if (x.pen >= 0.5) c.push({ id: "penal", cout: x.pen });
-  if (x.par !== 3 && x.jeu <= 0.5) c.push({ id: "depart", cout: (1 - x.jeu) * 0.8 });
-  if (x.par === 3 && x.gir <= 0.34) c.push({ id: "par3", cout: (1 - x.gir) * 0.6 });
+  if (x.par !== 3 && x.jeu != null && x.jeu <= 0.5) c.push({ id: "depart", cout: (1 - x.jeu) * 0.8 });
+  if (x.par === 3 && x.gir != null && x.gir <= 0.34) c.push({ id: "par3", cout: (1 - x.gir) * 0.6 });
   if (x.putts >= 2.5) c.push({ id: "putts", cout: x.putts - 2 });
   if (x.extra >= 0.75) c.push({ id: x.par === 3 ? "autour" : "long", cout: x.extra });
   c.sort(function (a, b) { return b.cout - a.cout; });

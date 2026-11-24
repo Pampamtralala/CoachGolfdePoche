@@ -1542,3 +1542,23 @@ main.entree { animation: entreeVue .22s ease-out; }
 .comparaison-clubs th[scope="row"], .departs-familles th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
 .comparaison-clubs, .departs-familles { margin-bottom: 8px; }
 .voir-profil { display: block; margin: 4px 0 10px; text-align: left; }
+
+/* ---------- Fiche de parcours : passages et trous (P07) ---------- */
+.trous-choix { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 6px; margin: 4px 0 10px; }
+.trous-choix .opt { min-height: 44px; padding: 0; font-variant-numeric: tabular-nums; }
+.trous-choix .opt:disabled { opacity: .4; }
+.pc-trou { border-top: 1px solid var(--filet); padding-top: 10px; margin-bottom: 8px; }
+.pc-trou h4 { margin: 0 0 6px; font-size: 17px; }
+.pc-trou-resume, .pc-tendance { margin: 0 0 10px; font-size: 15px; line-height: 1.45; }
+.traces td small, .passages td small, .passages th small { display: block; font-size: 12px; font-weight: 400; color: var(--encre-2); }
+.traces th[scope="row"], .passages th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
+.passages th[scope="row"] small { max-width: 16em; }
+.passages tr.avec-coups > * { border-bottom: 0; }
+.passages tr.coups-passage td { padding: 0 10px 8px; font-size: 13px; color: var(--encre-2); text-align: left; border-top: 0; }
+.passages thead th.num, .passages td.num, .traces thead th.num, .traces td.num { width: auto; }
+.passages thead th, .passages td, .traces thead th, .traces td { padding-left: 6px; padding-right: 6px; }
+.passages thead th { letter-spacing: .03em; }
+.carte-score.trous thead th.num, .carte-score.trous td.num { width: 44px; padding-left: 3px; padding-right: 3px; }
+.carte-score.trous thead th { letter-spacing: .02em; }
+.carte-score.trous thead th { font-size: 11.5px; letter-spacing: 0; padding-left: 3px; padding-right: 3px; }
+.carte-score.trous tbody th[scope="row"] { padding-left: 8px; }

@@ -35,7 +35,7 @@ function periodePrecedente(debut, fin) {
   return { debut: new Date(d - n * J).toISOString().slice(0, 10), fin: new Date(d - J).toISOString().slice(0, 10), jours: n };
 }
 
-function arrondi1(v) { return v == null || !isFinite(v) ? null : Math.round(v * 10) / 10; }
+function arrondiStat(v) { return v == null || !isFinite(v) ? null : Math.round(v * 10) / 10; }
 function part(a, b) { return b ? Math.round(100 * a / b) : null; }
 
 /* Statistiques d'un ensemble de parties. */
@@ -51,22 +51,22 @@ function tableauStats(parties) {
     var complet = st.N === st.T && st.T > 0;
     if (complet) {
       var e = st.S - st.PAR;
-      parPartie.push({ d: jourStat(p.d), id: p.id || null, trous: st.T, score: st.S, ecart: e, ecart18: arrondi1(e * 18 / st.T) });
+      parPartie.push({ d: jourStat(p.d), id: p.id || null, trous: st.T, score: st.S, ecart: e, ecart18: arrondiStat(e * 18 / st.T) });
       (st.T <= 9 ? neuf : dixHuit).push(st.S);
     }
   });
-  var moy = function (v) { if (!v.length) return null; var t = 0; v.forEach(function (x) { t += x; }); return arrondi1(t / v.length); };
+  var moy = function (v) { if (!v.length) return null; var t = 0; v.forEach(function (x) { t += x; }); return arrondiStat(t / v.length); };
   var k = s.T ? 18 / s.T : 0;
   return {
     parties: l.length, trous: s.T, trousScore: s.N, premiere: l.length ? jourStat(l[0].d) : null, derniere: l.length ? jourStat(l[l.length - 1].d) : null,
     /* Score : écart au par ramené à 18 trous (base explicite), et scores bruts séparés par format. */
-    ecart18: s.N ? arrondi1((s.S - s.PAR) * 18 / s.N) : null,
+    ecart18: s.N ? arrondiStat((s.S - s.PAR) * 18 / s.N) : null,
     scoreBrut18: moy(dixHuit), parties18: dixHuit.length, scoreBrut9: moy(neuf), parties9: neuf.length,
-    puttsParTrou: s.T ? Math.round(100 * s.P / s.T) / 100 : null, putts18: s.T ? arrondi1(s.P * k) : null,
-    troisPutts: s.P3, troisPutts18: s.T ? arrondi1(s.P3 * k) : null, partTroisPutts: part(s.P3, s.T),
+    puttsParTrou: s.T ? Math.round(100 * s.P / s.T) / 100 : null, putts18: s.T ? arrondiStat(s.P * k) : null,
+    troisPutts: s.P3, troisPutts18: s.T ? arrondiStat(s.P3 * k) : null, partTroisPutts: part(s.P3, s.T),
     unPutt: s.P1, partUnPutt: part(s.P1, s.T),
-    penalites: s.X, penalites18: s.T ? arrondi1(s.X * k) : null,
-    gir: s.G, gir18: s.T ? arrondi1(s.G * k) : null, partGir: part(s.G, s.T), girDeduit: true,
+    penalites: s.X, penalites18: s.T ? arrondiStat(s.X * k) : null,
+    gir: s.G, gir18: s.T ? arrondiStat(s.G * k) : null, partGir: part(s.G, s.T), girDeduit: true,
     mej: { n: mej.n, jouables: mej.jouables, part: part(mej.jouables, mej.n), inconnues: mej.inconnues,
       gauche: mej.gauche, droite: mej.droite, courtes: mej.courtes, ratees: mej.ratees },
     parPartie: parPartie
@@ -81,7 +81,7 @@ function comparerStats(a, b) {
   var r = {};
   STATS_COMPAREES.forEach(function (x) {
     var va = a[x.k], vb = b[x.k];
-    r[x.k] = va == null || vb == null ? null : { d: arrondi1(va - vb), mieux: Math.abs(va - vb) < 0.15 ? 0 : (x.mieux === "bas" ? va < vb : va > vb) ? 1 : -1 };
+    r[x.k] = va == null || vb == null ? null : { d: arrondiStat(va - vb), mieux: Math.abs(va - vb) < 0.15 ? 0 : (x.mieux === "bas" ? va < vb : va > vb) ? 1 : -1 };
   });
   var pa = a.mej.part, pb = b.mej.part;
   r.mej = pa == null || pb == null ? null : { d: pa - pb, mieux: Math.abs(pa - pb) < 1 ? 0 : pa > pb ? 1 : -1 };

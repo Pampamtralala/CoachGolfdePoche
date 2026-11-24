@@ -158,3 +158,33 @@ BLOCAGES / RISQUES : le profil ne compte que les parties terminées ; une distan
   compris) et une distance déclarée (vol) sont réunies dans la distance indicative, et l'écran le dit.
 PROCHAINE TÂCHE AUTORISÉE : aucune sans accord ; candidat suivant : P07 (parcours et trous).
 ```
+
+## 24 novembre 2026 (après-midi)
+
+```text
+DATE : 24/11/2026
+CRÉDITS ALLOUÉS / CONSOMMÉS / RESTANTS : non mesurables (aucun compteur fourni).
+FUSION : PR #9 (P06) fusionnée sur `app` à la demande explicite du propriétaire (« fusionne 9 ») ;
+  site en ligne vérifié (sw.js 20261123230942) ; appli claude.ai mise à jour.
+TÂCHE ACTUELLE : P07 — analyse personnalisée des parcours et des trous (« lance »)
+FONCTIONNALITÉS LIVRÉES (branche data/p07-parcours-trous) :
+  - engine-parcours.js (fonctions pures) : tracé de chaque partie (18 trous, 9 trous, aller,
+    retour, deux tours d'un neuf trous) ; fiche du parcours (parties, scores complets par tracé :
+    moyenne, meilleur, dernier, tendance à partir de 4 scores ; évolution chronologique) ;
+    passages réels sur un trou physique (trou sans score exclu, mise en jeu seulement renseignée
+    et sur par 4/5, distance seulement mesurée) ; bilan d'un trou (moyenne, meilleur, pire,
+    putts, doubles bogeys ou pire, trois-putts, pénalités, départs ratés par côté) ;
+  - fiche de parcours : « Tes passages » (tableau par tracé et graphique d'évolution),
+    « Compare tes passages sur un trou » (grille des trous, détail des passages) ;
+    tableau trou par trou : colonne Passages, départs sur les mises en jeu renseignées ;
+  - analyseParcours (trous noirs) : une mise en jeu non renseignée ne compte plus comme jouable,
+    et la cause « départ » n'est plus tirée d'une mise en jeu inconnue ;
+  - test-doublons : le build interdit désormais deux fonctions du même nom (deux collisions
+    trouvées dans la branche avant commit ; arrondi1 de engine-stats renommé arrondiStat).
+TESTS EXÉCUTÉS ET RÉSULTATS : npm test (parcours : 20 vérifications ; doublons : 0) : 0 échec ;
+  test-startup : OK ; essai20 (P07) : OK ; essais 4, 5, 8 à 13, 15 à 19 : OK.
+  Restent en échec, comme sur app : essai3 (ancienne sauvegarde normalisée), essai14 (libellé hors réseau).
+BRANCHE / COMMIT / LIEN PR : data/p07-parcours-trous · PR #10 (brouillon)
+BLOCAGES / RISQUES : une partie sans parcours associé n'entre dans aucune fiche.
+PROCHAINE TÂCHE AUTORISÉE : aucune sans accord ; candidat suivant : P08 (putting).
+```
