@@ -130,3 +130,31 @@ BRANCHE / COMMIT / LIEN PR : data/p05-tableau-de-bord · PR #8 (brouillon)
 BLOCAGES / RISQUES : PR à fusionner après la #7 (elle en contient les commits).
 PROCHAINE TÂCHE AUTORISÉE : aucune sans accord ; candidats P06 (clubs) ou P07 (parcours).
 ```
+
+## 24 novembre 2026 (nuit)
+
+```text
+DATE : 24/11/2026
+CRÉDITS ALLOUÉS / CONSOMMÉS / RESTANTS : non mesurables (aucun compteur fourni).
+FUSIONS : PR #7 (P03) et #8 (P05) fusionnées sur `app` à la demande explicite du propriétaire
+  (« fusionne 7 et 8 ») ; site en ligne vérifié (sw.js 20261123224236) ; appli claude.ai mise à jour.
+TÂCHE ACTUELLE : P06 — profil statistique de chaque club (« continue la prochaine »)
+FONCTIONNALITÉS LIVRÉES (branche data/p06-profil-clubs) :
+  - engine-clubs.js (fonctions pures) : coups d'un club avec leur résultat ; direction (au-delà de
+    5 m : gauche ou droite) ; arrivée d'après la position du coup suivant (en jeu, rough, bunker ou
+    arbres ; green seulement si le compte du trou le confirme) ; mises en jeu quand le club prend le
+    départ d'un par 4 ou 5 (non renseignées exclues) ; trous avec pénalité ; distance indicative
+    (pleins coups mesurés, au moins 3, arrondie à 5 m, estimations exclues, GPS compté à part) ;
+    tendance (moitié ancienne contre moitié récente, à partir de 10 coups) ; départs par type de
+    club depuis la saisie Standard ; comparaison de deux clubs avec effectifs ;
+  - Statistiques : section « Profil des clubs » qui suit les filtres du tableau de bord ;
+  - fiche d'un club du sac : lien « Voir le profil de ce club ».
+TESTS EXÉCUTÉS ET RÉSULTATS : npm test (clubs : 20 vérifications) : 0 échec ; test-startup : OK ;
+  essai19 (P06) : OK ; essais 4, 5, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18 : OK.
+  essai10 aligné sur la règle de la PR #3 (distance GPS totale hors du sac). Restent en échec,
+  comme sur app : essai3 (ancienne sauvegarde normalisée), essai14 (libellé hors réseau).
+BRANCHE / COMMIT / LIEN PR : data/p06-profil-clubs · PR #9 (brouillon)
+BLOCAGES / RISQUES : le profil ne compte que les parties terminées ; une distance GPS (roulé
+  compris) et une distance déclarée (vol) sont réunies dans la distance indicative, et l'écran le dit.
+PROCHAINE TÂCHE AUTORISÉE : aucune sans accord ; candidat suivant : P07 (parcours et trous).
+```

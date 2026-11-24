@@ -188,6 +188,8 @@
       (s && s.n > 1 ? '<p class="aide">' + t("Moyenne de " + pluriel(s.n, "mesure") + (parc.length ? " dont " + parc.length + " sur le parcours" : "") + ", de " + s.min + " à " + s.max + " m." + (mes.length > 1 ? " Enregistrer une autre moyenne remplace les mesures du practice." : "")) + '</p>' : '') +
       '<button class="btn principal large" type="submit">Enregistrer</button></form>';
     h += ellipseClubHTML(id) || dispersionClubHTML(tout);
+    var nCoups = (clubsNotes(etat.parties, []).filter(function (x) { return x.club === id; })[0] || {}).n;
+    if (nCoups) h += '<button class="lien voir-profil" type="button" data-a="st-voir-club" data-v="' + at(id) + '">' + t("Voir le profil de ce club : direction, résultat, tendance (" + pluriel(nCoups, "coup") + ")") + '</button>';
     if (parc.length) h += '<p class="sac-parcours">' + t("Sur le parcours : " + parc.slice(-8).join(", ") + " m" + (parc.length > 8 ? " (" + parc.length + " coups)" : "") + ".") + '</p>';
     h += '<p class="sac-serie"><button class="btn large" type="button" data-a="serie-ouvrir" data-id="' + id + '">Faire une série de balles avec ce club</button></p>';
     h += '<details class="sac-balles"' + (s && s.n > 1 || ui.sacBalles ? " open" : "") + '><summary>Mesurer balle par balle</summary>' +

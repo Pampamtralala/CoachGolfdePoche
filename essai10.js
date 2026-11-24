@@ -147,8 +147,11 @@ function partieType(graine, pars) {
     await allerVue(page, 'sac');
     r.bandeauSac = await page.locator('.bandeau-partie').count();
     await toucher('f7'); await page.waitForTimeout(200); if (!(await page.locator('#feuille').count())) await toucher('f7'); await page.waitForSelector('#feuille .sac-ellipse');
+    /* Depuis la PR #3, une distance GPS est une distance totale : elle n'entre pas dans la distance de vol du sac.
+       Partie en cours : le profil du club (P06), comme les statistiques, ne compte que les parties terminées. */
     r.ficheParcours = await page.$eval('#feuille .sac-parcours', x => x.textContent).catch(() => 'aucune ligne');
-    verifie(/150/.test(r.ficheParcours), nom + ' coup du parcours dans la fiche : ' + r.ficheParcours);
+    r.lienProfil = await page.$eval('#feuille [data-a="st-voir-club"]', x => x.textContent).catch(() => 'aucun lien');
+    verifie(!/150/.test(r.ficheParcours) && r.lienProfil === 'aucun lien', nom + ' distance GPS hors du sac, pas de profil avant la fin de la partie : ' + r.ficheParcours + ' · ' + r.lienProfil);
     e = await lire();
     r.coupsEnregistres = JSON.stringify(e.partie.coups[0]);
     await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' });
