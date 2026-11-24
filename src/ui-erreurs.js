@@ -9,7 +9,7 @@
     penalites: function () { return "Regarde sur quels trous et avec quel club elles arrivent : viser plus large ou jouer plus court au départ de ces trous est une piste."; },
     gir: function () { return "Un green manqué peut venir du départ, de la distance ou de la direction de l'approche : le profil des clubs et la fiche des parcours aident à trancher."; },
     approche: function () { return "Deux coups ou plus pour rejoindre le green après l'avoir manqué : le petit jeu autour du green est la piste la plus directe."; },
-    troisPutts: function () { return "Les trois-putts viennent souvent d'un premier putt long : note la longueur du premier putt (saisie Expert) pour le vérifier."; }
+    troisPutts: function () { return "Les trois-putts viennent souvent d'un premier putt long : note la longueur du premier putt (saisie Standard ou Expert, sous les putts) pour le vérifier."; }
   };
   var AIDES_ERREURS = {
     mej: "note la mise en jeu au départ des par 4 et 5 (saisie Standard ou Expert)",

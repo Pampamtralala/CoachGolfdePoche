@@ -46,8 +46,7 @@ async function saisirTrou(page, t, valider = true) {
   for (let n = 0; n < 15 && v.score !== t[4]; n++) { await page.click(`${P}[data-a="pt-score"][data-d="${v.score < t[4] ? 1 : -1}"]`); v = await lirePave(page); }
   if (t[5] >= 4 && v.j !== t[0] && await page.locator(P + '.pv-mej').count()) { await page.click(P + `[data-a="pv-mej"][data-v="${t[0] ? 'j' : 'r'}"]`); v = await lirePave(page); }
   const ecart = k => v['a' + k] && v['k' + k] !== (t[k] || 0);
-  /* Côté et club de départ sont avec la mise en jeu ; seul le premier putt est dans « Plus de détails ». */
-  if (ecart(8) && !v.detail) { await page.click(P + '.pv-plus summary'); v = await lirePave(page); }
+  /* Côté et club de départ sont avec la mise en jeu ; le premier putt est sous les putts (Standard et Expert). */
   for (const k of [6, 7, 8]) if (ecart(k)) { await page.click(`${P}[data-a="pt-set"][data-k="${k}"][data-v="${t[k] || v['k' + k]}"]`); v = await lirePave(page); }
   if (valider) await page.click('#pt-suiv');
   return v;

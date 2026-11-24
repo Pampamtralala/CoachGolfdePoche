@@ -40,9 +40,9 @@
       h += tablePuttHTML("putt-longueur", P.categories.map(function (c) { return lignePuttHTML(c.lib, c.aide, c); }).join("")) +
         '<p class="aide">' + t("Notée sur " + pluriel(P.notes, "trou") + (P.sansLongueur ? " ; " + pluriel(P.sansLongueur, "trou") + " sans longueur notée, non compté" + (P.sansLongueur > 1 ? "s" : "") + " ici" : "") + ". Pas de taux de réussite à une distance précise : seulement trois catégories.") + '</p>';
     } else {
-      h += '<p class="aide">' + t("Pas encore noté. En saisie Expert, « Premier putt » sous « Plus de détails » : une catégorie suffit, sans mesure GPS.") + '</p>';
+      h += '<p class="aide">' + t("Pas encore noté. En saisie Standard ou Expert, « Premier putt » apparaît sous le nombre de putts : une catégorie suffit, sans mesure GPS.") + '</p>';
     }
-    h += '<p class="putt-ligne"><b>Second putt difficile</b> ' + t(R.difficiles.n ? "signalé " + R.difficiles.n + " fois" + (R.difficiles.apresLong ? ", dont " + R.difficiles.apresLong + " après un premier putt long" : "") + "." : "jamais signalé. En saisie Expert, signale quand le premier putt a laissé un second putt difficile.") + '</p>';
+    h += '<p class="putt-ligne"><b>Second putt difficile</b> ' + t(R.difficiles.n ? "signalé " + R.difficiles.n + " fois" + (R.difficiles.apresLong ? ", dont " + R.difficiles.apresLong + " après un premier putt long" : "") + "." : "jamais signalé. En saisie Standard ou Expert, sous le nombre de putts, signale quand le premier putt a laissé un second putt difficile.") + '</p>';
     /* Par parcours */
     var pcs = R.parcours.filter(function (x) { return x.trous >= 9; });
     if (pcs.length > 1) h += '<h3 class="titre-bloc">Par parcours</h3>' + tablePuttHTML("putt-parcours", pcs.map(function (x) { var pc = parcoursDe(x.pc); return lignePuttHTML(pc ? pc.nom : "Parcours supprimé", "", x); }).join(""));

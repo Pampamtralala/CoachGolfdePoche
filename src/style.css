@@ -1589,3 +1589,5 @@ main.entree { animation: entreeVue .22s ease-out; }
 .putt-gir thead th.num, .putt-gir td.num, .putt-longueur thead th.num, .putt-longueur td.num, .putt-parcours thead th.num, .putt-parcours td.num { width: auto; padding-left: 6px; padding-right: 6px; }
 .putt-gir th[scope="row"], .putt-longueur th[scope="row"], .putt-parcours th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
 .putt-longueur th[scope="row"] small { max-width: 13em; }
+.pv-putt1 { margin: 4px 0 8px; padding: 2px 12px 10px; border-radius: var(--rayon-s); background: var(--carte); }
+.pv-putt1 .pt-sous { margin-top: 6px; }

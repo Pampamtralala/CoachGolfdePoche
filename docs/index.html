@@ -1606,6 +1606,8 @@ main.entree { animation: entreeVue .22s ease-out; }
 .putt-gir thead th.num, .putt-gir td.num, .putt-longueur thead th.num, .putt-longueur td.num, .putt-parcours thead th.num, .putt-parcours td.num { width: auto; padding-left: 6px; padding-right: 6px; }
 .putt-gir th[scope="row"], .putt-longueur th[scope="row"], .putt-parcours th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
 .putt-longueur th[scope="row"] small { max-width: 13em; }
+.pv-putt1 { margin: 4px 0 8px; padding: 2px 12px 10px; border-radius: var(--rayon-s); background: var(--carte); }
+.pv-putt1 .pt-sous { margin-top: 6px; }
 
 /* ---------- Sac de golf en perspective (fausse 3D) ----------
    Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
@@ -6736,7 +6738,7 @@ function analysePutting(parties) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-24T20:10:13.466Z";
+  var VERSION_APPLI = "2026-11-24T20:27:23.987Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -9836,6 +9838,9 @@ function analysePutting(parties) {
       '<div class="pv-penal-bloc"><button class="pv-penal" type="button" data-a="pv-penal" data-d="1"' + (v[3] >= 3 ? " disabled" : "") + ' aria-label="' + at("Pénalité ou drop : un coup de plus" + (v[3] ? ". " + v[3] + " déjà noté" + (v[3] > 1 ? "es" : "e") : "")) + '">' +
       '<span>Pénalité<br>ou drop</span><b>' + (v[3] ? "+" + v[3] : "+1") + '</b></button>' +
       (v[3] ? '<button class="pv-penal-moins" type="button" data-a="pv-penal" data-d="-1" aria-label="Retirer une pénalité">−1</button>' : '') + '</div></div>' +
+      /* Putting (P08), en Standard et en Expert : longueur du premier putt, puis second putt difficile. Facultatifs. */
+      (!expr && v[2] ? '<div class="pv-putt1">' + sousChoix("Premier putt (facultatif)", 8, v.length >= 11 ? PUTT1B : PUTT1, v) +
+        (v[2] >= 2 && v.length >= 11 ? sousChoix("Second putt difficile, laissé par le premier ?", 11, ["", "Oui"], v) : "") + '</div>' : '') +
       (!expr && v[5] >= 4 ? mejHTML(p, v) : '') +
       (!expr ? '<p class="aide pv-gir">' + t("Green en régulation : " + (v[1] ? "oui" : "non") + ", déduit du score et des putts.") + '</p>' : '');
 
@@ -9864,8 +9869,6 @@ function analysePutting(parties) {
 
     /* Détails facultatifs */
     if (niv === 2) h += '<details class="pv-plus"' + (detail ? " open" : "") + '><summary data-a="pt-detail">Plus de détails</summary>' +
-      (v[2] ? sousChoix("Premier putt", 8, v.length >= 11 ? PUTT1B : PUTT1, v) : "") +
-      (v[2] >= 2 && v.length >= 11 ? sousChoix("Second putt difficile, laissé par le premier", 11, ["", "Oui"], v) : "") +
       (v.length >= 11 ? sousChoix("Bunker près du green", 10, ["", "Sorti sur le green", "Resté à côté"], v) : "") + '</details>';
     h += '<div class="ligne-liens"><button class="lien" type="button" data-a="pv-eveil" aria-pressed="' + (etat.ecranAllume !== false) + '">' + (etat.ecranAllume !== false ? "Écran toujours allumé" : "Garder l’écran allumé") + '</button>' +
       (dernier ? "" : '<button class="lien" type="button" data-a="pt-terminer">Terminer la partie ici</button>') + '</div>' +
@@ -11749,7 +11752,7 @@ function analysePutting(parties) {
     penalites: function () { return "Regarde sur quels trous et avec quel club elles arrivent : viser plus large ou jouer plus court au départ de ces trous est une piste."; },
     gir: function () { return "Un green manqué peut venir du départ, de la distance ou de la direction de l'approche : le profil des clubs et la fiche des parcours aident à trancher."; },
     approche: function () { return "Deux coups ou plus pour rejoindre le green après l'avoir manqué : le petit jeu autour du green est la piste la plus directe."; },
-    troisPutts: function () { return "Les trois-putts viennent souvent d'un premier putt long : note la longueur du premier putt (saisie Expert) pour le vérifier."; }
+    troisPutts: function () { return "Les trois-putts viennent souvent d'un premier putt long : note la longueur du premier putt (saisie Standard ou Expert, sous les putts) pour le vérifier."; }
   };
   var AIDES_ERREURS = {
     mej: "note la mise en jeu au départ des par 4 et 5 (saisie Standard ou Expert)",
@@ -11843,9 +11846,9 @@ function analysePutting(parties) {
       h += tablePuttHTML("putt-longueur", P.categories.map(function (c) { return lignePuttHTML(c.lib, c.aide, c); }).join("")) +
         '<p class="aide">' + t("Notée sur " + pluriel(P.notes, "trou") + (P.sansLongueur ? " ; " + pluriel(P.sansLongueur, "trou") + " sans longueur notée, non compté" + (P.sansLongueur > 1 ? "s" : "") + " ici" : "") + ". Pas de taux de réussite à une distance précise : seulement trois catégories.") + '</p>';
     } else {
-      h += '<p class="aide">' + t("Pas encore noté. En saisie Expert, « Premier putt » sous « Plus de détails » : une catégorie suffit, sans mesure GPS.") + '</p>';
+      h += '<p class="aide">' + t("Pas encore noté. En saisie Standard ou Expert, « Premier putt » apparaît sous le nombre de putts : une catégorie suffit, sans mesure GPS.") + '</p>';
     }
-    h += '<p class="putt-ligne"><b>Second putt difficile</b> ' + t(R.difficiles.n ? "signalé " + R.difficiles.n + " fois" + (R.difficiles.apresLong ? ", dont " + R.difficiles.apresLong + " après un premier putt long" : "") + "." : "jamais signalé. En saisie Expert, signale quand le premier putt a laissé un second putt difficile.") + '</p>';
+    h += '<p class="putt-ligne"><b>Second putt difficile</b> ' + t(R.difficiles.n ? "signalé " + R.difficiles.n + " fois" + (R.difficiles.apresLong ? ", dont " + R.difficiles.apresLong + " après un premier putt long" : "") + "." : "jamais signalé. En saisie Standard ou Expert, sous le nombre de putts, signale quand le premier putt a laissé un second putt difficile.") + '</p>';
     /* Par parcours */
     var pcs = R.parcours.filter(function (x) { return x.trous >= 9; });
     if (pcs.length > 1) h += '<h3 class="titre-bloc">Par parcours</h3>' + tablePuttHTML("putt-parcours", pcs.map(function (x) { var pc = parcoursDe(x.pc); return lignePuttHTML(pc ? pc.nom : "Parcours supprimé", "", x); }).join(""));

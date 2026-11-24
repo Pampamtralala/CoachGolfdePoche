@@ -26,11 +26,15 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     /* Saisie : en Expert, après 2 putts, « second putt difficile » ; disparaît sous 2 putts */
     await page.click('#barre [data-a="onglet"][data-v="parcours"]');
     await page.click('.cta-partie'); await page.fill('#dp-nom', 'Golf de Test'); await page.click('[data-a="pt-nouvelle"]'); await page.waitForSelector(P + '.pave');
-    await modeDetail(page);
+    r.express = await page.locator(P + '.pv-putt1').count();
+    verifie(r.express === 0, nom + ' Express : pas de détail des putts');
+    await page.click(P + '[data-a="mode-saisie"][data-v="standard"]');
     for (let n = 0; n < 4; n++) { const v = (await lirePave(page)).putts; if (v === 2) break; await page.click(`${P}[data-a="pv-putts"][data-d="${v < 2 ? 1 : -1}"]`); }
-    if (!(await page.locator(P + '.pv-plus[open]').count())) await page.click(P + '.pv-plus summary');
-    r.choix = await page.locator(P + '[data-a="pt-set"][data-k="11"]').count();
-    verifie(r.choix === 1, nom + ' choix « second putt difficile » à 2 putts : ' + r.choix);
+    r.choix = await page.locator(P + '.pv-putt1 [data-a="pt-set"][data-k="11"]').count();
+    r.visibles = await page.evaluate(() => [...document.querySelectorAll('#calque-partie .pv-putt1 .pt-sous > span')].map(x => x.textContent));
+    verifie(r.choix === 1 && !(await page.locator(P + '.pv-plus').count()) && r.visibles.length === 2, nom + ' Standard : premier putt et second putt difficile sous les putts : ' + r.visibles.join(' | '));
+    await page.locator(P + '.pv-putt1').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `${D}/${nom}-00-putt1.png` });
     await page.click(P + '[data-a="pt-set"][data-k="8"][data-v="5"]');
     await page.click(P + '[data-a="pt-set"][data-k="11"][data-v="1"]');
     r.trou = (await lire()).partie.trous[0];

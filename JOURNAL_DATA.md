@@ -235,3 +235,13 @@ BLOCAGES / RISQUES : le « second putt difficile » n'est qu'un signalement : so
   dire « facile », aucun taux n'en est tiré.
 PROCHAINE TÂCHE AUTORISÉE : aucune sans accord ; candidat suivant : P04 (mes données, sauvegardes).
 ```
+
+```text
+DATE : 24/11/2026 (soir, retour du propriétaire)
+RETOUR : « Je ne vois pas la possibilité de noter mes putts » — le premier putt et le second putt
+  difficile n'étaient proposés qu'en Expert, repliés sous « Plus de détails ».
+CORRECTION (PR #12) : bloc « Premier putt (facultatif) » et « Second putt difficile » directement
+  sous le compteur de putts, en Standard et en Expert ; l'Express reste score, putts, pénalités.
+TESTS : npm test 0 échec ; test-startup OK ; essai22 vérifie le bloc en Standard sans ouvrir de
+  détails et son absence en Express ; essais 4, 5, 6, 8, 9, 10, 12, 13, 16, 17, 18, 21 : OK.
+```
