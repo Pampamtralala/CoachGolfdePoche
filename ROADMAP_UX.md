@@ -8,9 +8,9 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 
 | Ordre | Chantier | Priorité | Statut | Branche · PR |
 | --- | --- | --- | --- | --- |
-| 1 | UX01 Audit et cartographie | P0 | **En revue** | `ux/ux01-audit` |
-| 2 | UX03 Navigation à 5 entrées | P0 | **En revue** | `ux/ux03-navigation` (après #18) |
-| 3 | UX05 Enseignements personnalisés | P0 | À faire | — |
+| 1 | UX01 Audit et cartographie | P0 | **Terminé** | `ux/ux01-audit` · PR #18 (fusionnée) |
+| 2 | UX03 Navigation à 5 entrées | P0 | **Terminé** | `ux/ux03-navigation` · PR #19 (fusionnée) |
+| 3 | UX05 Enseignements personnalisés | P0 | **En revue** | `ux/ux05-enseignements` |
 | 4 | UX07 Filtres et visualisations (fonctionnel : filtres communs, types de graphiques) | P1 | À faire | — |
 | 5 | UX04 Tableau de bord « Mon jeu » | P0 | À faire | — |
 | 6 | UX06 Espace Analyses | P0 | À faire | — |
@@ -182,7 +182,7 @@ fenêtres, confirmations, barre de navigation.
 
 ## 5. Décisions à valider
 
-Encore utiles pour les chantiers UX : 4, 5, 7 et 8. Reportées avec la refonte graphique : 1, 2, 3 et 6.
+Encore utiles pour les chantiers UX : 4, 5, 7 et 8 — appliquées telles que proposées depuis le 25/11 (demande de poursuivre les chantiers), à revoir si besoin. Reportées avec la refonte graphique : 1, 2, 3 et 6.
 
 | # | Question | Proposition |
 | --- | --- | --- |
@@ -236,3 +236,30 @@ Encore utiles pour les chantiers UX : 4, 5, 7 et 8. Reportées avec la refonte g
   helper commun `nav-essai.js`. Placer l'appel « série » en haut de Mon sac décalait la scène du sac 3D (essai 7) :
   il est placé après la matrice de wedges. Le bouton « Comprendre mon jeu » du tableau de bord, en double avec la
   sous-navigation, est retiré de cet endroit (la fonction reste dans la sous-navigation, l'accueil et la recherche).
+
+### UX05 — Enseignements personnalisés (25/11/2026)
+
+- Objectif : dire au joueur ce que révèlent ses données sans qu'il ait à chercher, par des règles déterministes.
+- Modifications :
+  - `src/engine-enseignements.js` (nouveau) : `enseignements(parties, ctx)` lit les réponses de « Comprendre mon jeu »
+    (`repondre`), les erreurs récurrentes et le tableau des statistiques ; aucun calcul statistique nouveau. Sept
+    catégories : record personnel, point de vigilance, erreur récurrente, opportunité de progression, progression,
+    point fort, données à enrichir. Chaque enseignement : titre court, constat chiffré (mot pour mot la réponse de
+    l'analyste pour les évolutions), période, effectif, fiabilité expliquée (solide au double du minimum, indicatif
+    au-dessus, toujours indicatif pour une estimation, insuffisant pour les données à enrichir), provenance (observé,
+    estimé, déduit, déclaré), lien vers le détail, action éventuelle. `choisirEnseignements` : trois au plus, une
+    catégorie chacun, les plus importants d'abord, rotation quotidienne des ex aequo.
+  - `src/ui-enseignements.js` (nouveau) : bloc « Ce que disent tes données » sur Mon jeu, fiche « Enseignements »
+    regroupée par catégorie, liens vers la question de Comprendre mon jeu ou vers les erreurs des statistiques,
+    passerelle vers la bibliothèque d'exercices filtrée sur le domaine (marquée « d'après tes données »).
+  - Accès : sous-navigation d'Analyses, recherche. `style.css` : cartes avec les jetons existants.
+- Seuils : ceux de Comprendre mon jeu (`SEUILS_ANALYSTE`, `MIN_ANALYSTE`) et des erreurs récurrentes ; en plus, record
+  sur au moins 5 parties complètes, trou cité à partir d'un coup au-dessus du par en moyenne, secteur estimé à partir
+  d'un demi-coup perdu par partie.
+- Tests : `test-enseignements.js` (87 vérifications : rien sous les seuils, traçabilité, champs obligatoires,
+  fiabilité, dégradation avec passerelle, record, rotation), ajouté à `npm test` (901 noms, 0 doublon) ; essais 3
+  à 28 verts ; nouvel `essai29.js` (carnet vide, deux parties, douze parties, fiche, détail, exercices filtrés,
+  erreurs, recherche, 360 et 390 px).
+- Difficultés : deux enseignements pouvaient porter sur le même sujet (côté des ratés et erreur la plus fréquente) ;
+  la règle « une catégorie par carte » sur Mon jeu évite le doublon, la fiche les garde tous. La fiabilité des
+  évolutions s'appuie sur le nombre de parties, celle des côtés sur le nombre de ratés latéraux.
