@@ -1395,6 +1395,7 @@
   /*INCLURE:ui-analyste.js*/
   /*INCLURE:ui-enseignements.js*/
   /*INCLURE:ui-rubriques.js*/
+  /*INCLURE:ui-monsac.js*/
   /*INCLURE:ui-apres.js*/
   /*INCLURE:ui-series.js*/
   /*INCLURE:ui-parcours.js*/

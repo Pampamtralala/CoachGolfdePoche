@@ -170,6 +170,7 @@
     var s = statsClub(tout), an = analyseCarnet(mesuresTout(), sacActuel());
     var depart = s ? s.moy : sacEstimation(id), al = alertesDe(an, id);
     var h = tete + entete(SAC_FAMILLES[c.fam] + " · dans ton sac", nomLoft(c));
+    h += ficheClubSyntheseHTML(id); /* UX08 : chiffres du club d'abord */
     if (c.fam === "w") {
       h += '<form class="sac-loft" data-f="sac-loft-club" novalidate><label for="sac-loft-club">Loft</label>' +
         '<span class="sac-loft-champ"><input id="sac-loft-club" type="text" inputmode="numeric" autocomplete="off" maxlength="2" value="' + (c.loftPrecise ? c.loft : "") + '" placeholder="' + c.loft + '" aria-describedby="sac-loft-aide"><span aria-hidden="true">°</span></span>' +
@@ -191,7 +192,6 @@
     var nCoups = (clubsNotes(partiesAnalyse(), []).filter(function (x) { return x.club === id; })[0] || {}).n;
     if (nCoups) h += '<button class="lien voir-profil" type="button" data-a="st-voir-club" data-v="' + at(id) + '">' + t("Voir le profil de ce club : direction, résultat, tendance (" + pluriel(nCoups, "coup") + ")") + '</button>';
     if (parc.length) h += '<p class="sac-parcours">' + t("Sur le parcours : " + parc.slice(-8).join(", ") + " m" + (parc.length > 8 ? " (" + parc.length + " coups)" : "") + ".") + '</p>';
-    h += '<p class="sac-serie"><button class="btn large" type="button" data-a="serie-ouvrir" data-id="' + id + '">Faire une série de balles avec ce club</button></p>';
     h += '<details class="sac-balles"' + (s && s.n > 1 || ui.sacBalles ? " open" : "") + '><summary>Mesurer balle par balle</summary>' +
       '<p class="aide">' + t("Au practice, saisis chaque balle. À partir de cinq, la moyenne écarte la plus longue et la plus courte.") + '</p>' +
       (mes.length ? '<ul class="releves">' + mes.map(function (v, i) { return '<li><button class="puce neutre" type="button" data-a="sac-balle-suppr" data-v="' + i + '" aria-label="' + at("Retirer la balle de " + v + " m") + '">' + v + ' m <span aria-hidden="true">×</span></button></li>'; }).join("") + '</ul>' : '') +
