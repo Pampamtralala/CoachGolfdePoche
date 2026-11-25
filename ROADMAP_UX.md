@@ -19,7 +19,7 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 | 9 | UX10 Journal chronologique | P1 | **En revue** | `ux/ux10-chronologie` (après #25) |
 | 10 | UX11 Après partie | P1 | **En revue** | `ux/ux11-apres-partie` (après #26) |
 | 11 | UX12 Premier lancement et états vides | P1 | **En revue** | `ux/ux12-premiers-pas` (après #27) |
-| 12 | UX13 Repositionnement du coaching | P2 | À faire | — |
+| 12 | UX13 Repositionnement du coaching | P2 | **En revue** | `ux/ux13-coaching` (après #28) |
 | 13 | UX14 Accessibilité (partie fonctionnelle : clavier, lecteur d'écran, zones tactiles) | P2 | À faire | — |
 | — | UX15 Tests et non-régression | P0 | Après chaque chantier | — |
 | Reporté | UX02 Identité visuelle et design system ; finitions visuelles d'UX14 | — | Reporté à la demande du propriétaire (25/11) | — |
@@ -432,3 +432,19 @@ Encore utiles pour les chantiers UX : 4, 5, 7 et 8 — appliquées telles que pr
     d'Analyses (« Pas encore de partie »), aucune courbe ni chiffre d'exemple.
 - Tests : `test-doublons` (942 noms), essais liés verts (essai 31 adapté : « Premiers pas » en tête d'un carnet vide),
   nouvel `essai37.js`.
+
+### UX13 — Coaching repositionné (25/11/2026)
+
+- Objectif : garder tout le coaching, mais à partir des résultats, et dire d'où vient chaque recommandation.
+- Modifications (`src/ui-coaching.js`, nouveau ; `ui.js`, `ui-enseignements.js`) :
+  - Programme : mention « D'après ton questionnaire » (réponses déclarées) quand il a été construit par le questionnaire ;
+    rien de tel pour un carnet sans questionnaire (le programme reste proposé en option).
+  - Bloc « D'après tes données » dans le programme : jusqu'à trois exercices issus des enseignements (constat chiffré
+    cité), présentés comme recommandations observées qui ne remplacent pas le programme ; sans partie, la bibliothèque
+    reste ouverte.
+  - Bibliothèque : quand elle est filtrée depuis un constat, bandeau « D'après tes données » et retour à toute la
+    bibliothèque ; un choix manuel efface le bandeau.
+  - Priorités (Analyses › Performance) : origine dite (« D'après ton profil » : déclaré, remplacé par les tests et les
+    parties quand ils existent).
+  - Rien retiré : exercices, programmes, diagnostics, défis, badges, cycles.
+- Tests : `test-doublons` (944 noms), essais liés verts, nouvel `essai38.js`.

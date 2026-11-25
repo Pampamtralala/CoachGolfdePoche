@@ -704,9 +704,11 @@
   VUES.practice = function () {
     var plan = etat.plan, sem = plan.semaines[ui.semaine - 1], faites = compteFaites(), total = plan.n * 4;
     var h = '<section class="bloc premier">' + sousNavAnalysesHTML("practice") + '<p class="surtitre">Analyses · Coaching</p><h1>Ton programme</h1>' +
+      (etat.profil.questionnaire === false ? '' : '<p class="aide prov-programme"><span class="ens-prov">' + t("D'après ton questionnaire") + '</span> ' + t("Programme construit à partir de tes réponses déclarées (niveau, défauts, disponibilités).") + '</p>') +
       (etat.profil.questionnaire === false ? '<div class="carte-tb programme-option"><p class="surtitre">' + t("Facultatif") + '</p><p>' + t("Ce programme est générique. Réponds au questionnaire (5 minutes) pour l'adapter à ton niveau, à tes défauts et à ton temps.") + '</p><button class="btn principal" type="button" data-a="modifier">Personnaliser mon programme</button></div>' : '') +
       progressionHTML() +
       '<div class="raccourcis"><button class="btn" type="button" data-a="serie-ouvrir">Série de balles</button><button class="btn" type="button" data-a="onglet" data-v="exercices">Exercices</button><button class="btn" type="button" data-a="aller-a" data-v="exercices" data-s="defis">Défis</button></div></section>' +
+      recoDonneesHTML() +
       '<section class="bloc" id="semaine"><h2 class="h2-semaine">Semaine ' + ui.semaine + '<span>' + t(sem.theme) + '</span></h2>' + carteCycle() + avancementHTML(ui.semaine) + '</section>';
     h += '<section class="bloc" style="border-top:0;padding-top:0">';
     sem.seances.forEach(function (se) { h += seanceHTML(se); });
@@ -807,7 +809,8 @@
     var sPalier = '<section class="bloc" id="palier-bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
 
-    var c = '<ol class="priorites">' + prios.slice(0, 3).map(function (x, k) {
+    /* UX13 : origine des priorités dite en clair. */
+    var c = '<p class="aide"><span class="ens-prov">' + t("D'après ton profil") + '</span> ' + t("Réponses déclarées au questionnaire, remplacées par tes tests notés et tes parties quand ils existent.") + '</p><ol class="priorites">' + prios.slice(0, 3).map(function (x, k) {
       return '<li><span class="rang" aria-hidden="true">' + (k + 1) + '</span><div><b>' + t(DOM[x.d].nom) + '</b><p>' + t(raisonPriorite(x, sc[x.d], pal)) + '</p></div></li>';
     }).join("") + '</ol>';
     var sPrios = pliHTML("priorites", "Tes trois priorités", prios.slice(0, 3).map(function (x) { return DOM[x.d].court; }).join(", ").toLowerCase(), c, 1);
@@ -856,7 +859,7 @@
   VUES.exercices = function () {
     var pal = palierDe(indexNiveau(etat.profil)), f = ui.filtre;
     var liste = EXERCICES.filter(function (e) { return (f.d === "tous" || e.d === f.d) && (!f.monPalier || (e.niv[0] <= pal && pal <= e.niv[1])); });
-    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("exercices") + '<button class="retour" type="button" data-a="onglet" data-v="practice">' + icone("retour") + 'Programme</button><p class="surtitre">' + t(pluriel(liste.length, "exercice") + (f.monPalier ? " pour ton palier" : ", tous paliers")) + '</p><h1>Exercices</h1>' +
+    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("exercices") + filtreDonneesHTML() + '<button class="retour" type="button" data-a="onglet" data-v="practice">' + icone("retour") + 'Programme</button><p class="surtitre">' + t(pluriel(liste.length, "exercice") + (f.monPalier ? " pour ton palier" : ", tous paliers")) + '</p><h1>Exercices</h1>' +
       '<div class="filtres" role="group" aria-label="Domaine"><button class="puce neutre" type="button" data-a="filtre" data-v="tous" aria-pressed="' + (f.d === "tous") + '">Tous</button>' +
       DOMAINES.map(function (d) { return '<button class="puce neutre" type="button" data-a="filtre" data-v="' + d.id + '" aria-pressed="' + (f.d === d.id) + '">' + t(d.court) + '</button>'; }).join("") + '</div>' +
       '<button class="lien" type="button" data-a="filtre-palier" aria-pressed="' + f.monPalier + '">' + (f.monPalier ? "Voir aussi les autres paliers" : "Voir seulement mon palier") + '</button></section>';
@@ -1210,7 +1213,7 @@
       rendreFeuille(); var b = document.getElementById("f-fermer"); if (b) b.focus();
     },
     "fermer-feuille": function () { fermerFeuille(); },
-    filtre: function (el) { ui.filtre.d = el.getAttribute("data-v"); rendreEtFocus(el); },
+    filtre: function (el) { ui.filtre.d = el.getAttribute("data-v"); ui.filtreDonnees = null; rendreEtFocus(el); },
     "filtre-palier": function (el) { ui.filtre.monPalier = !ui.filtre.monPalier; rendreEtFocus(el); },
 
     modifier: function () {
@@ -1399,6 +1402,7 @@
   /*INCLURE:ui-rubriques.js*/
   /*INCLURE:ui-monsac.js*/
   /*INCLURE:ui-chronologie.js*/
+  /*INCLURE:ui-coaching.js*/
   /*INCLURE:ui-apres.js*/
   /*INCLURE:ui-series.js*/
   /*INCLURE:ui-parcours.js*/

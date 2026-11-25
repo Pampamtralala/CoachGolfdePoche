@@ -7611,7 +7611,7 @@ function filtrerChronologie(ev, f) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-25T19:37:47.580Z";
+  var VERSION_APPLI = "2026-11-25T19:41:52.448Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -8306,9 +8306,11 @@ function filtrerChronologie(ev, f) {
   VUES.practice = function () {
     var plan = etat.plan, sem = plan.semaines[ui.semaine - 1], faites = compteFaites(), total = plan.n * 4;
     var h = '<section class="bloc premier">' + sousNavAnalysesHTML("practice") + '<p class="surtitre">Analyses · Coaching</p><h1>Ton programme</h1>' +
+      (etat.profil.questionnaire === false ? '' : '<p class="aide prov-programme"><span class="ens-prov">' + t("D'après ton questionnaire") + '</span> ' + t("Programme construit à partir de tes réponses déclarées (niveau, défauts, disponibilités).") + '</p>') +
       (etat.profil.questionnaire === false ? '<div class="carte-tb programme-option"><p class="surtitre">' + t("Facultatif") + '</p><p>' + t("Ce programme est générique. Réponds au questionnaire (5 minutes) pour l'adapter à ton niveau, à tes défauts et à ton temps.") + '</p><button class="btn principal" type="button" data-a="modifier">Personnaliser mon programme</button></div>' : '') +
       progressionHTML() +
       '<div class="raccourcis"><button class="btn" type="button" data-a="serie-ouvrir">Série de balles</button><button class="btn" type="button" data-a="onglet" data-v="exercices">Exercices</button><button class="btn" type="button" data-a="aller-a" data-v="exercices" data-s="defis">Défis</button></div></section>' +
+      recoDonneesHTML() +
       '<section class="bloc" id="semaine"><h2 class="h2-semaine">Semaine ' + ui.semaine + '<span>' + t(sem.theme) + '</span></h2>' + carteCycle() + avancementHTML(ui.semaine) + '</section>';
     h += '<section class="bloc" style="border-top:0;padding-top:0">';
     sem.seances.forEach(function (se) { h += seanceHTML(se); });
@@ -8409,7 +8411,8 @@ function filtrerChronologie(ev, f) {
     var sPalier = '<section class="bloc" id="palier-bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
 
-    var c = '<ol class="priorites">' + prios.slice(0, 3).map(function (x, k) {
+    /* UX13 : origine des priorités dite en clair. */
+    var c = '<p class="aide"><span class="ens-prov">' + t("D'après ton profil") + '</span> ' + t("Réponses déclarées au questionnaire, remplacées par tes tests notés et tes parties quand ils existent.") + '</p><ol class="priorites">' + prios.slice(0, 3).map(function (x, k) {
       return '<li><span class="rang" aria-hidden="true">' + (k + 1) + '</span><div><b>' + t(DOM[x.d].nom) + '</b><p>' + t(raisonPriorite(x, sc[x.d], pal)) + '</p></div></li>';
     }).join("") + '</ol>';
     var sPrios = pliHTML("priorites", "Tes trois priorités", prios.slice(0, 3).map(function (x) { return DOM[x.d].court; }).join(", ").toLowerCase(), c, 1);
@@ -8458,7 +8461,7 @@ function filtrerChronologie(ev, f) {
   VUES.exercices = function () {
     var pal = palierDe(indexNiveau(etat.profil)), f = ui.filtre;
     var liste = EXERCICES.filter(function (e) { return (f.d === "tous" || e.d === f.d) && (!f.monPalier || (e.niv[0] <= pal && pal <= e.niv[1])); });
-    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("exercices") + '<button class="retour" type="button" data-a="onglet" data-v="practice">' + icone("retour") + 'Programme</button><p class="surtitre">' + t(pluriel(liste.length, "exercice") + (f.monPalier ? " pour ton palier" : ", tous paliers")) + '</p><h1>Exercices</h1>' +
+    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("exercices") + filtreDonneesHTML() + '<button class="retour" type="button" data-a="onglet" data-v="practice">' + icone("retour") + 'Programme</button><p class="surtitre">' + t(pluriel(liste.length, "exercice") + (f.monPalier ? " pour ton palier" : ", tous paliers")) + '</p><h1>Exercices</h1>' +
       '<div class="filtres" role="group" aria-label="Domaine"><button class="puce neutre" type="button" data-a="filtre" data-v="tous" aria-pressed="' + (f.d === "tous") + '">Tous</button>' +
       DOMAINES.map(function (d) { return '<button class="puce neutre" type="button" data-a="filtre" data-v="' + d.id + '" aria-pressed="' + (f.d === d.id) + '">' + t(d.court) + '</button>'; }).join("") + '</div>' +
       '<button class="lien" type="button" data-a="filtre-palier" aria-pressed="' + f.monPalier + '">' + (f.monPalier ? "Voir aussi les autres paliers" : "Voir seulement mon palier") + '</button></section>';
@@ -8812,7 +8815,7 @@ function filtrerChronologie(ev, f) {
       rendreFeuille(); var b = document.getElementById("f-fermer"); if (b) b.focus();
     },
     "fermer-feuille": function () { fermerFeuille(); },
-    filtre: function (el) { ui.filtre.d = el.getAttribute("data-v"); rendreEtFocus(el); },
+    filtre: function (el) { ui.filtre.d = el.getAttribute("data-v"); ui.filtreDonnees = null; rendreEtFocus(el); },
     "filtre-palier": function (el) { ui.filtre.monPalier = !ui.filtre.monPalier; rendreEtFocus(el); },
 
     modifier: function () {
@@ -13388,7 +13391,7 @@ function filtrerChronologie(ev, f) {
   function fermerFeuilleEns() { if (ui.feuille) { ui.feuille = null; ui.pile = []; ui.retourFocus = null; rendreFeuille(); } }
   ACTIONS["ens-aller"] = function (el) { fermerFeuilleEns(); allerA(el.getAttribute("data-v"), el.getAttribute("data-s")); };
   /* Passerelle vers le coaching : la bibliothèque filtrée sur le domaine concerné. */
-  ACTIONS["exos-domaine"] = function (el) { fermerFeuilleEns(); ui.filtre.d = el.getAttribute("data-v"); allerOnglet("exercices", true); };
+  ACTIONS["exos-domaine"] = function (el) { fermerFeuilleEns(); ui.filtre.d = el.getAttribute("data-v"); ui.filtreDonnees = ui.filtre.d; allerOnglet("exercices", true); };
 
   /* ============================================================
      ANALYSES EN RUBRIQUES (roadmap UX, UX06)
@@ -13613,6 +13616,30 @@ function filtrerChronologie(ev, f) {
   ACTIONS["chrono-periode"] = function (el) { var C = etatChrono(); C.periode = el.getAttribute("data-v"); C.n = NB_CHRONO; rendreEtFocus(el); };
   ACTIONS["chrono-plus"] = function () { etatChrono().n += NB_CHRONO; rendre(); };
   CHANGEMENTS["chrono-parcours"] = function (el) { etatChrono().parcours = el.value; rendre(); var s = document.getElementById("chrono-parcours"); if (s) s.focus({ preventScroll: true }); };
+
+  /* ============================================================
+     COACHING REPOSITIONNÉ (roadmap UX, UX13)
+     Passerelles constat → analyse → exercices, et origine de chaque recommandation dite en clair : « d'après tes
+     données » (observé, moteur des enseignements) ou « d'après ton questionnaire » (déclaré, programme).
+     Bibliothèque et programme restent libres d'accès, sans recommandation automatique.
+     ============================================================ */
+  function recoDonneesHTML() {
+    if (!etat.parties.length) return '<section class="bloc reco-donnees" id="reco-donnees"><h2>' + t("D'après tes données") + '</h2><p class="aide">' + t("Après quelques parties, les exercices liés à ce que montrent tes données apparaîtront ici. La bibliothèque reste ouverte en attendant.") + '</p></section>';
+    var l = calculEns().liste.filter(function (e) { return e.action && e.action.a === "exos-domaine"; }).slice(0, 3);
+    var h = '<section class="bloc reco-donnees" id="reco-donnees"><h2>' + t("D'après tes données") + '</h2><p class="aide">' + t("Recommandations observées : chacune part d'un constat chiffré de ton carnet. Elles ne remplacent pas ton programme.") + '</p>';
+    if (!l.length) return h + '<p class="aide">' + t("Rien de net à travailler pour l'instant d'après tes parties. Choisis librement dans la bibliothèque.") + '</p></section>';
+    return h + '<ul class="liste-exos">' + l.map(function (e) {
+      return '<li><button class="ligne" type="button" data-a="exos-domaine" data-v="' + at(e.action.v) + '"><span class="quoi"><b>' + t(e.action.lib) + '</b><small>' + t(e.titre + " · " + e.catLib.toLowerCase()) + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>';
+    }).join("") + '</ul></section>';
+  }
+  /* Bandeau de la bibliothèque quand le filtre vient d'un constat. */
+  function filtreDonneesHTML() {
+    var f = ui.filtre;
+    if (!ui.filtreDonnees || !f || f.d === "tous" || f.d !== ui.filtreDonnees) return '';
+    var d = DOMAINES.filter(function (x) { return x.id === f.d; })[0];
+    return '<p class="carte-tb filtre-donnees"><span class="ens-prov">' + t("D'après tes données") + '</span> ' + t("Exercices de " + (d ? d.nom.toLowerCase() : f.d) + ", proposés à partir d'un constat de ton carnet.") +
+      ' <button class="lien" type="button" data-a="filtre" data-v="tous">' + t("Voir toute la bibliothèque") + '</button></p>';
+  }
 
   /* ============================================================
      APRÈS LA PARTIE : bilan express au club-house, carte de score en image,
