@@ -10,9 +10,9 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 | --- | --- | --- | --- | --- |
 | 1 | UX01 Audit et cartographie | P0 | **Terminé** | `ux/ux01-audit` · PR #18 (fusionnée) |
 | 2 | UX03 Navigation à 5 entrées | P0 | **Terminé** | `ux/ux03-navigation` · PR #19 (fusionnée) |
-| 3 | UX05 Enseignements personnalisés | P0 | **En revue** | `ux/ux05-enseignements` |
-| 4 | UX07 Filtres et visualisations (fonctionnel : filtres communs, types de graphiques) | P1 | **En revue** | `ux/ux07-filtres` (après #20) |
-| 5 | UX04 Tableau de bord « Mon jeu » | P0 | À faire | — |
+| 3 | UX05 Enseignements personnalisés | P0 | **Terminé** | `ux/ux05-enseignements` · PR #20 (fusionnée) |
+| 4 | UX07 Filtres et visualisations (fonctionnel : filtres communs, types de graphiques) | P1 | **Terminé** | `ux/ux07-filtres` · PR #21 (fusionnée) |
+| 5 | UX04 Tableau de bord « Mon jeu » | P0 | **En revue** | `ux/ux04-mon-jeu` |
 | 6 | UX06 Espace Analyses | P0 | À faire | — |
 | 7 | UX08 Mon sac | P1 | À faire | — |
 | 8 | UX09 Saisie sur le parcours | P1 | À faire | — |
@@ -289,3 +289,32 @@ Encore utiles pour les chantiers UX : 4, 5, 7 et 8 — appliquées telles que pr
 - Difficultés : Comprendre mon jeu partait de toutes les parties ; il part désormais du filtre commun (10 parties par
   défaut), ce qui peut donner « pas assez de parties » là où toutes les parties suffisaient : le périmètre affiché et
   la pastille « Toutes » le rendent explicite. La saison n'avait pas de date de fin : la comparaison la borne à aujourd'hui.
+
+### UX04 — Tableau de bord « Mon jeu » (25/11/2026)
+
+- Objectif : comprendre l'état de son jeu en quelques secondes, résultats d'abord, sans chiffre fictif.
+- Modifications (`ui-front.js`, nouvel accueil en cinq blocs) :
+  1. **Performance générale** : index déclaré et son évolution (historique saisi), index estimé à part (barème WHS,
+     nombre de parties, « pas ton index officiel » ; « inconnu » avec ce qu'il manque, décision 7), objectif, courbe.
+     Sans index ni objectif choisi, l'objectif s'affiche « – À définir » au lieu d'une cible calculée sur un index inconnu.
+  2. **Indicateurs clés** : six cartes cliquables (score, mises en jeu jouables, greens en régulation déduits, putts,
+     trois-putts, pénalités) calculées par `tableauStats` sur le filtre commun (UX07), avec l'évolution par rapport à la
+     période comparable (`comparerStats`), le périmètre, l'effectif, la provenance ; chaque carte ouvre l'analyse
+     correspondante (Analyses, putting ou erreurs). Lien vers la qualité des données.
+  3. **Enseignements** (UX05).
+  4. **Dernière partie** : date, parcours, score, GIR, putts, pénalités, faits marquants (meilleur et plus coûteux trou,
+     écart à la moyenne ramenée à 18 trous).
+  5. **Actions rapides** : nouvelle partie ou reprise, série au practice, statistiques, mes parties ; lien vers le
+     coaching (facultatif). Une partie en cours fait apparaître « Reprendre ma partie au trou N » en tête.
+  Les raccourcis « Comprendre mon jeu » restent en bas.
+- Déplacé, pas supprimé : les anciennes « Mes tendances » (petit jeu, coups gagnés estimés, conseils face à l'objectif)
+  passent dans Analyses, pli « Repères face à ton objectif » ; la qualité du carnet est dans Analyses (lien depuis
+  Mon jeu) ; « À découvrir » est remplacé par les actions rapides et le lien vers le coaching.
+- Non affiché faute de donnée calculée par les moteurs : doubles bogeys ou pire (pas dans `tableauStats`) ; « fairways »
+  est présenté comme « mises en jeu jouables », ce que mesure réellement la saisie.
+- Tests : `npm test` (911 noms, 0 doublon), `test-startup.js`, essais 3 à 30 verts (essais 12 et 18 adaptés : nouvel
+  accueil, pli des repères), nouvel `essai31.js` (carnet vide sans chiffre fictif, ordre des blocs, index déclaré et
+  estimé, évolution et périmètre, faits marquants, actions, clic vers l'analyse, retour, reprise de partie, 360 et 390 px).
+- Difficultés : les cartes d'index étaient trop étroites à 390 px (trois colonnes) : deux colonnes sous 520 px,
+  l'objectif sur toute la largeur. Les repères de l'ancien accueil comportaient leurs propres pastilles de période :
+  sous le filtre commun d'Analyses, elles sont retirées.

@@ -39,11 +39,11 @@ const T = (par, sc, putts, pen, j, cote) => [j, sc - putts <= par - 2 ? 1 : 0, p
     await page.reload(); await page.waitForSelector('.tete');
     await page.click('#barre [data-a="onglet"][data-v="bilan"]');
     r.echantillon = (await page.textContent('.stats-echantillon')).replace(/\s+/g, ' ');
-    r.kpi = await page.$$eval('.kpi-grille:not(.putt-kpis) .kpi', l => l.map(x => x.querySelector('.kpi-t').textContent + ' ' + x.querySelector('.kpi-v').textContent.replace(/\s+/g, ' ') + ' | ' + x.querySelector('.kpi-n').textContent));
+    r.kpi = await page.$$eval('section.premier .kpi-grille .kpi', l => l.map(x => x.querySelector('.kpi-t').textContent + ' ' + x.querySelector('.kpi-v').textContent.replace(/\s+/g, ' ') + ' | ' + x.querySelector('.kpi-n').textContent));
     verifie(/Sur 10 parties \(\d+ trous\)/.test(r.echantillon) && /Comparé aux 10 parties précédentes/.test(r.echantillon) && /ramenés à 18 trous/.test(r.echantillon), nom + ' échantillon : ' + r.echantillon);
     verifie(r.kpi.length === 6 && r.kpi.every(x => / \| \d+ (trous|départs)/.test(x)), nom + ' effectif sous chaque chiffre : ' + r.kpi.join(' / '));
     verifie(/Score .*▼/.test(r.kpi[0]) && /Greens en régulation/.test(r.kpi[5]), nom + ' tendance du score (les dernières sont meilleures) : ' + r.kpi[0]);
-    r.mej = r.kpi[4]; r.mejTexte = await page.$$eval('.kpi', l => l[4].querySelector('.kpi-x').textContent);
+    r.mej = r.kpi[4]; r.mejTexte = await page.$$eval('section.premier .kpi', l => l[4].querySelector('.kpi-x').textContent);
     verifie(/non renseignées \(saisie express\), non comptées/.test(r.mejTexte), nom + ' mises en jeu express non comptées : ' + r.mejTexte);
     r.barres = await page.locator('.graphe-scores .gs-barre').count();
     r.repartition = await page.$$eval('.repartition .rep-titre', l => l.map(x => x.textContent));

@@ -53,12 +53,12 @@ function partie(g, pars) {
     r.barre = await page.$$eval('#barre .barre-item', l => l.map(b => b.textContent + (b.getAttribute('aria-current') ? ' ●' : '')).join(' | '));
     verifie(/^Mon jeu ● \| Analyses \| Jouer \| Mon sac \| Journal$/.test(r.barre), nom + ' barre : ' + r.barre);
     r.statut = await page.textContent('#statut-tete');
-    /* Accueil « Mon jeu » (refonte du 19/11) : accès rapides, dernière partie, tendances, qualité du carnet. */
-    r.accueil = (await page.textContent('.mon-jeu h1')).replace(/\s+/g, ' ').trim() + ' · ' + await page.$$eval('.mon-jeu .acces-rapides button', l => l.map(b => b.textContent.trim()).join(' | '));
+    /* Accueil « Mon jeu » (UX04) : performance, indicateurs clés, enseignements, dernière partie, actions rapides. */
+    r.accueil = (await page.textContent('.mon-jeu h1')).replace(/\s+/g, ' ').trim() + ' · ' + await page.$$eval('#vue .acces-rapides button', l => l.map(b => b.textContent.trim()).join(' | '));
     r.cartes = await page.$$eval('#vue h2', l => l.map(x => x.textContent));
-    verifie(/^Mon jeu/.test(r.accueil) && /Nouvelle partie|Reprendre/.test(r.accueil) && r.cartes.includes('Dernière partie') && r.cartes.includes('Mes tendances') && r.cartes.includes('Qualité de mon carnet'), nom + ' accueil Mon jeu : ' + r.accueil + ' · ' + r.cartes.join(' | '));
+    verifie(/^Mon jeu/.test(r.accueil) && /Nouvelle partie|Reprendre/.test(r.accueil) && r.cartes.includes('Dernière partie') && r.cartes.includes('Performance générale') && r.cartes.includes('Indicateurs clés'), nom + ' accueil Mon jeu : ' + r.accueil + ' · ' + r.cartes.join(' | '));
     await vue('01-accueil');
-    await page.evaluate(() => document.querySelector('#qualite-donnees').scrollIntoView({ block: 'start' })); await page.waitForTimeout(80);
+    await page.evaluate(() => document.querySelector('#mj-kpi').scrollIntoView({ block: 'start' })); await page.waitForTimeout(80);
     await vue('02-tableau-de-bord');
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await page.waitForTimeout(80);
     await vue('02b-tableau-bas');

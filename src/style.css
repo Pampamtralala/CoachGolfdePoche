@@ -1678,3 +1678,19 @@ main.entree { animation: entreeVue .22s ease-out; }
 .graphe-texte summary { cursor: pointer; }
 /* Cinq pastilles de période : elles passent à la ligne plutôt que de couper leur texte. */
 .fenetres.periode .opt { flex: 1 0 auto; }
+/* UX04 : tableau de bord Mon jeu (jetons existants). */
+.mj-perf-grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 8px 0; }
+.mj-index { display: block; min-width: 0; padding: 12px; border: 0; border-radius: var(--rayon-s); background: var(--carte); box-shadow: var(--ombre); color: var(--encre); font: inherit; text-align: left; }
+.mj-index p { margin: 0 0 4px; }
+.mj-index .mj-val { font: 800 26px/1.1 var(--f-display); letter-spacing: -.02em; }
+.mj-obj { cursor: pointer; }
+.mj-courbe { margin-top: 8px; }
+.mj-courbe .courbe-index { width: 100%; max-width: 260px; height: 56px; }
+.ens-prov { font: 600 11px/1 var(--f-texte); letter-spacing: .02em; text-transform: none; color: var(--encre-2); border: 1px solid var(--filet); border-radius: 999px; padding: 2px 6px; white-space: nowrap; }
+.kpi-lien { position: relative; width: 100%; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.kpi-lien > span { display: block; }
+.kpi-lien .kpi-v { display: flex; }
+.kpi-lien .kpi-u, .kpi-lien .kpi-n { margin-top: 4px; font-size: .85rem; color: var(--encre-2); }
+.kpi-lien > .ico { position: absolute; right: 10px; top: 14px; width: 16px; height: 16px; color: var(--encre-2); }
+.kpi-lien .kpi-t { padding-right: 18px; }
+@media (max-width: 520px) { .mj-perf-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mj-obj { grid-column: span 2; } }
