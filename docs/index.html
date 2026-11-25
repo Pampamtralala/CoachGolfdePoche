@@ -1580,6 +1580,25 @@ main.entree { animation: entreeVue .22s ease-out; }
 .carte-score.trous thead th { font-size: 11.5px; letter-spacing: 0; padding-left: 3px; padding-right: 3px; }
 .carte-score.trous tbody th[scope="row"] { padding-left: 8px; }
 
+/* ---------- Erreurs récurrentes (P09) ---------- */
+.erreurs-top { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 10px; }
+.carte-erreur { background: var(--carte); border-radius: var(--rayon, 14px); padding: 12px 14px; }
+.feuille .carte-erreur { background: var(--papier); }
+.carte-erreur h3 { margin: 0 0 8px; font-size: 17px; }
+.carte-erreur h3 .deduit { font-size: 12px; font-weight: 400; color: var(--encre-2); }
+.carte-erreur .constat, .carte-erreur .hypothese { margin: 0 0 8px; font-size: 15px; line-height: 1.45; }
+.carte-erreur b { display: block; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--encre-2); }
+.carte-erreur .hypothese { margin-bottom: 0; padding-top: 8px; border-top: 1px dashed var(--filet); }
+.carte-tb.insuffisant p:last-child { margin: 0; }
+.erreurs th small, .erreurs td small { display: block; font-size: 12px; font-weight: 400; color: var(--encre-2); }
+.erreurs thead th.num, .erreurs td.num { width: auto; padding-left: 6px; padding-right: 6px; }
+.erreurs th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
+.toutes-erreurs { margin-top: 8px; }
+.titre-liste { margin: 10px 0 4px; font-size: 15px; font-weight: 600; }
+.erreurs-manque { margin: 0 0 8px; padding-left: 18px; font-size: 14.5px; line-height: 1.45; color: var(--encre-2); }
+.erreurs-manque li { margin-bottom: 4px; }
+.erreurs-manque b { color: var(--encre); font-weight: 600; }
+
 /* ---------- Sac de golf en perspective (fausse 3D) ----------
    Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
    --s3-bulle, --s3-bulle-texte, --s3-chiffre, --s3-focus. */
@@ -6527,6 +6546,105 @@ function partiesSansParcours(parties, liste) {
 }
 
 
+/* Coach de golf de poche — erreurs récurrentes (roadmap DATA, P09). Fonctions pures.
+   Constat chiffré d'abord : fréquence, effectif, clubs et parcours associés, évolution.
+   Une erreur n'est mise en avant que si elle est documentée (assez d'occasions et d'occurrences).
+   Les erreurs sont classées par fréquence pour 18 trous, jamais converties en coups perdus,
+   et une association (un club, un parcours) n'est jamais présentée comme une cause. */
+
+var ERREURS = [
+  { id: "mej", lib: "Mise en jeu ratée", base: "départs renseignés", unite: "départ", seuil: 20 },
+  { id: "direction", lib: "Coups hors de l'axe", base: "coups avec direction", unite: "coup", seuil: 20 },
+  { id: "penalites", lib: "Pénalités", base: "trous", unite: "trou", seuil: 36 },
+  { id: "gir", lib: "Green manqué en régulation", base: "trous", unite: "trou", seuil: 36, deduit: true },
+  { id: "approche", lib: "Double approche", base: "greens manqués", unite: "green manqué", seuil: 20, deduit: true },
+  { id: "troisPutts", lib: "Trois-putts", base: "trous", unite: "trou", seuil: 36 }
+];
+var MIN_OCCURRENCES = 5;        /* en dessous, une erreur n'est pas « documentée » */
+var MIN_ASSOCIATION = 5;        /* occasions minimum pour citer un club ou un parcours */
+var ECART_EVOLUTION = 10;       /* points d'écart entre les deux moitiés pour parler de hausse ou de baisse */
+var LATERAL_ERREUR = 5;         /* mètres : au-delà, le coup est hors de l'axe (comme le profil des clubs) */
+var FAMILLES_ERREUR = ["", "Driver", "Bois", "Hybride", "Fer"];
+
+function partErr(a, b) { return b ? Math.round(100 * a / b) : null; }
+function bitErr(r, k, bit) { return !Array.isArray(r) || !!(r[k] & bit); }
+function jourErr(d) { return typeof d === "string" ? d.slice(0, 10) : ""; }
+
+/* Occasions et occurrences de chaque erreur, partie par partie. Chaque événement garde son club et son parcours. */
+function evenementsErreurs(p) {
+  var ev = [], T = Array.isArray(p.trous) ? p.trous : [];
+  function push(id, err, club, extra) { ev.push(Object.assign({ id: id, err: err ? 1 : 0, club: club || null, pc: p.pc || null, jour: jourErr(p.d) }, extra || {})); }
+  T.forEach(function (t, k) {
+    if (!trouNote(t)) return;
+    var par = t[5], putts = t[2], pen = t[3] || 0, coups = Array.isArray(p.coups) && Array.isArray(p.coups[k]) ? p.coups[k] : [];
+    var dep = coups[0] && typeof coups[0].c === "string" && (!coups[0].p || coups[0].p === "dep") ? coups[0].c : null;
+    var famille = t[7] && bitErr(p.renseigne, k, 2) ? "f" + t[7] : null;
+    /* Mise en jeu : par 4 et 5, renseignée seulement. Le club est celui du coup de départ noté, sinon sa famille. */
+    if (par >= 4 && bitErr(p.renseigne, k, 1)) push("mej", !t[0], dep || famille, { cote: t[0] ? 0 : (t[6] || 0) });
+    push("penalites", pen > 0, dep || famille);
+    push("gir", !t[1]);
+    /* Double approche (déduite) : green manqué, et deux coups ou plus en plus que la régulation pour l'atteindre. */
+    if (!t[1]) push("approche", t[4] - putts - pen - (par - 2) >= 2);
+    push("troisPutts", putts >= 3);
+    coups.forEach(function (c) {
+      if (!c || typeof c.l !== "number" || !isFinite(c.l) || typeof c.c !== "string") return;
+      var hors = Math.abs(c.l) > LATERAL_ERREUR;
+      push("direction", hors, c.c, { cote: hors ? (c.l < 0 ? 1 : 3) : 0 });
+    });
+  });
+  return ev;
+}
+
+function compter(l) { var n = 0; l.forEach(function (e) { n += e.err; }); return { n: n, base: l.length, part: partErr(n, l.length) }; }
+function associations(l, cle) {
+  var g = {};
+  l.forEach(function (e) { var k = e[cle]; if (!k) return; (g[k] = g[k] || []).push(e); });
+  return Object.keys(g).map(function (k) { var c = compter(g[k]); c.cle = k; return c; })
+    .filter(function (c) { return c.base >= MIN_ASSOCIATION; })
+    .sort(function (a, b) { return b.part - a.part || b.base - a.base; });
+}
+
+/* parties : déjà filtrées (tableau de bord). Retourne chaque erreur suivie et les trois priorités documentées. */
+function erreursRecurrentes(parties) {
+  var l = (parties || []).filter(function (p) { return p && Array.isArray(p.trous); }).slice()
+    .sort(function (a, b) { return jourErr(a.d) < jourErr(b.d) ? -1 : jourErr(a.d) > jourErr(b.d) ? 1 : 0; });
+  var parPartie = l.map(evenementsErreurs), tous = [].concat.apply([], parPartie);
+  var trous = tous.filter(function (e) { return e.id === "gir"; }).length;
+  var m = Math.floor(l.length / 2);
+  var erreurs = ERREURS.map(function (E) {
+    var ev = tous.filter(function (e) { return e.id === E.id; }), c = compter(ev);
+    var r = { id: E.id, lib: E.lib, baseLib: E.base, unite: E.unite, seuil: E.seuil, deduit: !!E.deduit, n: c.n, base: c.base, part: c.part };
+    r.par18 = trous ? Math.round(10 * 18 * c.n / trous) / 10 : null;
+    r.documentee = c.base >= E.seuil && c.n >= MIN_OCCURRENCES;
+    r.manque = r.documentee ? 0 : Math.max(0, E.seuil - c.base);
+    if (E.id === "mej" || E.id === "direction") {
+      var g = 0, d = 0, co = 0;
+      ev.forEach(function (e) { if (!e.err) return; if (e.cote === 1) g++; else if (e.cote === 3) d++; else if (e.cote === 2) co++; });
+      r.cotes = { gauche: g, droite: d, courtes: co };
+      /* Un côté dominant seulement s'il pèse au moins deux fois l'autre, sur au moins 8 ratés latéraux. */
+      r.coteDominant = g + d >= 8 && (d >= 2 * g || g >= 2 * d) && g !== d ? (d > g ? "droite" : "gauche") : null;
+    }
+    r.clubs = E.id === "gir" || E.id === "approche" || E.id === "troisPutts" ? [] : associations(ev, "club");
+    r.parcours = associations(ev, "pc");
+    /* Évolution : première moitié des parties contre la seconde, chaque moitié avec assez d'occasions. */
+    if (m >= 2) {
+      var avant = compter([].concat.apply([], parPartie.slice(0, m)).filter(function (e) { return e.id === E.id; }));
+      var apres = compter([].concat.apply([], parPartie.slice(l.length - m)).filter(function (e) { return e.id === E.id; }));
+      if (avant.base >= E.seuil / 2 && apres.base >= E.seuil / 2) {
+        var dd = apres.part - avant.part;
+        r.evolution = { parties: m, avant: avant, apres: apres, d: dd, sens: dd >= ECART_EVOLUTION ? "hausse" : dd <= -ECART_EVOLUTION ? "baisse" : "stable" };
+      } else r.evolution = null;
+    } else r.evolution = null;
+    return r;
+  });
+  var top = erreurs.filter(function (e) { return e.documentee; }).sort(function (a, b) { return b.par18 - a.par18; }).slice(0, 3).map(function (e) { return e.id; });
+  return { parties: l.length, trous: trous, erreurs: erreurs, top: top };
+}
+
+/* Libellé d'un club associé : identifiant de club, ou famille de départ (f1 à f4) en saisie Standard. */
+function cleClubErreur(cle) { return /^f[1-4]$/.test(cle) ? { famille: true, nom: FAMILLES_ERREUR[+cle.slice(1)] } : { famille: false, id: cle }; }
+
+
 /* ============================================================
    INTERFACE : accueil, questionnaire, plan, bilan, exercices, profil.
    Les données du joueur sont gardées sur l'appareil et, quand c'est possible,
@@ -6538,7 +6656,7 @@ function partiesSansParcours(parties, liste) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-24T14:50:50.713Z";
+  var VERSION_APPLI = "2026-11-24T20:04:28.129Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -7283,7 +7401,7 @@ function partiesSansParcours(parties, liste) {
   VUES.bilan = function () {
     var p = etat.profil, pal = palierDe(p.index), P = PALIERS[pal - 1];
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
-    var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' + tableauStatsHTML() + '</section>' + clubsStatsHTML() + qualiteGolfHTML() +
+    var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' + tableauStatsHTML() + '</section>' + erreursStatsHTML() + clubsStatsHTML() + qualiteGolfHTML() +
       '<section class="bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
 
@@ -11534,6 +11652,69 @@ function partiesSansParcours(parties, liste) {
     var s = document.getElementById("st-clubs");
     if (s) { s.scrollIntoView({ block: "start" }); var b = s.querySelector('[data-a="st-club"][aria-pressed="true"]'); if (b) b.focus({ preventScroll: true }); }
   };
+
+  /* ============================================================
+     MES ERREURS RÉCURRENTES (roadmap DATA, P09)
+     Sur les parties choisies par les filtres du tableau de bord. Constat chiffré, puis piste à vérifier.
+     Classement par fréquence pour 18 trous, jamais en coups perdus ; un club ou un parcours associé n'est pas une cause.
+     ============================================================ */
+  var PISTES_ERREURS = {
+    mej: function (e) { return e.coteDominant ? "Tes départs ratés partent surtout " + (e.coteDominant === "droite" ? "à droite" : "à gauche") + " : l'alignement ou l'orientation de la face à l'impact sont des pistes fréquentes, à vérifier au practice." : "Les ratés partent des deux côtés : un club plus court mais plus régulier au départ des trous serrés est une piste à essayer."; },
+    direction: function (e) { return e.coteDominant ? "Tes coups manquent surtout " + (e.coteDominant === "droite" ? "à droite" : "à gauche") + " : regarde dans le profil des clubs lequel le fait le plus, puis vérifie l'alignement au practice." : "Les écarts vont des deux côtés : la régularité du contact est une piste plus probable qu'un défaut d'alignement."; },
+    penalites: function () { return "Regarde sur quels trous et avec quel club elles arrivent : viser plus large ou jouer plus court au départ de ces trous est une piste."; },
+    gir: function () { return "Un green manqué peut venir du départ, de la distance ou de la direction de l'approche : le profil des clubs et la fiche des parcours aident à trancher."; },
+    approche: function () { return "Deux coups ou plus pour rejoindre le green après l'avoir manqué : le petit jeu autour du green est la piste la plus directe."; },
+    troisPutts: function () { return "Les trois-putts viennent souvent d'un premier putt long : note la longueur du premier putt (saisie Expert) pour le vérifier."; }
+  };
+  var AIDES_ERREURS = {
+    mej: "note la mise en jeu au départ des par 4 et 5 (saisie Standard ou Expert)",
+    direction: "touche le côté de l'ellipse quand tu notes un coup (saisie Expert)",
+    approche: "joue et note des trous où le green est manqué"
+  };
+  function nomCleErreur(cle) { var c = cleClubErreur(cle); return c.famille ? c.nom : nomClub(c.id); }
+  function nomParcoursErreur(id) { var pc = parcoursDe(id); return pc ? pc.nom : "un parcours supprimé"; }
+  function frequenceErreur(e) { return e.n + " fois sur " + e.base + " " + e.baseLib + " (" + e.part + " %)"; }
+  function evolutionErreurLib(e) {
+    var v = e.evolution; if (!v) return "";
+    return "Sur tes " + v.parties + " premières parties : " + v.avant.part + " % (" + v.avant.base + " " + e.baseLib + ") ; sur les " + v.parties + " dernières : " + v.apres.part + " % (" + v.apres.base + ")" +
+      (v.sens === "hausse" ? " : plus fréquent." : v.sens === "baisse" ? " : moins fréquent." : " : à peu près stable.");
+  }
+  function carteErreurHTML(e, rang) {
+    var h = '<li class="carte-erreur"><h3>' + rang + ". " + t(e.lib) + (e.deduit ? ' <small class="deduit">' + t("déduit du score") + '</small>' : '') + '</h3>';
+    var cotes = e.cotes && (e.cotes.gauche || e.cotes.droite) ? " " + e.cotes.droite + " à droite, " + e.cotes.gauche + " à gauche" + (e.cotes.courtes ? ", " + e.cotes.courtes + " court" + (e.cotes.courtes > 1 ? "s" : "") : "") + "." : "";
+    h += '<p class="constat"><b>Constat</b> ' + t(frequenceErreur(e) + ", soit " + nb1(e.par18) + " pour 18 trous." + cotes) + '</p>';
+    var assoc = [];
+    if (e.clubs.length) assoc.push(e.clubs.slice(0, 2).map(function (c) { return (cleClubErreur(c.cle).famille ? "départs " + ({ Driver: "au driver", Bois: "au bois", Hybride: "à l'hybride", Fer: "au fer" })[nomCleErreur(c.cle)] : "avec le " + nomCleErreur(c.cle).toLowerCase()) + " : " + c.n + " sur " + c.base + " (" + c.part + " %)"; }).join(" ; "));
+    if (e.parcours.length > 1) assoc.push(e.parcours.slice(0, 2).map(function (c) { return "à " + nomParcoursErreur(c.cle) + " : " + c.n + " sur " + c.base + " (" + c.part + " %)"; }).join(" ; "));
+    if (assoc.length) h += '<p class="constat"><b>Où et avec quoi</b> ' + t(assoc.map(function (x) { return x.charAt(0).toUpperCase() + x.slice(1) + "."; }).join(" ")) + '</p>';
+    if (e.evolution) h += '<p class="constat"><b>Évolution</b> ' + t(evolutionErreurLib(e)) + '</p>';
+    h += '<p class="hypothese"><b>Piste à vérifier</b> ' + t(PISTES_ERREURS[e.id](e) + " C'est une hypothèse, pas un constat.") + '</p>';
+    return h + '</li>';
+  }
+  function erreursStatsHTML() {
+    var F = filtresStats(), l = selectionStats(F), R = erreursRecurrentes(l);
+    var h = '<section class="bloc" id="st-erreurs"><h2>Mes erreurs récurrentes</h2><p class="aide">' + t("Sur les parties choisies plus haut. Classées par fréquence pour 18 trous, jamais converties en coups perdus. Un club ou un parcours associé n'est pas une cause.") + '</p>';
+    if (!R.trous) return h + etatVideHTML("stats", "Pas encore d'erreurs à analyser", "Enregistre des parties pour voir revenir tes erreurs les plus fréquentes.") + '</section>';
+    var parId = {}; R.erreurs.forEach(function (e) { parId[e.id] = e; });
+    if (R.top.length) {
+      h += '<h3 class="titre-bloc">' + t(R.top.length > 1 ? "Tes " + R.top.length + " erreurs les plus fréquentes" : "Ton erreur la plus fréquente") + '</h3><ol class="erreurs-top">' +
+        R.top.map(function (id, i) { return carteErreurHTML(parId[id], i + 1); }).join("") + '</ol>';
+    } else {
+      h += '<div class="carte-tb insuffisant"><p class="surtitre">' + t("Données insuffisantes") + '</p><p>' + t("Aucune erreur n'est encore assez documentée pour être mise en avant (" + pluriel(R.trous, "trou") + " sur ces parties).") + '</p></div>';
+    }
+    var manque = R.erreurs.filter(function (e) { return !e.documentee; });
+    if (manque.length) h += '<p class="titre-liste">' + t(R.top.length ? "Pas encore jugées :" : "Ce qu'il faut encore noter :") + '</p><ul class="erreurs-manque">' + manque.map(function (e) {
+      return '<li><b>' + t(e.lib) + '</b> ' + t(e.manque ? "encore " + e.manque + " " + e.baseLib + "." + (AIDES_ERREURS[e.id] ? " " + AIDES_ERREURS[e.id].charAt(0).toUpperCase() + AIDES_ERREURS[e.id].slice(1) + "." : "") : "moins de " + MIN_OCCURRENCES + " fois sur ces parties : rien à signaler.") + '</li>';
+    }).join("") + '</ul>';
+    h += '<details class="toutes-erreurs"><summary>' + t("Toutes les erreurs suivies") + '</summary><div class="defile"><table class="carte-score erreurs"><thead><tr><th scope="col">Erreur</th><th scope="col" class="num">Fréquence</th><th scope="col" class="num">Pour 18 trous</th><th scope="col" class="num">Évolution</th></tr></thead><tbody>' +
+      R.erreurs.map(function (e) {
+        return '<tr><th scope="row">' + t(e.lib) + '<small>' + t(e.deduit ? "déduit du score" : e.documentee ? "documenté" : "peu de données") + '</small></th>' +
+          '<td class="num">' + (e.base ? e.part + " %" : "–") + '<small>' + t(e.n + " / " + e.base) + '</small></td>' +
+          '<td class="num">' + (e.base ? nb1(e.par18) : "–") + '</td>' +
+          '<td class="num">' + (e.evolution ? t(e.evolution.avant.part + " → " + e.evolution.apres.part + " %") + '<small>' + t(e.evolution.sens === "hausse" ? "plus fréquent" : e.evolution.sens === "baisse" ? "moins fréquent" : "stable") + '</small>' : "–") + '</td></tr>';
+      }).join("") + '</tbody></table></div><p class="aide">' + t("Fréquence : occurrences sur les occasions (départs, coups ou trous). Évolution : première moitié des parties contre la seconde, s'il y a assez d'occasions dans chacune ; un écart de moins de " + ECART_EVOLUTION + " points est dit stable.") + '</p></details>';
+    return h + '</section>';
+  }
 
   /* ============================================================
      APRÈS LA PARTIE : bilan express au club-house, carte de score en image,

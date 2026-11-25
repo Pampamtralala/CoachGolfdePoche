@@ -188,3 +188,28 @@ BRANCHE / COMMIT / LIEN PR : data/p07-parcours-trous · PR #10 (brouillon)
 BLOCAGES / RISQUES : une partie sans parcours associé n'entre dans aucune fiche.
 PROCHAINE TÂCHE AUTORISÉE : aucune sans accord ; candidat suivant : P08 (putting).
 ```
+
+## 24 novembre 2026 (soir)
+
+```text
+DATE : 24/11/2026
+CRÉDITS ALLOUÉS / CONSOMMÉS / RESTANTS : non mesurables (aucun compteur fourni).
+FUSION : PR #10 (P07) fusionnée sur `app` à la demande explicite du propriétaire (« Push p07 ») ;
+  appli claude.ai mise à jour.
+TÂCHE ACTUELLE : P09 — erreurs récurrentes (« fait p09 et p08 »)
+FONCTIONNALITÉS LIVRÉES (branche data/p09-erreurs) :
+  - engine-erreurs.js (fonctions pures) : six erreurs suivies avec leurs occasions (mises en jeu
+    renseignées, coups avec direction, trous, greens manqués) ; fréquence, effectif, fréquence pour
+    18 trous ; côté dominant (au moins deux fois l'autre, 8 ratés latéraux) ; clubs et parcours
+    associés (5 occasions au moins) ; évolution première moitié / seconde moitié des parties
+    (écart de 10 points pour parler de hausse ou de baisse) ; « documentée » = seuil d'occasions
+    (20 départs, 20 coups, 36 trous, 20 greens manqués) et 5 occurrences ; trois priorités au plus ;
+  - Statistiques : section « Mes erreurs récurrentes » (suit les filtres), cartes Constat / Où et
+    avec quoi / Évolution / Piste à vérifier (hypothèse dite), tableau de toutes les erreurs,
+    état « Données insuffisantes » avec ce qu'il faut encore noter.
+TESTS EXÉCUTÉS ET RÉSULTATS : npm test (erreurs : 19 vérifications) : 0 échec ; test-startup : OK ;
+  essai21 (P09) : OK ; essais 12, 18, 19, 20 : OK.
+BRANCHE / COMMIT / LIEN PR : data/p09-erreurs · PR #11 (brouillon)
+BLOCAGES / RISQUES : greens manqués et doubles approches sont déduits du score (dit à l'écran).
+PROCHAINE TÂCHE : P08 (putting), demandée dans le même message.
+```
