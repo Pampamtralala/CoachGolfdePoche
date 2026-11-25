@@ -26,7 +26,7 @@
 
   /* Reporte dans le profil les chiffres des dernières parties. */
   function majIndicateursParties() {
-    var r = indicateursParties(etat.parties);
+    var r = indicateursParties(partiesAnalyse());
     if (!r) return;
     Object.keys(r.vals).forEach(function (id) {
       etat.profil.indicateurs[id] = { val: Math.min(IND[id].max, r.vals[id]), src: "partie", date: r.date };
@@ -72,7 +72,7 @@
   }
 
   function indexEstimeHTML() {
-    var p = etat.profil, r = indexEstime(etat.parties, function (pt) { return parcoursDe(pt.pc); }, p.index);
+    var p = etat.profil, r = indexEstime(partiesAnalyse(), function (pt) { return parcoursDe(pt.pc); }, p.index);
     if (!r.n) return "";
     if (r.v == null) return '<p class="aide">' + t("Index estimé : encore " + pluriel(3 - r.n, "partie") + " avec un score à chaque trou, et l'appli pourra l'estimer.") + '</p>';
     var ecart = Math.round((r.v - p.index) * 10) / 10;
@@ -101,12 +101,12 @@
         '<th scope="col" class="num">Score</th><th scope="col" class="num">Greens</th><th scope="col" class="num">Putts</th><th scope="col" class="num">Pén.</th></tr></thead><tbody>';
       for (var i = l.length - 1; i >= Math.max(0, l.length - 8); i--) {
         var s = statsTrous(l[i].trous), sc = scorePartie(l[i]), pci = parcoursDe(l[i].pc);
-        var sous = (pci ? pci.nom : "") + (s.T < 18 ? (pci ? " · " : "") + s.T + " trous" : "");
+        var sous = (pci ? pci.nom : "") + (s.T < 18 ? (pci ? " · " : "") + s.T + " trous" : "") + (l[i].exclue ? " · exclue des calculs" : "");
         h += '<tr><th scope="row"><button class="rang-lien" type="button" data-a="pt-carte" data-id="' + i + '"><span>' + t(dateCourte(l[i].d)) + '</span>' + (sous ? '<small>' + t(sous) + '</small>' : '') + '</button></th>' +
           '<td class="num">' + (sc.complet ? '<span class="main">' + ecartLib(sc.ecart) + '</span><small>' + sc.coups + '</small>' : '<span class="marque inconnu">–</span>') + '</td>' +
           [s.G, s.P, s.X].map(function (v) { return '<td class="num"><span class="main">' + v + '</span></td>'; }).join("") + '</tr>';
       }
-      var cu = cumulParties(l, 54);
+      var cu = cumulParties(partiesAnalyse(), 54);
       h += '</tbody></table></div><p class="aide" style="margin-top:8px">' +
         t("Touche une partie pour voir sa carte.") + '</p>' +
         indexEstimeHTML() +
@@ -170,7 +170,7 @@
   function planDuTrou(p) {
     var pc = parcoursDe(p.pc);
     if (!pc) return "";
-    var an = analyseParcours(etat.parties, pc), h = trouPhysique(p, p.i);
+    var an = analyseParcours(partiesAnalyse(), pc), h = trouPhysique(p, p.i);
     var noir = an.noirs.filter(function (x) { return x.h === h; })[0];
     if (!noir) return "";
     return '<p class="pt-plan"><b>' + t("Trou noir · " + signe(noir.moy) + " en moyenne") + '</b>' + t(planTrou(noir, an).conseils[0]) + '</p>';
@@ -213,8 +213,8 @@
 
   /* ---------- Bilan de fin de partie ---------- */
   function bilanPartieHTML() {
-    var pt = ui.bilanPartie, s = statsTrous(pt.trous), sc = scorePartie(pt), cu = cumulParties(etat.parties, 54);
-    var cible = cibleCourante(), r = coupsGagnes(etat.parties, cible);
+    var pt = ui.bilanPartie, s = statsTrous(pt.trous), sc = scorePartie(pt), cu = cumulParties(partiesAnalyse(), 54);
+    var cible = cibleCourante(), r = coupsGagnes(partiesAnalyse(), cible);
     function chiffre(lib, v, sur) { return '<div><dt>' + t(lib) + '</dt><dd><span class="main">' + v + '</span>' + (sur ? '<small>' + t(sur) + '</small>' : '') + '</dd></div>'; }
     var h = '<section class="partie bilan' + (etat.ecranClair ? " clair" : "") + '" role="dialog" aria-modal="true" aria-labelledby="pt-titre">' +
       '<header><p class="surtitre">' + t(nomPartie(pt) + " · " + s.T + " trous") + '</p></header>' +
@@ -279,6 +279,8 @@
     if (p.joueurs && p.joueurs.length) pt.joueurs = p.joueurs.map(function (j) { return { nom: j.nom, s: idx.map(function (k) { return j.s[k] == null ? null : j.s[k]; }) }; });
     /* Partie complétée après coup : elle remplace l'originale, à sa place ; sinon elle s'ajoute. */
     var deja = p.edition ? etat.parties.map(function (x) { return x.id; }).indexOf(pt.id) : -1;
+    /* Une partie exclue des calculs le reste après avoir été complétée. */
+    if (deja >= 0 && etat.parties[deja].exclue) pt.exclue = 1;
     if (deja >= 0) etat.parties[deja] = pt; else etat.parties.push(pt);
     etat.partie = null;
     majIndicateursParties();

@@ -245,3 +245,35 @@ CORRECTION (PR #12) : bloc « Premier putt (facultatif) » et « Second putt dif
 TESTS : npm test 0 échec ; test-startup OK ; essai22 vérifie le bloc en Standard sans ouvrir de
   détails et son absence en Express ; essais 4, 5, 6, 8, 9, 10, 12, 13, 16, 17, 18, 21 : OK.
 ```
+
+## 25 novembre 2026 (matin)
+
+```text
+DATE : 25/11/2026
+CRÉDITS ALLOUÉS / CONSOMMÉS / RESTANTS : non mesurables (aucun compteur fourni).
+FUSIONS : PR #11 (P09) et #12 (P08) fusionnées sur `app` à la demande explicite du propriétaire
+  (« Fusionne 11 et 12 ») ; appli claude.ai mise à jour.
+TÂCHE ACTUELLE : P04 puis P02 (« Lance les 2 prochaines feature »)
+RÉÉVALUATION DE LA PR #2 : ses trois apports sont déjà sur app (provenance des distances par la
+  PR #3, distance GPS totale hors du sac, export JSON avec les cartes GPS). Rien à reprendre ; à fermer.
+FONCTIONNALITÉS LIVRÉES (branche data/p04-mes-donnees) :
+  - engine-donnees.js : partiesPourCalculs (partie exclue retirée ; coup exclu gardé dans
+    l'enchaînement sans distance ni direction ; données d'origine intactes), inventaireDonnees,
+    distancesSuspectes (pleins coups mesurés, médiane du club sur 5 mesures au moins) ;
+  - une seule source pour les calculs (partiesAnalyse) : statistiques, erreurs, putting, clubs,
+    parcours, index estimé, objectifs, priorités, sac ;
+  - fiche « Mes données » : inventaire, distances à vérifier, coups exclus, parties (corriger,
+    exclure, réintégrer), sauvegarde complète ;
+  - sauvegarde : le texte copiable contient aussi les cartes GPS ; restauration par texte qui les
+    restaure ; aucun message de réussite si rien n'a pu être écrit (copie locale ni sauvegarde de
+    l'appareil) ; bannière persistante « pas enregistrées » ;
+  - période des statistiques avec l'année quand elle s'étale sur plusieurs années ;
+  - build.js s'arrête sur une erreur de syntaxe du code assemblé.
+TESTS EXÉCUTÉS ET RÉSULTATS : npm test (mes données : 17 vérifications) : 0 échec ; test-startup :
+  OK ; essai23 (inventaire, exclusions, restauration fichier et texte sur appareil vierge, panne
+  d'écriture, 400 parties : statistiques 1,2 s, mes données 1,5 s, 1 Mo) : OK ; tous les essais
+  (3 à 23) : OK. essai3 et essai14 réalignés : une ancienne sauvegarde ne perd aucune valeur (plan
+  régénérable et réglages par défaut ajoutés mis à part) ; nouveau libellé hors réseau.
+BRANCHE / COMMIT / LIEN PR : data/p04-mes-donnees · PR #13 (brouillon)
+PROCHAINE TÂCHE : P02 (premier lancement), demandée dans le même message.
+```

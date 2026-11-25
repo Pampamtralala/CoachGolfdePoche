@@ -17,7 +17,7 @@
       if (!pp) return [];
       f.debut = pp.debut; f.fin = pp.fin;
     }
-    return selectionParties(etat.parties, f);
+    return selectionParties(partiesAnalyse(), f);
   }
   function nbStat(v, signe) { return v == null ? "–" : (signe && v > 0 ? "+" : "") + String(v).replace(".", ",").replace("-", "−"); }
   function tendanceStat(c) {
@@ -69,7 +69,7 @@
       (comparable ? '<label class="case"><input type="checkbox" data-c="st-comparer"' + (F.comparer ? " checked" : "") + '> ' + t(F.derniers ? "Comparer avec les " + F.derniers + " parties précédentes" : "Comparer avec les " + PP.jours + " jours précédents, du " + dateCourte(PP.debut) + " au " + dateCourte(PP.fin)) + '</label>' : '') + '</div>';
     if (!A.parties) return h + etatVideHTML("stats", "Aucune partie pour ces filtres", etat.parties.length ? "Élargis la période, le format ou le parcours." : "Note une partie : score, putts et pénalités suffisent pour démarrer.", etat.parties.length ? "" : "partie-rapide", "Lancer une partie");
     var mixte = A.parties9 && A.parties18;
-    h += '<p class="aide stats-echantillon">' + t("Sur " + pluriel(A.parties, "partie") + " (" + A.trous + " trous), du " + dateCourte(A.premiere) + " au " + dateCourte(A.derniere) + (/\.$/.test(dateCourte(A.derniere)) ? "" : ".") +
+    h += '<p class="aide stats-echantillon">' + t("Sur " + pluriel(A.parties, "partie") + " (" + A.trous + " trous), " + periodeLib(A.premiere, A.derniere) + (/\.$/.test(periodeLib(A.premiere, A.derniere)) ? "" : ".") +
       (C ? (F.derniers ? " Comparé aux " + pluriel(B.parties, "partie") + " précédentes (" + B.trous + " trous)." : " Comparé à la période précédente : " + pluriel(B.parties, "partie") + " (" + B.trous + " trous).") : F.comparer && comparable ? (F.derniers ? " Pas de parties précédentes à comparer." : " Aucune partie sur la période précédente.") : "") +
       (mixte ? " Parties de 9 et de 18 trous : les chiffres sont ramenés à 18 trous." : "")) + '</p>';
     var cartes = [

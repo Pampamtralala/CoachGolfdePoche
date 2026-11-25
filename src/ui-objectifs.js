@@ -23,7 +23,7 @@
   }
 
   function objectifsHTML(cible) {
-    var n = FENETRES.indexOf(ui.fenetre) >= 0 ? ui.fenetre : 5, f = statsFenetre(etat.parties, n), O = objectifs(cible), i = 0;
+    var n = FENETRES.indexOf(ui.fenetre) >= 0 ? ui.fenetre : 5, f = statsFenetre(partiesAnalyse(), n), O = objectifs(cible), i = 0;
     var h = '<h3 class="titre-bloc">' + t("Pour jouer index " + cible) + '</h3>' +
       '<p>' + t("Un joueur d'index " + cible + " touche en moyenne " + nb1(O.gir) + " greens, prend " + nb1(O.putts) + " putts et " + nb1(O.pen) + " coup" + (O.pen >= 2 ? "s" : "") + " de pénalité par partie.") + '</p>' +
       '<div class="filtres" role="group" aria-label="Nombre de parties prises en compte">' + FENETRES.map(function (k) {
@@ -54,7 +54,7 @@
   /* ---------- Relevés de la saisie détaillée ---------- */
   function relevesHTML() {
     if (!etat.parties.length) return null;
-    var r = releveDetail(etat.parties, 90), p = etat.profil, pal = palierDe(p.index), l = [];
+    var r = releveDetail(partiesAnalyse(), 90), p = etat.profil, pal = palierDe(p.index), l = [];
     var h = "";
     /* Côté des mises en jeu ratées, relié au défaut correspondant. */
     var cote = coteDominant(r.cotes, 5);
@@ -86,7 +86,7 @@
       l.push({ t: tc, alerte: !!mieux });
     }
     /* Positions de jeu notées avec les coups : rough, bunker, arbres, recentrages. */
-    var bl = bilanLies(etat.parties.slice(-10));
+    var bl = bilanLies(partiesAnalyse().slice(-10));
     if (bl.notes >= 10) {
       var pc = function (k) { return Math.round(100 * (bl.lies[k] || 0) / bl.notes); }, rec = bl.types.rec || 0;
       l.push({ t: "Coups notés sur tes dernières parties : " + pc("fw") + " % du fairway, " + pc("ro") + " % du rough, " + pc("bk") + " % du bunker, " + pc("ar") + " % des arbres." +

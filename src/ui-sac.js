@@ -34,7 +34,7 @@
     etat.carnet.sac = CLUBS.filter(function (c) { return ids.indexOf(c.id) >= 0; }).map(function (c) { return c.id; }).slice(0, SAC_MAX);
   }
   /* Coups mesurés sur le parcours (parties notées et partie en cours). */
-  function coupsDuParcours() { return mesuresParcours(etat.partie ? etat.parties.concat([etat.partie]) : etat.parties); }
+  function coupsDuParcours() { return mesuresParcours(etat.partie ? partiesAnalyse().concat([etat.partie]) : partiesAnalyse()); }
   /* Mesures du practice et du parcours réunies : la base des distances du sac. */
   function mesuresTout() { return fusionMesures(etat.carnet.clubs, coupsDuParcours().clubs); }
   /* Matrice de wedges : cases saisies, complétées par les coups du parcours. */
@@ -188,7 +188,7 @@
       (s && s.n > 1 ? '<p class="aide">' + t("Moyenne de " + pluriel(s.n, "mesure") + (parc.length ? " dont " + parc.length + " sur le parcours" : "") + ", de " + s.min + " à " + s.max + " m." + (mes.length > 1 ? " Enregistrer une autre moyenne remplace les mesures du practice." : "")) + '</p>' : '') +
       '<button class="btn principal large" type="submit">Enregistrer</button></form>';
     h += ellipseClubHTML(id) || dispersionClubHTML(tout);
-    var nCoups = (clubsNotes(etat.parties, []).filter(function (x) { return x.club === id; })[0] || {}).n;
+    var nCoups = (clubsNotes(partiesAnalyse(), []).filter(function (x) { return x.club === id; })[0] || {}).n;
     if (nCoups) h += '<button class="lien voir-profil" type="button" data-a="st-voir-club" data-v="' + at(id) + '">' + t("Voir le profil de ce club : direction, résultat, tendance (" + pluriel(nCoups, "coup") + ")") + '</button>';
     if (parc.length) h += '<p class="sac-parcours">' + t("Sur le parcours : " + parc.slice(-8).join(", ") + " m" + (parc.length > 8 ? " (" + parc.length + " coups)" : "") + ".") + '</p>';
     h += '<p class="sac-serie"><button class="btn large" type="button" data-a="serie-ouvrir" data-id="' + id + '">Faire une série de balles avec ce club</button></p>';

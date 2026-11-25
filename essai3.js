@@ -73,7 +73,12 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   verifie(canon(e.carnet) === canon({ clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }) && Array.isArray(e.parties) && e.partie === null && e.profil.indexVise === null && canon(e.defis) === '{}', 'valeurs par défaut des outils');
   verifie(canon(e.parcours) === '[]' && e.detail === false, 'valeurs par défaut de la carte de score');
   const reste = JSON.parse(JSON.stringify(e)); ['carnet', 'defis', 'parties', 'partie', 'cibleSG', 'parcours', 'detail'].forEach(k => delete reste[k]); delete reste.profil.indexVise; delete reste.modeSaisie; delete reste.indexHist;
-  verifie(sansVolatil(reste) === sansVolatil(ancien), 'ancienne sauvegarde conservée à l\'identique : ' + Object.keys(Object.assign({}, reste, ancien)).filter(k => JSON.stringify(reste[k]) !== JSON.stringify(ancien[k])).map(k => k + '=' + String(JSON.stringify(reste[k])).slice(0, 80) + ' / ' + String(JSON.stringify(ancien[k])).slice(0, 80)).join(' ; '));
+  /* P04 : toute valeur de l'ancienne sauvegarde est retrouvée à l'identique. Le plan d'entraînement, déduit du profil,
+     peut être régénéré ; un réglage ajouté depuis (valeur par défaut) n'est pas une perte. */
+  const inclus = (a, b) => a && typeof a === 'object' && !Array.isArray(a) ? Object.keys(a).every(k => inclus(a[k], b == null ? undefined : b[k])) : JSON.stringify(a) === JSON.stringify(b);
+  const ancienDonnees = JSON.parse(sansVolatil(ancien)), resteDonnees = JSON.parse(sansVolatil(reste));
+  delete ancienDonnees.plan; delete resteDonnees.plan;
+  verifie(inclus(ancienDonnees, resteDonnees) && reste.plan && reste.plan.cycle === ancien.plan.cycle, 'ancienne sauvegarde : aucune valeur perdue ni modifiée : ' + Object.keys(Object.assign({}, reste, ancien)).filter(k => k !== 'plan' && !inclus(ancien[k], reste[k])).map(k => k + '=' + String(JSON.stringify(reste[k])).slice(0, 80) + ' / ' + String(JSON.stringify(ancien[k])).slice(0, 80)).join(' ; '));
 
   /* ---- Carnet de distances ---- */
   await onglet('distances');

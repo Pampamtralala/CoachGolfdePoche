@@ -14,7 +14,7 @@
     if (!etat.parcours.length) return "";
     var h = '<section class="bloc" id="c-parcours"><h2>Mes parcours</h2><ul class="liste-exos">';
     etat.parcours.forEach(function (pc) {
-      var an = analyseParcours(etat.parties, pc);
+      var an = analyseParcours(partiesAnalyse(), pc);
       var pire = pireTrouLib(an);
       var sous = resumeParcours(pc, an) + (pire ? " · " + pire : an.noirs.length ? " · " + pluriel(an.noirs.length, "trou") + " noir" + (an.noirs.length > 1 ? "s" : "") : "");
       h += '<li><button class="ligne" type="button" data-a="pc-ouvrir" data-id="' + pc.id + '"><span class="quoi"><b>' + t(pc.nom) + '</b><small>' + t(sous) + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>';
@@ -163,7 +163,7 @@
     pc.reps = reps.slice(0, 8); pc.hcp = hcp;
     pc.sss = reps[0] ? reps[0].sss : null; pc.slope = reps[0] ? reps[0].slope : null;
     ui.pcCarte = null;
-    majIndicateursParties(); sauver(); rendre(); rendreFeuille(); message("Carte de score enregistrée.");
+    majIndicateursParties(); sauver(); rendre(); rendreFeuille(); messageEnregistre("Carte de score enregistrée.");
   };
   FORMULAIRES["pc-coller"] = function (form) {
     var pc = parcoursDe(form.getAttribute("data-id")); if (!pc) return;
@@ -183,7 +183,7 @@
       etat.parties.forEach(suivre); suivre(etat.partie);
     }
     ui.pcCarte = null;
-    majIndicateursParties(); sauver(); rendre(); rendreFeuille(); rendrePartie(); message("Carte de score enregistrée.");
+    majIndicateursParties(); sauver(); rendre(); rendreFeuille(); rendrePartie(); messageEnregistre("Carte de score enregistrée.");
     var b = document.getElementById("f-fermer"); if (b) b.focus({ preventScroll: true });
   };
 
@@ -214,7 +214,7 @@
     return l.map(function (c) { return nomClub(c.c) + (c.d != null ? " " + Math.round(c.d) + " m" + (c.gps ? " GPS" : "") : ""); }).join(" → ");
   }
   function trouParcoursHTML(pc, h) {
-    var P = passagesTrou(etat.parties, pc, h), R = bilanPassages(P), l = P.passages;
+    var P = passagesTrou(partiesAnalyse(), pc, h), R = bilanPassages(P), l = P.passages;
     var s = '<div class="pc-trou" id="pc-trou-detail"><h4>' + t("Trou " + (h + 1) + (pc.pars[h] ? " · par " + pc.pars[h] : "") + " · " + pluriel(R.n, "passage")) + '</h4>';
     if (!R.n) return s + '<p class="aide">' + t(P.sansScore ? "Joué sans score : pas encore de passage à comparer." : "Pas encore joué.") + '</p></div>';
     var bouts = ["moyenne " + signe(R.moyenne), "meilleur " + ecartLib(R.meilleur), "pire " + ecartLib(R.pire), nb1(R.putts) + " putts par passage"];
@@ -253,7 +253,7 @@
 
   /* Fiche d'un parcours, dans le calque des fiches. */
   function parcoursHTML(id) {
-    var pc = parcoursDe(id), an = analyseParcours(etat.parties, pc), F = ficheParcours(etat.parties, pc);
+    var pc = parcoursDe(id), an = analyseParcours(partiesAnalyse(), pc), F = ficheParcours(partiesAnalyse(), pc);
     var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer le parcours" tabindex="-1"></button>' +
       '<section class="feuille" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
       '<header><p class="surtitre">' + t("Parcours · " + resumeParcours(pc, an)) + '</p><h2 id="f-titre">' + t(pc.nom) + '</h2>' +
@@ -312,7 +312,7 @@
     var nom = texteCourt(document.getElementById("pc-nom").value, 40);
     if (!nom) { err.textContent = "Donne un nom au parcours."; err.hidden = false; return; }
     pc.nom = nom;
-    sauver(); rendre(); rendreFeuille(); message("Parcours enregistré.");
+    sauver(); rendre(); rendreFeuille(); messageEnregistre("Parcours enregistré.");
   };
   ACTIONS["pc-suppr"] = function (el) {
     var pc = parcoursDe(el.getAttribute("data-v")); if (!pc) return;

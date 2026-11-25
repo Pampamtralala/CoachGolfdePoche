@@ -47,12 +47,12 @@
       h += '<button class="carte-tb lien-tb" type="button" data-a="voir-seance" data-id="' + at(pr.se.id) + '" data-v="' + pr.w + '"><p class="surtitre">' + t(pr.retard ? "Séance à rattraper" : "Prochaine séance") + '</p>' +
         '<p class="tb-titre">' + t(pr.se.doms.map(function (d) { return DOM[d].court; }).join(" et ")) + '</p><p class="tb-meta">' + t("Semaine " + pr.w + " · " + dureeLib(pr.se.min)) + '</p>' + icone("chevron") + '</button>';
     } else h += '<button class="carte-tb lien-tb" type="button" data-a="fin-cycle"><p class="surtitre">Programme</p><p class="tb-titre">Cycle terminé</p><p class="tb-meta">Fais le bilan pour lancer le suivant</p>' + icone("chevron") + '</button>';
-    var prs = prioriteSemaine(etat.parties, obj), prio = prs.priorite;
+    var prs = prioriteSemaine(partiesAnalyse(), obj), prio = prs.priorite;
     var d0 = prio ? secteurDomaine(prs) : plan.priorites[0];
     h += '<button class="carte-tb lien-tb" type="button" data-a="' + (d0 && DOM[d0] ? 'voir-exos" data-v="' + d0 : 'onglet" data-v="bilan') + '"><p class="surtitre">Priorité technique</p>' +
       '<p class="tb-titre">' + t(prio ? prio.nom : d0 && DOM[d0] ? DOM[d0].nom : "À définir") + '</p><p class="tb-meta">' + t(prio ? (prio.sg != null ? coupsLib(prio.sg, "perdu") + " par partie face à l’index " + obj : "Ta note la plus basse") : "D’après ton profil et ton programme") + '</p>' + icone("chevron") + '</button></div>';
     /* Résumé : dernière partie et jeu sur 100 */
-    var l = etat.parties, der = l.length ? l[l.length - 1] : null;
+    var l = partiesAnalyse(), der = l.length ? l[l.length - 1] : null;
     h += '<h2 class="titre-bref">Ton jeu</h2>';
     if (der) {
       var sc = scorePartie(der), st = statsTrous(der.trous);
@@ -71,9 +71,9 @@
 
   /* Qualité des données : transparence sur l'échantillon et les sources. */
   function qualiteGolfHTML() {
-    var obs = observationsGolf(etat.parties, etat.carnet, etat.parcours), q = qualiteObservations(obs);
+    var obs = observationsGolf(partiesAnalyse(), etat.carnet, etat.parcours), q = qualiteObservations(obs);
     var confirmes = 0, suivis = 0;
-    etat.parties.forEach(function (p) {
+    partiesAnalyse().forEach(function (p) {
       (p.trous || []).forEach(function (tr, i) {
         if (!tr) return;
         suivis++;
@@ -84,12 +84,12 @@
       '<p class="aide">' + t(q.total ? q.total + " observations · distances : " + q.statuts.declaree + " déclarées, " + q.statuts.gps + " GPS (approximatives, roulé compris), " + q.statuts.inconnue + " inconnues · " + q.direction + " directions gauche / droite connues." : "Les observations apparaîtront après tes premières mesures et tes premiers coups.") + '</p>' +
       (q.total ? '<p class="aide">' + t("Une distance inconnue peut être remplacée par ta moyenne du club, affichée « ≈ … (moyenne) » : c'est une estimation, jamais comptée comme une mesure ni réintégrée dans ta moyenne.") + '</p>' : '') +
       '<p class="aide">' + t(suivis ? confirmes + " scores confirmés sur " + suivis + " trous historiques. Les anciens scores restent utilisables, mais leur confirmation n’est pas connue." : "Aucun trou historique pour le moment.") + '</p>' +
-      '<p class="aide">Chaque coup peut conserver sa source (manuel, GPS, import), sa date, son type de distance et son niveau de confiance. Les anciennes données non documentées restent marquées comme inconnues.</p></section>';
+      '<p class="aide">Chaque coup peut conserver sa source (manuel, GPS, import), sa date, son type de distance et son niveau de confiance. Les anciennes données non documentées restent marquées comme inconnues.</p><p><button class="btn" type="button" data-a="md-ouvrir">Voir et corriger mes données</button></p></section>';
   }
 
   /* ---------- Statistiques : chiffres clés ---------- */
   function chiffresClesHTML() {
-    var n = ui.fenetre || 5, l = etat.parties, c = cumulParties(l, n * 18), avant = cumulParties(l.slice(0, Math.max(0, l.length - c.n)), n * 18);
+    var n = ui.fenetre || 5, l = partiesAnalyse(), c = cumulParties(l, n * 18), avant = cumulParties(l.slice(0, Math.max(0, l.length - c.n)), n * 18);
     if (!c.T) return etatVideHTML("stats", "Pas encore de statistiques", "Note une partie avec le pavé : score, putts et pénalités suffisent pour démarrer.", "partie-rapide", "Lancer une partie");
     var k = 18 / c.T, ka = avant.T ? 18 / avant.T : 0, obj = indexVise(), ref = repereSG(obj);
     var tend = function (v, va, mieuxHaut) {

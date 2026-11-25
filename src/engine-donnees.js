@@ -127,6 +127,82 @@ function croiserObservations(obs, axe, f) {
   }).sort(function (a, b) { return b.n - a.n || (a.cle < b.cle ? -1 : 1); });
 }
 
+/* ============================================================
+   MES DONNÉES (roadmap DATA, P04) : inventaire, exclusions réversibles, distances à vérifier.
+   Une partie exclue (exclue: 1) ne compte dans aucun calcul ; un coup exclu (x: 1) garde sa place
+   dans l'enchaînement des coups mais perd sa distance et sa direction pour les calculs. Rien n'est supprimé.
+   ============================================================ */
+function partiesPourCalculs(parties) {
+  return (parties || []).filter(function (p) { return p && !p.exclue; }).map(function (p) {
+    if (!Array.isArray(p.coups) || !p.coups.some(function (l) { return Array.isArray(l) && l.some(function (c) { return c && c.x; }); })) return p;
+    var q = {}; Object.keys(p).forEach(function (k) { q[k] = p[k]; });
+    q.coups = p.coups.map(function (l) {
+      return Array.isArray(l) ? l.map(function (c) {
+        if (!c || !c.x) return c;
+        var r = {}; Object.keys(c).forEach(function (k) { if (k !== "d" && k !== "l" && k !== "g") r[k] = c[k]; });
+        r.d = null; r.source = "inconnu"; r.distanceType = "inconnu";
+        return r;
+      }) : l;
+    });
+    return q;
+  });
+}
+
+/* Inventaire : provenance et effectif de chaque type de donnée. cartes : nombre de cartes GPS locales. */
+function inventaireDonnees(parties, carnet, cartes) {
+  var r = { parties: 0, exclues: 0, trous: 0, trousSansScore: 0, mej: 0, mejPossibles: 0, premiersPutts: 0,
+    coups: 0, coupsExclus: 0, directions: 0, distances: { gps: 0, declaree: 0, estimee: 0, inconnue: 0 },
+    seances: carnet && Array.isArray(carnet.series) ? carnet.series.length : 0, cartes: cartes || 0 };
+  (parties || []).forEach(function (p) {
+    if (!p || !Array.isArray(p.trous)) return;
+    r.parties++;
+    if (p.exclue) { r.exclues++; return; }
+    p.trous.forEach(function (t, k) {
+      if (!trouNote(t)) { r.trousSansScore++; return; }
+      r.trous++;
+      if (t[5] >= 4) { r.mejPossibles++; if (!Array.isArray(p.renseigne) || (p.renseigne[k] & 1)) r.mej++; }
+      if (t[2] >= 1 && t[8] >= 1) r.premiersPutts++;
+    });
+    (Array.isArray(p.coups) ? p.coups : []).forEach(function (l) {
+      (Array.isArray(l) ? l : []).forEach(function (c) {
+        if (!c) return;
+        r.coups++;
+        if (c.x) { r.coupsExclus++; return; }
+        if (typeof c.l === "number") r.directions++;
+        r.distances[statutDistance(c)]++;
+      });
+    });
+  });
+  return r;
+}
+
+/* Distances inhabituelles : pleins coups mesurés (GPS ou déclarés), loin de la médiane du club.
+   Il faut au moins MIN_SUSPECT mesures du club ; une distance confirmée (ok: 1) ou exclue n'est plus signalée. */
+var MIN_SUSPECT = 5, SUSPECT_BAS = 0.6, SUSPECT_HAUT = 1.4;
+function distancesSuspectes(parties) {
+  var mesures = {}, liste = [];
+  (parties || []).forEach(function (p, pi) {
+    if (!p || p.exclue || !Array.isArray(p.coups)) return;
+    p.coups.forEach(function (l, k) {
+      (Array.isArray(l) ? l : []).forEach(function (c, ci) {
+        if (!c || c.x || typeof c.d !== "number" || !coupPlein(c) || (c.a && c.a !== "plein")) return;
+        var st = statutDistance(c); if (st !== "gps" && st !== "declaree") return;
+        (mesures[c.c] = mesures[c.c] || []).push(c.d);
+        if (!c.ok) liste.push({ partie: pi, partieId: p.id || null, jour: typeof p.d === "string" ? p.d.slice(0, 10) : null, k: k, ci: ci, club: c.c, d: c.d, gps: st === "gps" });
+      });
+    });
+  });
+  var med = {};
+  Object.keys(mesures).forEach(function (id) {
+    var v = mesures[id].slice().sort(function (a, b) { return a - b; }), n = v.length;
+    if (n >= MIN_SUSPECT) med[id] = { m: n % 2 ? v[(n - 1) / 2] : (v[n / 2 - 1] + v[n / 2]) / 2, n: n };
+  });
+  return liste.filter(function (x) { var M = med[x.club]; return M && (x.d < SUSPECT_BAS * M.m || x.d > SUSPECT_HAUT * M.m); })
+    .map(function (x) { x.mediane = Math.round(med[x.club].m); x.n = med[x.club].n; return x; });
+}
+
 if (typeof module !== "undefined") {
-  module.exports = { idValide, nouvelId, hashTexte, attribuerIds, croiserObservations, AXES_CROISEMENT };
+  var EPd = require("./engine-plus.js");
+  var statutDistance = EPd.statutDistance, trouNote = EPd.trouNote, coupPlein = EPd.coupPlein;
+  module.exports = { idValide, nouvelId, hashTexte, attribuerIds, croiserObservations, AXES_CROISEMENT, partiesPourCalculs, inventaireDonnees, distancesSuspectes, MIN_SUSPECT };
 }
