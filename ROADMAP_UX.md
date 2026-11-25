@@ -14,7 +14,7 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 | 4 | UX07 Filtres et visualisations (fonctionnel : filtres communs, types de graphiques) | P1 | **Terminé** | `ux/ux07-filtres` · PR #21 (fusionnée) |
 | 5 | UX04 Tableau de bord « Mon jeu » | P0 | **Terminé** | `ux/ux04-mon-jeu` · PR #22 (fusionnée) |
 | 6 | UX06 Espace Analyses | P0 | **En revue** | `ux/ux06-analyses` |
-| 7 | UX08 Mon sac | P1 | À faire | — |
+| 7 | UX08 Mon sac | P1 | **En revue** | `ux/ux08-mon-sac` (après #23) |
 | 8 | UX09 Saisie sur le parcours | P1 | À faire | — |
 | 9 | UX10 Journal chronologique | P1 | À faire | — |
 | 10 | UX11 Après partie | P1 | À faire | — |
@@ -346,3 +346,24 @@ Encore utiles pour les chantiers UX : 4, 5, 7 et 8 — appliquées telles que pr
   des bilans déplacé en bas de Performance). Trois chemins menaient à une section sans passer par `allerA` (sommaire,
   fin de partie, liens des enseignements) : corrigés. Pas de nouvel indicateur pour Attaque de green et Petit jeu :
   seulement ce que les moteurs calculent déjà.
+
+### UX08 — Mon sac côté données (25/11/2026)
+
+- Objectif : donner la priorité aux chiffres des clubs, garder le sac 3D comme vue alternative.
+- Modifications :
+  - `src/ui-monsac.js` (nouveau) : tableau « Mes clubs » en tête de Mon sac (distance typique observée, fourchette,
+    nombre de mesures au practice et sur le parcours ; note courte pour un écart anormal avec un club voisin ou un club
+    peu documenté, moins de 3 mesures). Aucune distance estimée n'y entre : un club sans mesure affiche « – À mesurer ».
+    Boutons « Mesurer une série » et « Composer mon sac ».
+  - Fiche d'un club (`ui-sac.js`) : en tête, ses chiffres (distance typique et fourchette, mesures practice / parcours,
+    distance mesurée sur le parcours avec la part GPS, direction gauche / axe / droite), l'évolution de ses dernières
+    séries datées, l'enseignement qui le concerne, et la série de balles en un toucher (le bouton existant, remonté).
+  - Le sac 3D, l'écart entre clubs voisins, la régularité, la matrice de wedges, l'appel aux séries et l'historique
+    restent, sous le tableau. Le profil détaillé et la comparaison des clubs restent dans Analyses › Clubs.
+- Non fait : aucun nouveau système de mesure GPS (consigne). L'évolution des distances se lit par les séries datées :
+  les saisies du carnet n'ont pas de date.
+- Tests : `npm test` (926 noms, 0 doublon), `test-startup.js`, essais 3 à 32 verts, nouvel `essai33.js` (tableau,
+  club sans mesure sans estimation, écart anormal, résumé, 3D conservé, fiche du fer 7 et ses séries, série en un
+  toucher, 360 et 390 px). `essai-sac3d.js` (fichier autonome absent du dépôt) échouait déjà avant ce chantier.
+- Difficultés : une colonne « À noter » rendait le tableau trop large sur téléphone ; la note passe sous le nom du club,
+  en version courte (la phrase complète reste dans la fiche).
