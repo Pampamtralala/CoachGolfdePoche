@@ -344,3 +344,28 @@ TESTS EXÉCUTÉS ET RÉSULTATS : npm test (journal : 21 vérifications) : 0 éch
 BRANCHE / COMMIT / LIEN PR : data/p11-journal · PR #16 (brouillon, à fusionner après #15)
 PROCHAINE TÂCHE : P12 — à détailler au propriétaire avant de coder (demande explicite).
 ```
+
+## 25 novembre 2026 (matin, 3)
+
+```text
+DATE : 25/11/2026
+CRÉDITS ALLOUÉS / CONSOMMÉS / RESTANTS : non mesurables (aucun compteur fourni).
+FUSIONS : PR #15 (P10) et #16 (P11) fusionnées sur `app` à la demande explicite du propriétaire
+  (« Fusionne 15 et 16 ») ; appli claude.ai mise à jour.
+TÂCHE ACTUELLE : P12 (« Lance p12 », après présentation du plan : 12 questions, accès accueil et
+  Statistiques, IA externe laissée de côté).
+FONCTIONNALITÉS LIVRÉES (branche data/p12-comprendre) :
+  - engine-analyste.js : 12 questions, réponses { statut ok / insuffisant / vide, phrase, chiffres
+    (libellé, valeur, base), période, effectifs, méthode, manque } ; seuils SEUILS_ANALYSTE et minimums
+    MIN_ANALYSTE ; tout est calculé par les moteurs existants (tableauStats, agregatPutts, misesEnJeu,
+    profilClub, analyseParcours, coupsGagnes, associationsNotes) ; recherche par mots-clés (mots vides) ;
+  - fiche « Comprendre mon jeu » : périodes, recherche (focus conservé), une réponse ouverte à la fois,
+    méthode consultable ; raccourcis sur l'accueil ; bouton dans Statistiques ; entrée de recherche.
+  - champs « search » et « date » au style des autres champs.
+TESTS EXÉCUTÉS ET RÉSULTATS : npm test (analyste : 38 vérifications, dont carnet vide pour les 12
+  questions, insuffisant avec consigne, traçabilité des chiffres) : 0 échec ; test-doublons a bloqué
+  une collision (sansAccent) avant commit ; test-startup : OK ; essai27 : OK ; essais 3 à 27 : OK.
+BRANCHE / COMMIT / LIEN PR : data/p12-comprendre · PR #17 (brouillon)
+BLOCAGES / RISQUES : aucun ; la feuille de route DATA est entièrement livrée une fois la #17 fusionnée.
+PROCHAINE TÂCHE AUTORISÉE : aucune sans accord.
+```

@@ -231,6 +231,10 @@
         t(sc.complet ? sc.coups + " coups · " + ecartLib(sc.ecart) : st.T + " trous saisis") +
         '</p><p class="tb-meta">' + t(st.G + " GIR · " + st.P + " putts · " + st.X + " pénalités") + '</p></button></section>';
     }
+    /* P12 : poser une question à son carnet. */
+    h += '<section class="bloc comprendre"><h2>Comprendre mon jeu</h2><p class="aide">' + t("Des réponses chiffrées, tirées de ton carnet.") + '</p><div class="an-raccourcis">' +
+      ["score", "troisPutts", "cotes", "trous"].map(function (id) { var q = QUESTIONS_ANALYSTE.filter(function (x) { return x.id === id; })[0]; return '<button class="btn" type="button" data-a="an-ouvrir" data-v="' + id + '">' + t(q.q) + '</button>'; }).join("") +
+      '<button class="lien" type="button" data-a="an-ouvrir">Toutes les questions</button></div></section>';
     h += '<section class="bloc"><h2>Mes tendances</h2>' + chiffresClesHTML() + '</section>' + qualiteGolfHTML();
     h += '<section class="bloc"><h2>À découvrir dans mes données</h2>' +
       '<p class="aide">Pour des distances fiables, mesure plusieurs balles par club. Les chiffres détaillés et leur historique sont disponibles dans Mon sac et Statistiques.</p>' +

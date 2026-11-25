@@ -796,7 +796,7 @@
     var p = etat.profil, pal = palierDe(indexNiveau(p)), P = PALIERS[pal - 1];
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
     var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' +
-      '<p><button class="btn" type="button" data-a="j-ouvrir">Bilans, journal et rapports</button></p>' + tableauStatsHTML() + '</section>' + erreursStatsHTML() + puttingStatsHTML() + clubsStatsHTML() + qualiteGolfHTML() +
+      '<div class="ligne-btn"><button class="btn principal" type="button" data-a="an-ouvrir">Comprendre mon jeu</button><button class="btn" type="button" data-a="j-ouvrir">Bilans, journal et rapports</button></div>' + tableauStatsHTML() + '</section>' + erreursStatsHTML() + puttingStatsHTML() + clubsStatsHTML() + qualiteGolfHTML() +
       '<section class="bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
 
@@ -943,6 +943,7 @@
     if (f && f.conditions && etat.profil) { c.innerHTML = conditionsHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.donnees && etat.profil) { c.innerHTML = mesDonneesHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.journal && etat.profil) { c.innerHTML = journalHTML(); entreeFeuille(); majFige(); monterGraphes(); return; }
+    if (f && f.analyste && etat.profil) { c.innerHTML = analysteHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.sac && (f.sac === "putter" || CLUB[f.sac]) && etat.profil) { c.innerHTML = sacFeuilleHTML(f.sac); entreeFeuille(); majFige(); return; }
     if (f && f.sacComposer && etat.profil) { c.innerHTML = sacComposerHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.serie && ui.serie && etat.profil) { c.innerHTML = serieHTML(); entreeFeuille(); majFige(); return; }
@@ -995,7 +996,7 @@
     var serie = ui.feuille && ui.feuille.serie ? enregistrerSerie() : null;
     if (ui.feuille && ui.feuille.serie) ui.serie = null;
     /* Le sac a pu être redessiné en aperçu pendant la saisie : il est remis à l'état enregistré. */
-    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.serie || ui.feuille.carte || ui.feuille.donnees || ui.feuille.journal);
+    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.serie || ui.feuille.carte || ui.feuille.donnees || ui.feuille.journal || ui.feuille.analyste);
     var carteF = ui.feuille && ui.feuille.carte;
     if (serie) messageEnregistre("Série enregistrée. " + annonceSerie(serie));
     ui.sacApercu = null;
@@ -1383,6 +1384,7 @@
   /*INCLURE:ui-putting.js*/
   /*INCLURE:ui-donnees.js*/
   /*INCLURE:ui-journal.js*/
+  /*INCLURE:ui-analyste.js*/
   /*INCLURE:ui-apres.js*/
   /*INCLURE:ui-series.js*/
   /*INCLURE:ui-parcours.js*/
