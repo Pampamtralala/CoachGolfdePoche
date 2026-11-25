@@ -54,7 +54,8 @@
   function tendanceStat(c) {
     if (!c) return "";
     if (!c.mieux) return '<span class="tend stable">= stable</span>';
-    return '<span class="tend ' + (c.mieux > 0 ? "mieux" : "moins") + '">' + (c.d > 0 ? "▲ " : "▼ ") + nbStat(Math.abs(c.d)) + '</span>';
+    /* UX14 : le sens est dit en mots (lecteurs d'écran, daltonisme), pas seulement par la couleur. */
+    return '<span class="tend ' + (c.mieux > 0 ? "mieux" : "moins") + '" title="' + (c.mieux > 0 ? "mieux" : "moins bien") + '">' + (c.d > 0 ? "▲ " : "▼ ") + nbStat(Math.abs(c.d)) + '<span class="vh">' + (c.mieux > 0 ? " (mieux)" : " (moins bien)") + '</span></span>';
   }
   function puceStat(action, v, lib, actif) { return '<button class="opt" type="button" data-a="' + action + '" data-v="' + v + '" aria-pressed="' + actif + '">' + t(lib) + '</button>'; }
 

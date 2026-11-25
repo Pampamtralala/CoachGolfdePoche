@@ -96,7 +96,7 @@
       if (!avant.T || va == null) return '';
       var d = v - va; if (Math.abs(d) < 0.15) return '<span class="tend stable">= stable</span>';
       var bon = mieuxHaut ? d > 0 : d < 0;
-      return '<span class="tend ' + (bon ? "mieux" : "moins") + '">' + (d > 0 ? "▲ " : "▼ ") + nb1(Math.abs(d)) + '</span>';
+      return '<span class="tend ' + (bon ? "mieux" : "moins") + '" title="' + (bon ? "mieux" : "moins bien") + '">' + (d > 0 ? "▲ " : "▼ ") + nb1(Math.abs(d)) + '<span class="vh">' + (bon ? " (mieux)" : " (moins bien)") + '</span></span>';
     };
     var cartes = [];
     if (c.N) {

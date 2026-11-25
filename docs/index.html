@@ -1703,7 +1703,7 @@ main.entree { animation: entreeVue .22s ease-out; }
 .mj-obj { cursor: pointer; }
 .mj-courbe { margin-top: 8px; }
 .mj-courbe .courbe-index { width: 100%; max-width: 260px; height: 56px; }
-.ens-prov { font: 600 11px/1 var(--f-texte); letter-spacing: .02em; text-transform: none; color: var(--encre-2); border: 1px solid var(--filet); border-radius: 999px; padding: 2px 6px; white-space: nowrap; }
+.ens-prov { font: 600 12px/1.1 var(--f-texte); letter-spacing: .02em; text-transform: none; color: var(--encre-2); border: 1px solid var(--filet); border-radius: 999px; padding: 2px 6px; white-space: nowrap; }
 .kpi-lien { position: relative; width: 100%; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .kpi-lien > span { display: block; }
 .kpi-lien .kpi-v { display: flex; }
@@ -1758,6 +1758,8 @@ main.entree { animation: entreeVue .22s ease-out; }
 .pp-quoi b, .pp-quoi small { display: block; }
 .pp-quoi small { color: var(--encre-2); }
 .pp-etapes .btn { flex: 0 0 auto; }
+/* UX14 : aucun texte sous 12 px dans les jauges du jeu sur 100. */
+.jn small { font-size: 12px; }
 
 /* ---------- Sac de golf en perspective (fausse 3D) ----------
    Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
@@ -7611,7 +7613,7 @@ function filtrerChronologie(ev, f) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-25T19:41:52.448Z";
+  var VERSION_APPLI = "2026-11-25T19:51:21.284Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -12498,7 +12500,7 @@ function filtrerChronologie(ev, f) {
       if (!avant.T || va == null) return '';
       var d = v - va; if (Math.abs(d) < 0.15) return '<span class="tend stable">= stable</span>';
       var bon = mieuxHaut ? d > 0 : d < 0;
-      return '<span class="tend ' + (bon ? "mieux" : "moins") + '">' + (d > 0 ? "▲ " : "▼ ") + nb1(Math.abs(d)) + '</span>';
+      return '<span class="tend ' + (bon ? "mieux" : "moins") + '" title="' + (bon ? "mieux" : "moins bien") + '">' + (d > 0 ? "▲ " : "▼ ") + nb1(Math.abs(d)) + '<span class="vh">' + (bon ? " (mieux)" : " (moins bien)") + '</span></span>';
     };
     var cartes = [];
     if (c.N) {
@@ -12692,7 +12694,8 @@ function filtrerChronologie(ev, f) {
   function tendanceStat(c) {
     if (!c) return "";
     if (!c.mieux) return '<span class="tend stable">= stable</span>';
-    return '<span class="tend ' + (c.mieux > 0 ? "mieux" : "moins") + '">' + (c.d > 0 ? "▲ " : "▼ ") + nbStat(Math.abs(c.d)) + '</span>';
+    /* UX14 : le sens est dit en mots (lecteurs d'écran, daltonisme), pas seulement par la couleur. */
+    return '<span class="tend ' + (c.mieux > 0 ? "mieux" : "moins") + '" title="' + (c.mieux > 0 ? "mieux" : "moins bien") + '">' + (c.d > 0 ? "▲ " : "▼ ") + nbStat(Math.abs(c.d)) + '<span class="vh">' + (c.mieux > 0 ? " (mieux)" : " (moins bien)") + '</span></span>';
   }
   function puceStat(action, v, lib, actif) { return '<button class="opt" type="button" data-a="' + action + '" data-v="' + v + '" aria-pressed="' + actif + '">' + t(lib) + '</button>'; }
 
@@ -13840,7 +13843,7 @@ function filtrerChronologie(ev, f) {
       if (v == null || ref == null) return;
       var d = Math.round((v - ref) * 10) / 10, mieux = Math.abs(d) < 0.3 ? 0 : (bas ? d < 0 : d > 0) ? 1 : -1;
       lignes.push('<li class="' + (mieux > 0 ? "mieux" : mieux < 0 ? "moins" : "") + '"><b>' + t(lib) + '</b> ' + t(nbStat(v, k === "e") + unite + " contre " + nbStat(ref, k === "e") + unite + " habituellement") +
-        ' <span class="tend ' + (mieux > 0 ? "mieux" : mieux < 0 ? "moins" : "stable") + '">' + (mieux ? (d > 0 ? "▲ " : "▼ ") + nbStat(Math.abs(d)) : "= stable") + '</span></li>');
+        ' <span class="tend ' + (mieux > 0 ? "mieux" : mieux < 0 ? "moins" : "stable") + '"' + (mieux ? ' title="' + (mieux > 0 ? "mieux" : "moins bien") + '"' : '') + '>' + (mieux ? (d > 0 ? "▲ " : "▼ ") + nbStat(Math.abs(d)) + '<span class="vh">' + (mieux > 0 ? " (mieux)" : " (moins bien)") + '</span>' : "= stable") + '</span></li>');
       if (mieux) meilleurs.push({ k: k, lib: lib, d: d, mieux: mieux });
     }
     if (H.parties >= 3) {

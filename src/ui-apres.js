@@ -197,7 +197,7 @@
       if (v == null || ref == null) return;
       var d = Math.round((v - ref) * 10) / 10, mieux = Math.abs(d) < 0.3 ? 0 : (bas ? d < 0 : d > 0) ? 1 : -1;
       lignes.push('<li class="' + (mieux > 0 ? "mieux" : mieux < 0 ? "moins" : "") + '"><b>' + t(lib) + '</b> ' + t(nbStat(v, k === "e") + unite + " contre " + nbStat(ref, k === "e") + unite + " habituellement") +
-        ' <span class="tend ' + (mieux > 0 ? "mieux" : mieux < 0 ? "moins" : "stable") + '">' + (mieux ? (d > 0 ? "▲ " : "▼ ") + nbStat(Math.abs(d)) : "= stable") + '</span></li>');
+        ' <span class="tend ' + (mieux > 0 ? "mieux" : mieux < 0 ? "moins" : "stable") + '"' + (mieux ? ' title="' + (mieux > 0 ? "mieux" : "moins bien") + '"' : '') + '>' + (mieux ? (d > 0 ? "▲ " : "▼ ") + nbStat(Math.abs(d)) + '<span class="vh">' + (mieux > 0 ? " (mieux)" : " (moins bien)") + '</span>' : "= stable") + '</span></li>');
       if (mieux) meilleurs.push({ k: k, lib: lib, d: d, mieux: mieux });
     }
     if (H.parties >= 3) {
