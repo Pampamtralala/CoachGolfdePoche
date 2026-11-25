@@ -1733,6 +1733,16 @@ main.entree { animation: entreeVue .22s ease-out; }
 .pv-plus-coup { margin: 10px 0; border-top: 1px solid var(--filet); padding-top: 6px; }
 .pv-plus-coup > summary { cursor: pointer; min-height: 48px; display: flex; flex-direction: column; justify-content: center; font-weight: 700; color: var(--imprime); }
 .pv-plus-coup > summary small { font-weight: 400; color: var(--encre-2); }
+/* UX10 : chronologie du journal. */
+.chrono-liste { list-style: none; margin: 8px 0; padding: 0; }
+.chrono-mois h3 { margin: 16px 0 6px; font-size: .95rem; text-transform: capitalize; color: var(--encre-2); }
+.chrono-ev .ligne { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 8px 4px; border: 0; border-bottom: 1px solid var(--filet); background: none; color: var(--encre); font: inherit; text-align: left; }
+.chrono-ev .hist-date { flex: 0 0 4.5em; font-size: .8rem; color: var(--encre-2); }
+.chrono-ev .quoi { flex: 1; min-width: 0; }
+.chrono-ev .quoi b, .chrono-ev .quoi small { display: block; }
+.chrono-ev .quoi small { color: var(--encre-2); }
+.chrono-ev.marquant .quoi b { color: var(--bon); }
+.chrono-note { font-style: italic; }
 
 /* ---------- Sac de golf en perspective (fausse 3D) ----------
    Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
@@ -7503,6 +7513,78 @@ function choisirEnseignements(liste, n, graine) {
 }
 
 
+/* Coach de golf de poche — journal chronologique (roadmap UX, UX10). Construit à la demande à partir des données
+   existantes (parties, séries de practice, historique d'index, cycles de coaching, défis) : rien n'est copié dans
+   la sauvegarde. Chaque événement garde de quoi ouvrir son détail. Faits marquants : record de score (partie la
+   mieux jouée, au moins 3 parties complètes avant) et meilleur index déclaré. */
+
+var TYPES_CHRONO = [
+  { id: "tous", lib: "Tout" }, { id: "partie", lib: "Parties" }, { id: "practice", lib: "Practice" },
+  { id: "index", lib: "Index" }, { id: "entrainement", lib: "Entraînement" }, { id: "note", lib: "Notes" }
+];
+var MIN_RECORD_CHRONO = 3;
+function jourChrono(d) { return typeof d === "string" && /^\d{4}-\d{2}-\d{2}/.test(d) ? d.slice(0, 10) : typeof d === "number" && isFinite(d) ? new Date(d).toISOString().slice(0, 10) : null; }
+function ecartPartieChrono(p) {
+  var S = 0, PAR = 0, n = 0;
+  (p.trous || []).forEach(function (t) { if (Array.isArray(t) && t[4] > 0 && t[5] > 0) { S += t[4]; PAR += t[5]; n++; } });
+  return n && n === (p.trous || []).length ? { ecart: S - PAR, score: S, trous: n, ecart18: Math.round((S - PAR) * 18 / n * 10) / 10 } : null;
+}
+/* src : { parties, series, indexHist, cycles, defis: [{ id, t, hist }], nomParcours(id), nomClub(id) } */
+function chronologie(src) {
+  src = src || {};
+  var ev = [], nomPc = src.nomParcours || function (x) { return x || ""; }, nomCl = src.nomClub || function (x) { return x; };
+  /* Parties, avec record de score (écart au par ramené à 18 trous) */
+  var parties = (src.parties || []).map(function (p, i) { return { p: p, i: i, j: jourChrono(p && p.d) }; }).filter(function (x) { return x.p && x.j && Array.isArray(x.p.trous) && x.p.trous.length; })
+    .sort(function (a, b) { return a.j < b.j ? -1 : a.j > b.j ? 1 : a.i - b.i; });
+  var meilleur = null, completes = 0;
+  parties.forEach(function (x) {
+    var p = x.p, E = ecartPartieChrono(p), note = p.note && (p.note.texte || p.note.forme || p.note.driving || p.note.putting || p.note.ressenti);
+    var record = !!(E && completes >= MIN_RECORD_CHRONO && meilleur != null && E.ecart18 < meilleur);
+    if (E) { completes++; if (meilleur == null || E.ecart18 < meilleur) meilleur = E.ecart18; }
+    ev.push({ type: "partie", d: x.j, titre: (p.pc ? nomPc(p.pc) : "Partie") + " · " + p.trous.length + " trous",
+      detail: E ? E.score + " coups (" + (E.ecart > 0 ? "+" : E.ecart < 0 ? "−" : "") + Math.abs(E.ecart) + ")" : "score incomplet",
+      note: note ? (p.note.texte || "") : null, aNote: !!note, pc: p.pc || null, ref: { partie: x.i }, marquant: record ? "Record : ta meilleure partie" : null });
+  });
+  /* Séries de practice */
+  (src.series || []).forEach(function (s) {
+    var j = jourChrono(s && s.d); if (!j || !s.v || !s.v.length) return;
+    var v = s.v.slice().sort(function (a, b) { return a - b; }), moy = Math.round(v.reduce(function (t, x) { return t + x; }, 0) / v.length);
+    ev.push({ type: "practice", d: j, titre: "Série · " + nomCl(s.c), detail: s.v.length + " balle" + (s.v.length > 1 ? "s" : "") + ", " + moy + " m en moyenne", ref: { club: s.c }, marquant: null });
+  });
+  /* Index déclaré : chaque mise à jour, et le meilleur atteint */
+  var mini = null;
+  (src.indexHist || []).slice().sort(function (a, b) { return String(a.d) < String(b.d) ? -1 : 1; }).forEach(function (x, k) {
+    var j = jourChrono(x && x.d); if (!j || typeof x.v !== "number") return;
+    var mieux = k > 0 && mini != null && x.v < mini;
+    ev.push({ type: "index", d: j, titre: "Index : " + String(x.v).replace(".", ","), detail: k === 0 ? "premier index noté" : "mise à jour de ton index déclaré", ref: {}, marquant: mieux ? "Ton meilleur index" : null });
+    if (mini == null || x.v < mini) mini = x.v;
+  });
+  /* Cycles de coaching et défis */
+  (src.cycles || []).forEach(function (c) {
+    var j = jourChrono(c && c.fin); if (!j) return;
+    ev.push({ type: "entrainement", d: j, titre: "Cycle " + c.cycle + " terminé", detail: c.faites + " séance" + (c.faites > 1 ? "s" : "") + " sur " + c.total, ref: { cycle: true }, marquant: null });
+  });
+  (src.defis || []).forEach(function (df) {
+    (df.hist || []).forEach(function (x) {
+      var j = jourChrono(x && x.d); if (!j) return;
+      ev.push({ type: "entrainement", d: j, titre: "Défi · " + df.t, detail: x.v != null ? "résultat : " + x.v : "défi joué", ref: { defi: df.id }, marquant: null });
+    });
+  });
+  return ev.sort(function (a, b) { return a.d > b.d ? -1 : a.d < b.d ? 1 : 0; });
+}
+/* filtre : { type, debut, fin, parcours } — parcours ne concerne que les parties. */
+function filtrerChronologie(ev, f) {
+  f = f || {};
+  return (ev || []).filter(function (e) {
+    if (f.type && f.type !== "tous") { if (f.type === "note" ? !e.aNote : e.type !== f.type) return false; }
+    if (f.debut && e.d < f.debut) return false;
+    if (f.fin && e.d > f.fin) return false;
+    if (f.parcours && (e.type !== "partie" || e.pc !== f.parcours)) return false;
+    return true;
+  });
+}
+
+
 /* ============================================================
    INTERFACE : accueil, questionnaire, plan, bilan, exercices, profil.
    Les données du joueur sont gardées sur l'appareil et, quand c'est possible,
@@ -7514,7 +7596,7 @@ function choisirEnseignements(liste, n, graine) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-25T19:13:22.737Z";
+  var VERSION_APPLI = "2026-11-25T19:24:35.680Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -13038,11 +13120,12 @@ function choisirEnseignements(liste, n, graine) {
   /* UX03 : page Journal (entrée de la barre). Les bilans, notes, rapports et l'import restent dans la fiche. */
   VUES.journal = function () {
     var n = etat.parties.length;
-    return '<section class="bloc premier"><p class="surtitre">Journal</p><h1>Mes parties</h1>' +
-      '<p class="aide">' + t(n ? pluriel(n, "partie") + " enregistrée" + (n > 1 ? "s" : "") + ", de la plus récente à la plus ancienne." : "Ton historique de parties, de notes et de rapports.") + '</p>' +
-      '<div class="ligne-btn"><button class="btn principal" type="button" data-a="j-ouvrir">Bilans, notes et rapports</button>' +
+    /* UX10 : la chronologie de toutes les activités d'abord, puis le tableau des parties. */
+    return '<section class="bloc premier"><p class="surtitre">Journal</p><h1>Mon journal</h1>' +
+      '<p class="aide">' + t(n ? pluriel(n, "partie") + " enregistrée" + (n > 1 ? "s" : "") + ", avec tes séries de practice, ton index et tes défis." : "Ton historique de parties, de notes et de rapports.") + '</p>' +
+      '<div class="raccourcis"><button class="btn" type="button" data-a="j-ouvrir">Bilans, notes et rapports</button>' +
       '<button class="btn" type="button" data-a="j-ouvrir">Importer des parties</button>' +
-      '<button class="btn" type="button" data-a="md-ouvrir">Mes données</button></div></section>' + dernieresPartiesHTML();
+      '<button class="btn" type="button" data-a="md-ouvrir">Mes données</button></div></section>' + chronologieHTML() + dernieresPartiesHTML();
   };
   function rendreJournal(focusSel) {
     var f = document.getElementById("feuille"), y = f ? f.scrollTop : 0;
@@ -13453,6 +13536,64 @@ function choisirEnseignements(liste, n, graine) {
     return h + '<p class="sac-serie"><button class="btn principal large" type="button" data-a="serie-ouvrir" data-id="' + id + '">Faire une série de balles avec ce club</button></p></div>';
   }
   ACTIONS["sac-fiche-club"] = function (el) { var id = el.getAttribute("data-id"); if (!CLUB[id]) return; ui.sacSel = id; ui.club = id; ouvrirSac({ sac: id }, el); };
+
+  /* ============================================================
+     JOURNAL CHRONOLOGIQUE (roadmap UX, UX10)
+     Parties, séries, index, cycles et défis dans une seule chronologie calculée à l'affichage (rien n'est stocké en
+     double), filtrable par type, période et parcours ; chaque événement ouvre son détail ; faits marquants en tête.
+     ============================================================ */
+  var PERIODES_CHRONO = [{ id: "tout", lib: "Tout" }, { id: "30", lib: "30 jours" }, { id: "90", lib: "3 mois" }, { id: "saison", lib: "Saison" }];
+  var NB_CHRONO = 30;
+  function etatChrono() { return ui.chrono || (ui.chrono = { type: "tous", periode: "tout", parcours: "", n: NB_CHRONO }); }
+  function evenementsChrono() {
+    return chronologie({ parties: etat.parties, series: etat.carnet.series || [], indexHist: etat.indexHist || [], cycles: etat.historique || [],
+      defis: DEFIS.map(function (d) { return { id: d.id, t: d.t, hist: etatDefi(d.id).hist || [] }; }),
+      nomParcours: function (id) { var pc = parcoursDe(id); return pc ? pc.nom : "Parcours supprimé"; }, nomClub: nomClub });
+  }
+  function bornesChrono(per) {
+    var j = auj().slice(0, 10);
+    if (per === "saison") return { debut: j.slice(0, 4) + "-01-01", fin: j };
+    var n = parseInt(per, 10); if (!n) return {};
+    return { debut: new Date(Date.parse(j + "T00:00:00Z") - (n - 1) * 864e5).toISOString().slice(0, 10), fin: j };
+  }
+  var MOIS_CHRONO = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+  function lienChrono(e) {
+    if (e.type === "partie") return 'data-a="pt-carte" data-id="' + e.ref.partie + '"';
+    if (e.type === "practice") return CLUB[e.ref.club] ? 'data-a="sac-fiche-club" data-id="' + e.ref.club + '"' : 'data-a="aller-a" data-v="sac" data-s="c-historique"';
+    if (e.type === "index") return 'data-a="aller-a" data-v="profil" data-s="objectif-index"';
+    if (e.ref.defi) return 'data-a="aller-a" data-v="exercices" data-s="defis"';
+    return 'data-a="onglet" data-v="practice"';
+  }
+  var TYPE_LIB_CHRONO = { partie: "Partie", practice: "Practice", index: "Index", entrainement: "Entraînement" };
+  function chronologieHTML() {
+    var C = etatChrono(), tout = evenementsChrono(), B = bornesChrono(C.periode);
+    var l = filtrerChronologie(tout, { type: C.type, debut: B.debut, fin: B.fin, parcours: C.parcours });
+    var h = '<section class="bloc" id="c-chronologie"><h2>Chronologie</h2>';
+    if (!tout.length) return h + '<p class="aide">' + t("Rien pour l'instant : tes parties, séries de practice, mises à jour d'index et défis apparaîtront ici, du plus récent au plus ancien.") + '</p></section>';
+    var marq = tout.filter(function (e) { return e.marquant; }).slice(0, 3);
+    if (marq.length) h += '<div class="chrono-marquants"><p class="titre-liste">' + t("Faits marquants") + '</p><ul class="constats">' + marq.map(function (e) {
+      return '<li><button class="lien" type="button" ' + lienChrono(e) + '>' + t(e.marquant) + '</button> ' + t("(" + dateCourte(e.d) + " · " + e.titre + ")") + '</li>';
+    }).join("") + '</ul></div>';
+    h += '<div class="fenetres periode" role="group" aria-label="Type d\'activité">' + TYPES_CHRONO.map(function (x) { return '<button class="opt" type="button" data-a="chrono-type" data-v="' + x.id + '" aria-pressed="' + (C.type === x.id) + '">' + t(x.lib) + '</button>'; }).join("") + '</div>' +
+      '<div class="fenetres periode" role="group" aria-label="Période">' + PERIODES_CHRONO.map(function (x) { return '<button class="opt" type="button" data-a="chrono-periode" data-v="' + x.id + '" aria-pressed="' + (C.periode === x.id) + '">' + t(x.lib) + '</button>'; }).join("") + '</div>' +
+      (etat.parcours.length > 1 ? '<div class="champ"><label for="chrono-parcours">Parcours</label><select id="chrono-parcours" data-c="chrono-parcours"><option value="">Tous les parcours</option>' +
+        etat.parcours.map(function (pc) { return '<option value="' + at(pc.id) + '"' + (pc.id === C.parcours ? " selected" : "") + '>' + t(pc.nom) + '</option>'; }).join("") + '</select></div>' : '');
+    h += '<p class="aide chrono-compte">' + t(l.length ? pluriel(l.length, "événement") + (l.length < tout.length ? " sur " + tout.length : "") + "." : "Aucun événement pour ces filtres.") + '</p>';
+    var mois = null, vus = l.slice(0, C.n);
+    h += '<ol class="chrono-liste">' + vus.map(function (e) {
+      var m = e.d.slice(0, 7), titreMois = '';
+      if (m !== mois) { mois = m; titreMois = '<li class="chrono-mois" aria-hidden="false"><h3>' + t(MOIS_CHRONO[+m.slice(5, 7) - 1] + " " + m.slice(0, 4)) + '</h3></li>'; }
+      return titreMois + '<li class="chrono-ev type-' + e.type + (e.marquant ? " marquant" : "") + '"><button class="ligne" type="button" ' + lienChrono(e) + '>' +
+        '<span class="hist-date">' + t(dateCourte(e.d)) + '</span><span class="quoi"><b>' + t(e.titre) + '</b><small>' + t(TYPE_LIB_CHRONO[e.type] + " · " + e.detail + (e.marquant ? " · " + e.marquant : "")) + '</small>' +
+        (e.note ? '<small class="chrono-note">' + t("« " + e.note.slice(0, 120) + (e.note.length > 120 ? "…" : "") + " »") + '</small>' : '') + '</span><span class="chev" aria-hidden="true">›</span></button></li>';
+    }).join("") + '</ol>';
+    if (l.length > vus.length) h += '<button class="btn" type="button" data-a="chrono-plus">' + t("Afficher " + Math.min(NB_CHRONO, l.length - vus.length) + " de plus") + '</button>';
+    return h + '</section>';
+  }
+  ACTIONS["chrono-type"] = function (el) { var C = etatChrono(); C.type = el.getAttribute("data-v"); C.n = NB_CHRONO; rendreEtFocus(el); };
+  ACTIONS["chrono-periode"] = function (el) { var C = etatChrono(); C.periode = el.getAttribute("data-v"); C.n = NB_CHRONO; rendreEtFocus(el); };
+  ACTIONS["chrono-plus"] = function () { etatChrono().n += NB_CHRONO; rendre(); };
+  CHANGEMENTS["chrono-parcours"] = function (el) { etatChrono().parcours = el.value; rendre(); var s = document.getElementById("chrono-parcours"); if (s) s.focus({ preventScroll: true }); };
 
   /* ============================================================
      APRÈS LA PARTIE : bilan express au club-house, carte de score en image,

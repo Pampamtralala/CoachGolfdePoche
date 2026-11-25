@@ -16,7 +16,7 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 | 6 | UX06 Espace Analyses | P0 | **Terminé** | `ux/ux06-analyses` · PR #23 (fusionnée) |
 | 7 | UX08 Mon sac | P1 | **Terminé** | `ux/ux08-mon-sac` · PR #24 (fusionnée) |
 | 8 | UX09 Saisie sur le parcours | P1 | **En revue** | `ux/ux09-saisie` |
-| 9 | UX10 Journal chronologique | P1 | À faire | — |
+| 9 | UX10 Journal chronologique | P1 | **En revue** | `ux/ux10-chronologie` (après #25) |
 | 10 | UX11 Après partie | P1 | À faire | — |
 | 11 | UX12 Premier lancement et états vides | P1 | À faire | — |
 | 12 | UX13 Repositionnement du coaching | P2 | À faire | — |
@@ -383,3 +383,20 @@ Encore utiles pour les chantiers UX : 4, 5, 7 et 8 — appliquées telles que pr
 - Tests : `npm test` (926 noms), `test-startup.js`, essais 3 à 33 verts (essais 10 et 16 adaptés : ouvrir « Plus de
   détails » avant la position, le type, l'amplitude ou le GPS), nouvel `essai34.js`.
 - Difficultés : aucune sur la logique ; seul l'ordre d'affichage change.
+
+### UX10 — Journal chronologique (25/11/2026)
+
+- Objectif : une seule chronologie de toutes les activités, construite à partir des sources existantes.
+- Modifications :
+  - `src/engine-chronologie.js` (nouveau) : `chronologie(sources)` réunit parties (avec leur note), séries de practice,
+    mises à jour d'index, cycles de coaching et défis, du plus récent au plus ancien ; faits marquants : record de score
+    (écart au par ramené à 18 trous, au moins 3 parties complètes avant) et meilleur index déclaré ;
+    `filtrerChronologie` par type (parties, practice, index, entraînement, notes), période et parcours. Calcul à
+    l'affichage : rien n'est ajouté à la sauvegarde.
+  - `src/ui-chronologie.js` (nouveau) : section « Chronologie » en tête du Journal (faits marquants, filtres, regroupement
+    par mois, note visible, « afficher plus ») ; chaque événement ouvre son détail (carte de score, fiche du club, profil,
+    défis, programme). Le tableau des parties, les bilans, l'import et Mes données restent.
+- Tests : `test-chronologie.js` (15 vérifications) ajouté à `npm test` (937 noms, 0 doublon) ; essais concernés verts ;
+  nouvel `essai35.js` (vide, rempli, ordre, mois, faits marquants, filtres, note, détails, sauvegarde inchangée, 360 et 390 px).
+- Difficultés : la classe `.chrono` existait déjà (chronomètre des défis) et faisait sortir la liste de l'écran ;
+  renommée `.chrono-liste`. L'export final du moteur doit garder la forme en bloc attendue par le build.

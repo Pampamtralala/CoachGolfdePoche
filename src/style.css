@@ -1716,3 +1716,13 @@ main.entree { animation: entreeVue .22s ease-out; }
 .pv-plus-coup { margin: 10px 0; border-top: 1px solid var(--filet); padding-top: 6px; }
 .pv-plus-coup > summary { cursor: pointer; min-height: 48px; display: flex; flex-direction: column; justify-content: center; font-weight: 700; color: var(--imprime); }
 .pv-plus-coup > summary small { font-weight: 400; color: var(--encre-2); }
+/* UX10 : chronologie du journal. */
+.chrono-liste { list-style: none; margin: 8px 0; padding: 0; }
+.chrono-mois h3 { margin: 16px 0 6px; font-size: .95rem; text-transform: capitalize; color: var(--encre-2); }
+.chrono-ev .ligne { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 8px 4px; border: 0; border-bottom: 1px solid var(--filet); background: none; color: var(--encre); font: inherit; text-align: left; }
+.chrono-ev .hist-date { flex: 0 0 4.5em; font-size: .8rem; color: var(--encre-2); }
+.chrono-ev .quoi { flex: 1; min-width: 0; }
+.chrono-ev .quoi b, .chrono-ev .quoi small { display: block; }
+.chrono-ev .quoi small { color: var(--encre-2); }
+.chrono-ev.marquant .quoi b { color: var(--bon); }
+.chrono-note { font-style: italic; }
