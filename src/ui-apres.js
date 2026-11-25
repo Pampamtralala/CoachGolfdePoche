@@ -28,6 +28,7 @@
       var pars = pt.trous.map(function (x) { return x[5]; });
       h += '<p class="xp-joueurs">' + t("Partenaires : " + pt.joueurs.map(function (j) { var r = scoreJoueur(j.s, pars); return j.nom + (r.n ? " " + r.coups + " (" + ecartLib(r.ecart) + ")" : " –"); }).join(", ") + ".") + '</p>';
     }
+    h += apresComparaisonHTML(pt) + apresTrousClubsHTML(pt); /* UX11 */
     h += erreursPartieHTML(pt);
     var i = etat.parties.indexOf(pt);
     return h + '<div class="xp-actions">' + (ui.partage && i >= 0 ? '<button class="btn large" type="button" data-a="pt-image" data-id="' + i + '">Partager ma carte en image</button>' : '') +
@@ -180,3 +181,68 @@
     var tf = topFlopTrous(an, 2), x = tf.flop[0];
     return x && x.moy > 0 ? "pire trou : le " + (x.h + 1) + " (" + signe(x.moy) + ")" : "";
   }
+
+  /* ============================================================
+     APRÈS LA PARTIE (roadmap UX, UX11) : la partie face à tes habitudes, ce qui a changé dans tes statistiques,
+     meilleurs et pires trous, clubs utilisés, accès direct aux analyses. Seulement ce que la partie contient.
+     ============================================================ */
+  var HABITUDES_N = 10;
+  function chiffres18(l) { var A = tableauStats(l); return { e: A.ecart18, p: A.putts18, g: A.gir18, x: A.penalites18, parties: A.parties, completes: A.parPartie.length }; }
+  /* Synthèse et comparaison : la partie (ramenée à 18 trous) contre la moyenne des 10 parties précédentes. */
+  function apresComparaisonHTML(pt) {
+    var toutes = partiesAnalyse(), i = toutes.indexOf(pt), avant = (i >= 0 ? toutes.slice(0, i) : toutes.filter(function (x) { return x !== pt; })).slice(-HABITUDES_N);
+    var P = chiffres18([pt]), H = chiffres18(avant), h = '';
+    var lignes = [], meilleurs = [];
+    function ligne(lib, v, ref, bas, unite, k) {
+      if (v == null || ref == null) return;
+      var d = Math.round((v - ref) * 10) / 10, mieux = Math.abs(d) < 0.3 ? 0 : (bas ? d < 0 : d > 0) ? 1 : -1;
+      lignes.push('<li class="' + (mieux > 0 ? "mieux" : mieux < 0 ? "moins" : "") + '"><b>' + t(lib) + '</b> ' + t(nbStat(v, k === "e") + unite + " contre " + nbStat(ref, k === "e") + unite + " habituellement") +
+        ' <span class="tend ' + (mieux > 0 ? "mieux" : mieux < 0 ? "moins" : "stable") + '">' + (mieux ? (d > 0 ? "▲ " : "▼ ") + nbStat(Math.abs(d)) : "= stable") + '</span></li>');
+      if (mieux) meilleurs.push({ k: k, lib: lib, d: d, mieux: mieux });
+    }
+    if (H.parties >= 3) {
+      ligne("Score", P.completes ? P.e : null, H.completes ? H.e : null, true, "", "e");
+      ligne("Putts", P.p, H.p, true, "", "p");
+      ligne("Greens en régulation", P.g, H.g, false, "", "g");
+      ligne("Pénalités", P.x, H.x, true, "", "x");
+    }
+    if (lignes.length) {
+      var se = meilleurs.filter(function (m) { return m.k === "e"; })[0], autres = meilleurs.filter(function (m) { return m.k !== "e"; }).sort(function (a, b) { return Math.abs(b.d) - Math.abs(a.d); });
+      var raison = se ? autres.filter(function (m) { return m.mieux === se.mieux; })[0] : null;
+      var synth = se ? (se.mieux > 0 ? "Partie meilleure que d'habitude de " + nb1(Math.abs(se.d)) + " coup" + (Math.abs(se.d) >= 2 ? "s" : "") : "Partie plus difficile que d'habitude de " + nb1(Math.abs(se.d)) + " coup" + (Math.abs(se.d) >= 2 ? "s" : "")) +
+        (raison ? ", surtout " + (se.mieux > 0 ? "grâce " : "à cause ") + ({ p: "au putting", g: "aux greens en régulation", x: "aux pénalités" })[raison.k] : "") + " (ramené à 18 trous)." : "Partie proche de tes habitudes.";
+      h += '<div class="apres-habitudes"><h3 class="titre-bloc">' + t("Par rapport à tes habitudes") + '</h3><p class="apres-synthese">' + t(synth) + '</p><ul class="constats">' + lignes.join("") + '</ul>' +
+        '<p class="aide">' + t("Moyenne de tes " + pluriel(H.parties, "partie") + " précédentes, ramenée à 18 trous.") + '</p></div>';
+      /* Ce qui a changé dans tes statistiques : les 10 dernières parties avant et avec celle-ci. */
+      var avec = (i >= 0 ? toutes.slice(0, i + 1) : avant.concat([pt])).slice(-HABITUDES_N), N = chiffres18(avec);
+      if (N.e != null && H.e != null && H.completes && N.completes) h += '<p class="aide apres-change">' + t("Tes " + HABITUDES_N + " dernières parties : score moyen " + nbStat(H.e, true) + " → " + nbStat(N.e, true) + ", putts " + nbStat(H.p) + " → " + nbStat(N.p) + " par 18 trous.") + '</p>';
+    } else if (H.parties < 3) h += '<p class="aide">' + t("La comparaison avec tes habitudes apparaîtra à partir de 3 parties précédentes.") + '</p>';
+    return h;
+  }
+  /* Meilleur et plus coûteux trou ; clubs utilisés (coups notés, sinon familles de départ). */
+  function apresTrousClubsHTML(pt) {
+    var h = '', ec = [];
+    pt.trous.forEach(function (tr, k) { if (tr && tr[4] > 0 && tr[5] > 0) ec.push({ n: numeroTrou(pt, k), e: tr[4] - tr[5], par: tr[5] }); });
+    if (ec.length >= 3) {
+      var tri = ec.slice().sort(function (a, b) { return a.e - b.e || a.n - b.n; }), meil = tri[0], pire = tri[tri.length - 1];
+      if (meil.e < pire.e) h += '<p class="apres-trous">' + t("Meilleur trou : le " + meil.n + " (par " + meil.par + ", " + ecartLib(meil.e) + ") · plus coûteux : le " + pire.n + " (par " + pire.par + ", " + ecartLib(pire.e) + ").") + '</p>';
+    }
+    var n = {}; (pt.coups || []).forEach(function (l) { (l || []).forEach(function (c) { if (c && CLUB[c.c]) n[c.c] = (n[c.c] || 0) + 1; }); });
+    var ids = Object.keys(n);
+    if (ids.length) h += '<p class="apres-clubs">' + t("Clubs utilisés : " + ids.sort(function (a, b) { return n[b] - n[a]; }).map(function (id) { return nomClub(id) + " (" + n[id] + ")"; }).join(", ") + ".") + '</p>';
+    else {
+      var f = {}; pt.trous.forEach(function (tr) { if (tr && tr[5] >= 4 && FAMILLES_DEPART[tr[7]]) f[FAMILLES_DEPART[tr[7]].nom] = (f[FAMILLES_DEPART[tr[7]].nom] || 0) + 1; });
+      if (Object.keys(f).length) h += '<p class="apres-clubs">' + t("Au départ : " + Object.keys(f).map(function (k) { return k.toLowerCase() + " (" + f[k] + ")"; }).join(", ") + ".") + '</p>';
+    }
+    return h;
+  }
+  function apresLiensHTML() {
+    return '<div class="apres-liens"><p class="titre-liste">' + t("Voir l'analyse") + '</p><div class="raccourcis">' +
+      [["rb-perf", "Performance"], ["st-putting", "Putting"], ["rb-mej", "Mises en jeu"], ["st-erreurs", "Erreurs"]].map(function (x) {
+        return '<button class="btn" type="button" data-a="pt-voir-rubrique" data-s="' + x[0] + '">' + t(x[1]) + '</button>';
+      }).join("") + '</div></div>';
+  }
+  ACTIONS["pt-voir-rubrique"] = function (el) {
+    var s = el.getAttribute("data-s");
+    ui.partie = null; ui.bilanPartie = null; rendrePartie(); allerA("bilan", s);
+  };

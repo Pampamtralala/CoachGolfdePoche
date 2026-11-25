@@ -244,11 +244,13 @@
         (r.total < 0 ? "environ " + coupsLib(r.total, "perdu") : r.total > 0 ? "environ " + coupsLib(r.total, "gagné") : "à égalité") + " sur 18 trous." +
         (pire && pire.sg <= -0.5 ? " Secteur le plus coûteux : " + pire.nom.toLowerCase() + "." : "")) + '</p>';
     }
+    /* UX11 : face à tes habitudes, trous marquants, clubs utilisés. */
+    h += apresComparaisonHTML(pt) + apresTrousClubsHTML(pt);
     h += erreursPartieHTML(pt);
     /* P11 : note facultative (forme, météo, ressenti…). */
     var ip = etat.parties.indexOf(pt);
     if (ip >= 0) h += '<p class="note-partie-ligne">' + (pt.note ? '<span>' + t("Note : " + resumeNote(pt.note)) + '</span> ' : '') + '<button class="btn" type="button" data-a="j-note" data-v="' + ip + '">' + (pt.note ? "Modifier la note" : "Ajouter une note (facultatif)") + '</button></p>';
-    return h + '<button class="lien" type="button" data-a="pt-bilan-carte">Voir ma carte de score</button>' +
+    return h + apresLiensHTML() + '<button class="lien" type="button" data-a="pt-bilan-carte">Voir ma carte de score</button>' +
       '<div class="pt-nav"><button class="btn" type="button" data-a="pt-bilan-fermer">Fermer</button>' +
       '<button class="btn principal" type="button" data-a="pt-voir-sg" id="pt-suiv">Voir l’analyse</button></div></section>';
   }
