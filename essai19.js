@@ -22,12 +22,12 @@ const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
     for (let i = 0; i < 8 && await page.locator('[data-a="q-suite"]').count(); i++) await page.click('[data-a="q-suite"]');
     await page.waitForSelector('.tete');
     /* Sans coup ni club de départ : état vide de la section */
-    await page.click('#barre [data-a="onglet"][data-v="bilan"]');
+    await page.click('#barre [data-a="onglet"][data-v="bilan"]'); await page.click('[data-a="rubrique"][data-v="clubs"]'); /* UX06 */
     const e = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), CLE);
     e.parties = [{ id: 'p_vide', d: '2026-03-01T10:00:00.000Z', o: 0, trous: PARS.map(p => [1, 0, 2, 0, p + 1, p, 0, 0, 0, 0, 0]) }];
     e.maj = Date.now();
     await page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [CLE, e]);
-    await page.reload(); await page.waitForSelector('.tete'); await page.click('#barre [data-a="onglet"][data-v="bilan"]');
+    await page.reload(); await page.waitForSelector('.tete'); await page.click('#barre [data-a="onglet"][data-v="bilan"]'); await page.click('[data-a="rubrique"][data-v="clubs"]'); /* UX06 */
     r.vide = (await page.textContent('#st-clubs')).replace(/\s+/g, ' ').trim();
     verifie(/Aucun club à profiler/.test(r.vide), nom + ' section vide : ' + r.vide);
     /* 12 parties de 9 trous : driver au départ des par 4/5 (de plus en plus droit), fer 7 sur les par 3,
@@ -46,7 +46,7 @@ const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
     e.maj = Date.now();
     await page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [CLE, e]);
     await page.reload(); await page.waitForSelector('.tete');
-    await page.click('#barre [data-a="onglet"][data-v="bilan"]');
+    await page.click('#barre [data-a="onglet"][data-v="bilan"]'); await page.click('[data-a="rubrique"][data-v="clubs"]'); /* UX06 */
     await page.click('[data-a="st-derniers"][data-v="0"]');
     await page.evaluate(() => document.getElementById('st-clubs').scrollIntoView());
     await page.click('#st-clubs [data-a="st-club"][data-v="dr"]');

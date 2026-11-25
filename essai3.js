@@ -187,6 +187,7 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   res.ongletApresPartie = await page.evaluate(() => location.hash);
   const attendu = E.coupsGagnes(e.parties, E.cibleAuto(18));
   const fmt = v => v == null ? 'non mesuré' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1).replace('.', ',');   /* P10 : départ non renseigné en express, non mesuré */
+  await allerVue(page, 'bilan', 'sg'); /* UX06 : objectif d'index dans la rubrique Coups perdus estimés */
   res.sgAffiche = await valeursGraphe(page, '#sg canvas');
   res.sgAttendu = attendu.secteurs.map(s => fmt(s.sg)).join(' ');
   verifie(res.sgAffiche === res.sgAttendu, 'coups gagnés affichés = calculés');

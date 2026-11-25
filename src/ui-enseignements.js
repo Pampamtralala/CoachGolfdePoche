@@ -54,6 +54,6 @@
     var b = document.getElementById("f-fermer"); if (b) b.focus({ preventScroll: true });
   };
   function fermerFeuilleEns() { if (ui.feuille) { ui.feuille = null; ui.pile = []; ui.retourFocus = null; rendreFeuille(); } }
-  ACTIONS["ens-aller"] = function (el) { fermerFeuilleEns(); allerOnglet(el.getAttribute("data-v"), true); var s = el.getAttribute("data-s"); if (s) allerSection(s); };
+  ACTIONS["ens-aller"] = function (el) { fermerFeuilleEns(); allerA(el.getAttribute("data-v"), el.getAttribute("data-s")); };
   /* Passerelle vers le coaching : la bibliothèque filtrée sur le domaine concerné. */
   ACTIONS["exos-domaine"] = function (el) { fermerFeuilleEns(); ui.filtre.d = el.getAttribute("data-v"); allerOnglet("exercices", true); };

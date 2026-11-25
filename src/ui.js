@@ -798,9 +798,11 @@
   VUES.bilan = function () {
     var p = etat.profil, pal = palierDe(indexNiveau(p)), P = PALIERS[pal - 1];
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
-    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("bilan") + '<p class="surtitre">Analyses</p><h1>Tableau de bord</h1>' +
-      '<div class="ligne-btn"><button class="btn" type="button" data-a="j-ouvrir">Bilans, journal et rapports</button></div>' + tableauStatsHTML() + '</section>' + erreursStatsHTML() + puttingStatsHTML() + clubsStatsHTML() + qualiteGolfHTML() +
-      '<section class="bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
+    /* UX06 : en-tête commun (sous-navigation, rubriques, filtre commun), puis la rubrique choisie. */
+    var rb = rubriqueCourante();
+    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("bilan") + '<p class="surtitre">Analyses</p><h1>Tableau de bord</h1>' + rubriquesNavHTML(rb) +
+      (rb === "comprendre" ? '' : tableauStatsHTML("filtres")) + '</section>';
+    var sPalier = '<section class="bloc" id="palier-bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
 
     var c = '<ol class="priorites">' + prios.slice(0, 3).map(function (x, k) {
@@ -845,7 +847,7 @@
     /* Deux colonnes sur grand écran : le déclaré à gauche, le mesuré en partie à droite. */
     /* UX04 : les repères face à l'objectif d'index (anciennes « Mes tendances » de l'accueil) sont rangés ici. */
     var sRep = etat.parties.length ? pliHTML("reperes", "Repères face à ton objectif", "petit jeu, coups gagnés estimés, conseils", chiffresClesHTML(), 3) : "";
-    return h + '<div class="colonnes"><div class="col">' + sPrios + sCarte + sDef + sPal + '</div><div class="col">' + sNotes + sRep + sSG + sEvit + sRel + '</div></div>';
+    return h + rubriqueHTML(rb, { palier: sPalier, prios: sPrios, carte: sCarte, pal: sPal, notes: sNotes, rep: sRep, sg: sSG, evit: sEvit, rel: sRel, def: sDef });
   };
 
   /* ---------- Exercices ---------- */
@@ -1392,6 +1394,7 @@
   /*INCLURE:ui-journal.js*/
   /*INCLURE:ui-analyste.js*/
   /*INCLURE:ui-enseignements.js*/
+  /*INCLURE:ui-rubriques.js*/
   /*INCLURE:ui-apres.js*/
   /*INCLURE:ui-series.js*/
   /*INCLURE:ui-parcours.js*/

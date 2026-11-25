@@ -125,7 +125,8 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   await vue('41-bilan-defauts');
   await page.click('[data-a="pli"][data-v="defauts"]');
   res.pliReferme = await page.$eval('#defauts', x => x.classList.contains('ouvert'));
-  await page.click('[data-a="pli"][data-v="carte"]');
+  await allerVue(page, 'bilan', 'carte'); /* UX06 : la carte est dans Performance générale */
+  if (!(await page.$eval('#carte', x => x.classList.contains('ouvert')))) await page.click('[data-a="pli"][data-v="carte"]');
   res.commentCarte = await page.$$eval('#carte details.comment summary', l => l.map(x => x.textContent).join('|'));
   res.onglets = await page.$$eval('#menu .menu-titre', l => l.map(b => b.textContent.trim() + (b.scrollWidth > b.clientWidth ? ' DÉBORDE' : '') + (b.querySelector('svg') ? '' : ' SANS ICÔNE')).join(' | '));
 

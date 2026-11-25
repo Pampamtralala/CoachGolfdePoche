@@ -1711,6 +1711,16 @@ main.entree { animation: entreeVue .22s ease-out; }
 .kpi-lien > .ico { position: absolute; right: 10px; top: 14px; width: 16px; height: 16px; color: var(--encre-2); }
 .kpi-lien .kpi-t { padding-right: 18px; }
 @media (max-width: 520px) { .mj-perf-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mj-obj { grid-column: span 2; } }
+/* UX06 : rubriques d'Analyses (pastilles défilantes). */
+.rubriques { display: flex; gap: 6px; overflow-x: auto; margin: 8px -4px 10px; padding: 2px 4px 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.rubriques::-webkit-scrollbar { display: none; }
+.rubriques .puce { flex: 0 0 auto; white-space: nowrap; }
+.rb-resume { margin-top: 2px; }
+.rb-ens, .rb-reponse { margin-top: 12px; }
+.rb-actions { margin-top: 12px; }
+.rb-secteur { margin-top: 8px; }
+.plus-filtres { margin: 2px 0 6px; }
+.plus-filtres > summary { cursor: pointer; color: var(--imprime); font-weight: 600; padding: 6px 0; }
 
 /* ---------- Sac de golf en perspective (fausse 3D) ----------
    Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
@@ -7492,7 +7502,7 @@ function choisirEnseignements(liste, n, graine) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-25T17:17:18.696Z";
+  var VERSION_APPLI = "2026-11-25T18:28:49.267Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -8281,9 +8291,11 @@ function choisirEnseignements(liste, n, graine) {
   VUES.bilan = function () {
     var p = etat.profil, pal = palierDe(indexNiveau(p)), P = PALIERS[pal - 1];
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
-    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("bilan") + '<p class="surtitre">Analyses</p><h1>Tableau de bord</h1>' +
-      '<div class="ligne-btn"><button class="btn" type="button" data-a="j-ouvrir">Bilans, journal et rapports</button></div>' + tableauStatsHTML() + '</section>' + erreursStatsHTML() + puttingStatsHTML() + clubsStatsHTML() + qualiteGolfHTML() +
-      '<section class="bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
+    /* UX06 : en-tête commun (sous-navigation, rubriques, filtre commun), puis la rubrique choisie. */
+    var rb = rubriqueCourante();
+    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("bilan") + '<p class="surtitre">Analyses</p><h1>Tableau de bord</h1>' + rubriquesNavHTML(rb) +
+      (rb === "comprendre" ? '' : tableauStatsHTML("filtres")) + '</section>';
+    var sPalier = '<section class="bloc" id="palier-bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
 
     var c = '<ol class="priorites">' + prios.slice(0, 3).map(function (x, k) {
@@ -8328,7 +8340,7 @@ function choisirEnseignements(liste, n, graine) {
     /* Deux colonnes sur grand écran : le déclaré à gauche, le mesuré en partie à droite. */
     /* UX04 : les repères face à l'objectif d'index (anciennes « Mes tendances » de l'accueil) sont rangés ici. */
     var sRep = etat.parties.length ? pliHTML("reperes", "Repères face à ton objectif", "petit jeu, coups gagnés estimés, conseils", chiffresClesHTML(), 3) : "";
-    return h + '<div class="colonnes"><div class="col">' + sPrios + sCarte + sDef + sPal + '</div><div class="col">' + sNotes + sRep + sSG + sEvit + sRel + '</div></div>';
+    return h + rubriqueHTML(rb, { palier: sPalier, prios: sPrios, carte: sCarte, pal: sPal, notes: sNotes, rep: sRep, sg: sSG, evit: sEvit, rel: sRel, def: sDef });
   };
 
   /* ---------- Exercices ---------- */
@@ -10044,6 +10056,8 @@ function choisirEnseignements(liste, n, graine) {
   /* Va à une page, et à une de ses sections (ouverte si elle se replie). */
   function allerA(page, sec) {
     if (sec) ui.plis[sec] = true;
+    /* UX06 : une section d'Analyses vit dans une rubrique ; on ouvre la bonne. */
+    if (page === "bilan" && sec && rubriqueDeSection(sec) && ui.rubrique !== rubriqueDeSection(sec)) { ui.rubrique = rubriqueDeSection(sec); if (ui.onglet === "bilan") rendre(); }
     allerOnglet(page, !sec);
     if (sec) allerSection(sec);
     var cible = sec && document.getElementById(sec);
@@ -10642,7 +10656,7 @@ function choisirEnseignements(liste, n, graine) {
   };
   ACTIONS["pt-voir-sg"] = function () {
     ui.partie = null; ui.bilanPartie = null; rendrePartie();
-    allerOnglet("bilan", false); allerSection("sg");
+    ui.rubrique = "sg"; allerOnglet("bilan", false); allerSection("sg");
   };
 
   /* Vidéo muette en boucle de NoSleep.js (licence MIT, Rich Tibbett) : garde l'écran allumé quand le navigateur refuse le verrou d'écran. */
@@ -12544,6 +12558,8 @@ function choisirEnseignements(liste, n, graine) {
     return "Sur " + pluriel(l.length, "partie") + " (" + T + " trous), " + periodeLib(l[0].d.slice(0, 10), l[l.length - 1].d.slice(0, 10)).replace(/\.$/, "") +
       (F.format ? ", " + F.format + " trous seulement" : "") + (pc ? ", à " + pc.nom : "") + ".";
   }
+  /* L'ouverture de « Plus de filtres » est gardée d'un rendu à l'autre. */
+  document.addEventListener("toggle", function (ev) { var d = ev.target; if (d && d.classList && d.classList.contains("plus-filtres")) ui.plusFiltres = d.open; }, true);
   function partiesFiltrees() { return selectionStats(filtresStats()); }
   /* Nombre de parties pour les écrans qui raisonnent en « N dernières parties » (objectifs, tendances). */
   function fenetreCommune() { var F = filtresStats(); return F.derniers || partiesFiltrees().length || 5; }
@@ -12581,12 +12597,28 @@ function choisirEnseignements(liste, n, graine) {
       (note ? '<p class="aide">' + t(note) + '</p>' : '') + '</div>';
   }
 
-  function tableauStatsHTML() {
+  /* Répartitions gauche / centre / droite : mises en jeu renseignées et direction des coups notés (UX06 : réutilisées par la rubrique Mises en jeu). */
+  function repartitionsStatsHTML(l, A) {
+    var h = '';
+    /* Gauche / droite : mises en jeu ratées (renseignées) et direction des coups notés en expert. */
+    var M = A.mej;
+    h += barreRepartitionHTML("Mises en jeu", [{ lib: "Ratées à gauche", v: M.gauche, c: "g" }, { lib: "Jouables", v: M.jouables, c: "c" }, { lib: "Courtes", v: M.courtes, c: "k" }, { lib: "Ratées à droite", v: M.droite, c: "d" }],
+      pluriel(M.n, "départ") + " renseigné" + (M.n > 1 ? "s" : ""), M.ratees > M.gauche + M.droite + M.courtes ? (M.ratees - M.gauche - M.droite - M.courtes) + " ratées sans côté noté." : "");
+    var obs = observationsGolf(l, null, etat.parcours), dirs = croiserObservations(obs, "type", { type: "coup" })[0];
+    if (dirs && dirs.direction.n) h += barreRepartitionHTML("Direction des coups notés", [{ lib: "Gauche", v: dirs.direction.gauche, c: "g" }, { lib: "Dans l'axe", v: dirs.direction.centre, c: "c" }, { lib: "Droite", v: dirs.direction.droite, c: "d" }],
+      pluriel(dirs.direction.n, "coup") + " avec direction", "À plus de 5 m de la ligne de visée : gauche ou droite. " + (dirs.n - dirs.direction.n) + " coups sans direction notée.");
+    return h;
+  }
+  /* UX06 : mode « filtres » → le filtre commun et la ligne d'échantillon (en tête de chaque rubrique d'Analyses) ;
+     mode « contenu » → le reste (chiffres, graphique, répartitions, index). */
+  function tableauStatsHTML(mode) {
     var F = filtresStats(), l = selectionStats(F), A = tableauStats(l);
     var PP = !F.derniers ? periodePrecedente(F.debut, F.fin || (F.debut ? auj() : "")) : null, comparable = F.derniers || PP;
     var B = F.comparer && comparable ? tableauStats(selectionStats(F, true)) : null, C = B && B.parties ? comparerStats(A, B) : null;
     var h = '<div class="filtres-stats">' +
       pastillesPeriodeHTML() +
+      /* UX06 : format, parcours, période libre et comparaison repliés ; ouverts dès qu'un réglage n'est pas celui par défaut. */
+      '<details class="plus-filtres"' + (F.format || F.parcours || F.debut && F.debut !== debutSaison() || F.fin || F.comparer === false || ui.plusFiltres ? " open" : "") + '><summary>' + t("Plus de filtres") + '</summary>' +
       '<div class="fenetres" role="group" aria-label="Format">' + [["", "9 et 18 trous"], ["9", "9 trous"], ["18", "18 trous"]].map(function (x) { return puceStat("st-format", x[0], x[1], F.format === x[0]); }).join("") + '</div>' +
       (etat.parcours.length ? '<div class="champ"><label for="st-parcours">Parcours</label><select id="st-parcours" data-c="st-parcours"><option value="">Tous les parcours</option>' +
         etat.parcours.map(function (pc) { return '<option value="' + at(pc.id) + '"' + (pc.id === F.parcours ? " selected" : "") + '>' + t(pc.nom) + '</option>'; }).join("") + '</select></div>' : '') +
@@ -12594,12 +12626,14 @@ function choisirEnseignements(liste, n, graine) {
         '<div class="champ"><label for="st-debut">Du</label><input id="st-debut" type="date" data-c="st-debut" value="' + at(F.debut || "") + '"></div>' +
         '<div class="champ"><label for="st-fin">Au</label><input id="st-fin" type="date" data-c="st-fin" value="' + at(F.fin || "") + '"></div></div>' +
         (F.debut || F.fin ? '<button class="lien" type="button" data-a="st-periode-effacer">Effacer la période</button>' : '') + '</details>' +
-      (comparable ? '<label class="case"><input type="checkbox" data-c="st-comparer"' + (F.comparer ? " checked" : "") + '> ' + t(F.derniers ? "Comparer avec les " + F.derniers + " parties précédentes" : "Comparer avec les " + PP.jours + " jours précédents, du " + dateCourte(PP.debut) + " au " + dateCourte(PP.fin)) + '</label>' : '') + '</div>';
+      (comparable ? '<label class="case"><input type="checkbox" data-c="st-comparer"' + (F.comparer ? " checked" : "") + '> ' + t(F.derniers ? "Comparer avec les " + F.derniers + " parties précédentes" : "Comparer avec les " + PP.jours + " jours précédents, du " + dateCourte(PP.debut) + " au " + dateCourte(PP.fin)) + '</label>' : '') + '</details></div>';
     if (!A.parties) return h + etatVideHTML("stats", "Aucune partie pour ces filtres", etat.parties.length ? "Élargis la période, le format ou le parcours." : "Note une partie : score, putts et pénalités suffisent pour démarrer.", etat.parties.length ? "" : "partie-rapide", "Lancer une partie");
     var mixte = A.parties9 && A.parties18;
     h += '<p class="aide stats-echantillon">' + t("Sur " + pluriel(A.parties, "partie") + " (" + A.trous + " trous), " + periodeLib(A.premiere, A.derniere) + (/\.$/.test(periodeLib(A.premiere, A.derniere)) ? "" : ".") +
       (C ? (F.derniers ? " Comparé aux " + pluriel(B.parties, "partie") + " précédentes (" + B.trous + " trous)." : " Comparé à la période précédente : " + pluriel(B.parties, "partie") + " (" + B.trous + " trous).") : F.comparer && comparable ? (F.derniers ? " Pas de parties précédentes à comparer." : " Aucune partie sur la période précédente.") : "") +
       (mixte ? " Parties de 9 et de 18 trous : les chiffres sont ramenés à 18 trous." : "")) + '</p>';
+    if (mode === "filtres") return h;
+    var debutContenu = h.length;
     var cartes = [
       { t: "Score", v: nbStat(A.ecart18, true), u: "écart au par, ramené à 18 trous", tend: C && tendanceStat(C.ecart18),
         x: (A.scoreBrut18 != null ? "18 trous : " + nbStat(A.scoreBrut18) + " coups en moyenne (" + A.parties18 + "). " : "") + (A.scoreBrut9 != null ? "9 trous : " + nbStat(A.scoreBrut9) + " (" + A.parties9 + ")." : ""), n: A.trousScore + " trous avec score" },
@@ -12614,17 +12648,11 @@ function choisirEnseignements(liste, n, graine) {
         '<p class="kpi-x">' + t(x.x) + '</p><p class="kpi-n">' + t(x.n) + '</p></article>';
     }).join("") + '</div>';
     h += grapheScoresHTML(A.parPartie);
-    /* Gauche / droite : mises en jeu ratées (renseignées) et direction des coups notés en expert. */
-    var M = A.mej;
-    h += barreRepartitionHTML("Mises en jeu", [{ lib: "Ratées à gauche", v: M.gauche, c: "g" }, { lib: "Jouables", v: M.jouables, c: "c" }, { lib: "Courtes", v: M.courtes, c: "k" }, { lib: "Ratées à droite", v: M.droite, c: "d" }],
-      pluriel(M.n, "départ") + " renseigné" + (M.n > 1 ? "s" : ""), M.ratees > M.gauche + M.droite + M.courtes ? (M.ratees - M.gauche - M.droite - M.courtes) + " ratées sans côté noté." : "");
-    var obs = observationsGolf(l, null, etat.parcours), dirs = croiserObservations(obs, "type", { type: "coup" })[0];
-    if (dirs && dirs.direction.n) h += barreRepartitionHTML("Direction des coups notés", [{ lib: "Gauche", v: dirs.direction.gauche, c: "g" }, { lib: "Dans l'axe", v: dirs.direction.centre, c: "c" }, { lib: "Droite", v: dirs.direction.droite, c: "d" }],
-      pluriel(dirs.direction.n, "coup") + " avec direction", "À plus de 5 m de la ligne de visée : gauche ou droite. " + (dirs.n - dirs.direction.n) + " coups sans direction notée.");
+    h += repartitionsStatsHTML(l, A);
     /* Évolution de l'index : toute l'histoire, quels que soient les filtres. */
     var ci = courbeIndexHTML(null, 300, 70);
     if (ci) h += '<div class="carte-tb evol-index"><p class="surtitre">Évolution de ton index</p>' + ci + '<p class="aide">Toutes les parties, quels que soient les filtres.</p></div>';
-    return h;
+    return mode === "contenu" ? h.slice(debutContenu) : h;
   }
   ACTIONS["st-derniers"] = function (el) { appliquerPeriode(el.getAttribute("data-v")); rendreEtFocus(el); };
   ACTIONS["st-format"] = function (el) { filtresStats().format = el.getAttribute("data-v") || ""; rendreEtFocus(el); };
@@ -13235,9 +13263,117 @@ function choisirEnseignements(liste, n, graine) {
     var b = document.getElementById("f-fermer"); if (b) b.focus({ preventScroll: true });
   };
   function fermerFeuilleEns() { if (ui.feuille) { ui.feuille = null; ui.pile = []; ui.retourFocus = null; rendreFeuille(); } }
-  ACTIONS["ens-aller"] = function (el) { fermerFeuilleEns(); allerOnglet(el.getAttribute("data-v"), true); var s = el.getAttribute("data-s"); if (s) allerSection(s); };
+  ACTIONS["ens-aller"] = function (el) { fermerFeuilleEns(); allerA(el.getAttribute("data-v"), el.getAttribute("data-s")); };
   /* Passerelle vers le coaching : la bibliothèque filtrée sur le domaine concerné. */
   ACTIONS["exos-domaine"] = function (el) { fermerFeuilleEns(); ui.filtre.d = el.getAttribute("data-v"); allerOnglet("exercices", true); };
+
+  /* ============================================================
+     ANALYSES EN RUBRIQUES (roadmap UX, UX06)
+     La longue page de statistiques devient douze rubriques, choisies par des pastilles. Chaque rubrique suit le
+     même ordre : résumé, enseignements liés, chiffres et graphiques (blocs existants, calculs inchangés), détail,
+     actions. Le filtre commun (UX07) reste en tête et vaut pour toutes.
+     ============================================================ */
+  var RUBRIQUES_AN = [
+    { id: "perf", nom: "Performance générale", court: "Performance" },
+    { id: "mej", nom: "Mises en jeu", court: "Mises en jeu" },
+    { id: "attaque", nom: "Attaque de green", court: "Attaque de green" },
+    { id: "petit", nom: "Petit jeu", court: "Petit jeu" },
+    { id: "putting", nom: "Putting", court: "Putting" },
+    { id: "erreurs", nom: "Erreurs récurrentes", court: "Erreurs" },
+    { id: "sg", nom: "Coups perdus estimés", court: "Coups perdus" },
+    { id: "parcours", nom: "Analyse des parcours", court: "Parcours" },
+    { id: "trous", nom: "Analyse des trous", court: "Trous" },
+    { id: "clubs", nom: "Comparaison des clubs", court: "Clubs" },
+    { id: "qualite", nom: "Qualité des données", court: "Qualité" },
+    { id: "comprendre", nom: "Comprendre mon jeu", court: "Comprendre" }
+  ];
+  /* Sections d'avant (liens, recherche, cartes de Mon jeu) → rubrique qui les contient désormais. */
+  var SECTION_RUBRIQUE = { "st-putting": "putting", releves: "putting", "st-erreurs": "erreurs", evitables: "erreurs", defauts: "erreurs",
+    "st-clubs": "clubs", "qualite-donnees": "qualite", sg: "sg", notes: "perf", carte: "perf", priorites: "perf", palier: "perf", reperes: "perf",
+    "rb-perf": "perf", "rb-mej": "mej", "rb-attaque": "attaque", "rb-petit": "petit", "rb-parcours": "parcours", "rb-trous": "trous", "rb-comprendre": "comprendre" };
+  function rubriqueDeSection(s) { return SECTION_RUBRIQUE[s] || null; }
+  function rubriqueCourante() { var r = ui.rubrique; return RUBRIQUES_AN.some(function (x) { return x.id === r; }) ? r : "perf"; }
+  function rubriquesNavHTML(actif) {
+    return '<nav class="rubriques" aria-label="Rubriques d\'analyse">' + RUBRIQUES_AN.map(function (r) {
+      var on = r.id === actif;
+      return '<button class="puce neutre" type="button" data-a="rubrique" data-v="' + r.id + '"' + (on ? ' aria-pressed="true" aria-current="true"' : ' aria-pressed="false"') + '>' + t(r.court) + '</button>';
+    }).join("") + '</nav>';
+  }
+  /* Enseignements (UX05) qui concernent la rubrique, calculés sur toutes les parties comme sur Mon jeu. */
+  var ENS_RUBRIQUE = { perf: /^(score-|record-)/, mej: /^(mej-|cote-mej|top-mej)/, attaque: /^top-gir/, petit: /^top-approche/, putting: /^(troisPutts-|putts-|top-troisPutts)/,
+    erreurs: /^(cote-|top-|penalites-)/, sg: /^secteur/, parcours: /^parcours/, trous: /^trou/, clubs: /^(club|cote-direction)/, qualite: /^donnees-/ };
+  function ensRubriqueHTML(rb) {
+    var re = ENS_RUBRIQUE[rb]; if (!re || !etat.parties.length) return '';
+    var l = calculEns().liste.filter(function (e) { return re.test(e.id); });
+    return l.length ? '<div class="rb-ens"><h3 class="titre-bloc">' + t(l.length > 1 ? "Ce que disent tes données" : "Ce que disent tes données") + '</h3>' + l.map(carteEnsHTML).join("") + '</div>' : '';
+  }
+  /* Une réponse de Comprendre mon jeu, affichée dans la rubrique (sur le filtre commun). */
+  function reponseRubriqueHTML(id) {
+    var R = repondre(id, partiesFiltrees(), ctxAnalyste());
+    return R ? '<div class="rb-reponse"><h3 class="titre-bloc">' + t(R.question) + '</h3>' + reponseHTML(R).replace('id="an-rep-', 'id="rb-rep-') + '</div>' : '';
+  }
+  function actionExosHTML(dom, lib) { return '<div class="ligne-btn rb-actions"><button class="btn" type="button" data-a="exos-domaine" data-v="' + dom + '">' + t(lib) + '</button></div>'; }
+  function secteurEstimeHTML(id) {
+    var l = partiesFiltrees(), r = l.length ? coupsGagnes(l, indexVise()) : null, s = r ? r.secteurs.filter(function (x) { return x.id === id; })[0] : null;
+    if (!s) return '';
+    return '<p class="aide rb-secteur"><span class="ens-prov">Estimé</span> ' + t(s.sg == null ? s.nom + " : non mesuré avec les données saisies." : s.nom + " : " + nbStat(s.sg, true) + " coup par partie face à un joueur d'index " + r.cible + " (estimation, pas du Strokes Gained).") + '</p>';
+  }
+  function ligneErreurHTML(R, id) {
+    var e = R.erreurs.filter(function (x) { return x.id === id; })[0];
+    if (!e) return '';
+    return '<li><b>' + t(e.lib) + '</b> ' + t(e.base ? e.n + " sur " + e.base + " " + e.baseLib + " (" + e.part + " %), " + nb1(e.par18) + " par 18 trous" + (e.deduit ? ", déduit du score et des putts" : "") + (e.documentee ? "." : " ; encore peu de données.") : "aucune donnée pour l'instant.") + '</li>';
+  }
+  /* Résumé d'une ligne, tiré du tableau des statistiques sur le filtre commun. */
+  function resumeRubrique(rb, A, l) {
+    if (!A.parties) return "";
+    if (rb === "perf") return A.ecart18 == null ? "Pas encore de partie complète pour le score." : "Score : " + nbStat(A.ecart18, true) + " ramené à 18 trous.";
+    if (rb === "mej") return A.mej.n ? A.mej.part + " % de mises en jeu jouables sur " + A.mej.n + " renseignées." : "Aucune mise en jeu renseignée : passe en saisie Standard ou Expert.";
+    if (rb === "attaque") return nbStat(A.gir18) + " greens en régulation par 18 trous (" + A.partGir + " % des trous), déduits du score et des putts.";
+    if (rb === "petit") { var c = cumulParties(l, 1e9); return c.MN ? "Pars sauvés après un green manqué : " + Math.round(100 * c.SV / c.MN) + " % (" + c.MN + " greens manqués)." : "Pas encore de green manqué à analyser."; }
+    if (rb === "putting") return nbStat(A.putts18) + " putts et " + nbStat(A.troisPutts18) + " trois-putts par 18 trous.";
+    if (rb === "erreurs") { var R = erreursRecurrentes(l), top = R.top.length ? R.erreurs.filter(function (e) { return e.id === R.top[0]; })[0] : null; return top ? "Erreur la plus fréquente : " + top.lib.toLowerCase() + "." : "Aucune erreur encore assez documentée."; }
+    if (rb === "sg") return "Estimation par secteur face à un joueur d'index " + indexVise() + ".";
+    if (rb === "parcours") return pluriel(etat.parcours.length, "parcours") + " enregistré" + (etat.parcours.length > 1 ? "s" : "") + ".";
+    if (rb === "trous") return "Les trous joués au moins 3 fois sur ton parcours le plus joué.";
+    if (rb === "clubs") return "Régularité, direction et distance de chaque club noté.";
+    if (rb === "qualite") return "Provenance de tes données : mesurées, estimées, déclarées ou inconnues.";
+    return "";
+  }
+  /* Contenu d'une rubrique. B : les blocs déjà calculés par la page (palier, plis). */
+  function rubriqueHTML(rb, B) {
+    var R0 = RUBRIQUES_AN.filter(function (x) { return x.id === rb; })[0], l = partiesFiltrees(), A = tableauStats(l);
+    var tete = '<section class="bloc rb-tete" id="rb-' + rb + '"><h2>' + t(R0.nom) + '</h2>' + (resumeRubrique(rb, A, l) ? '<p class="chapo rb-resume">' + t(resumeRubrique(rb, A, l)) + '</p>' : '') + ensRubriqueHTML(rb);
+    var vide = !A.parties && rb !== "comprendre" && rb !== "qualite" && rb !== "parcours";
+    /* Sans partie dans le filtre : les blocs tirés du profil déclaré restent (palier, carte, défauts, objectif). */
+    if (vide) {
+      var sansPartie = '<p class="aide">' + t(etat.parties.length ? "Aucune partie dans cette période : élargis-la (« Toutes »)." : "Pas encore de partie : les chiffres de cette rubrique apparaîtront après ta première partie.") + '</p></section>';
+      if (rb === "perf") return tete + sansPartie + B.palier + '<div class="colonnes"><div class="col">' + B.prios + B.carte + B.pal + '</div><div class="col">' + B.notes + B.rep + '</div></div>';
+      if (rb === "erreurs") return tete + sansPartie + B.evit + B.def;
+      if (rb === "sg") return tete + sansPartie + B.sg;
+      if (rb === "putting") return tete + sansPartie + B.rel;
+      return tete + sansPartie;
+    }
+    if (rb === "perf") return tete + '</section>' + '<section class="bloc" id="st-tableau">' + tableauStatsHTML("contenu") + '</section>' + B.palier +
+      '<div class="colonnes"><div class="col">' + B.prios + B.carte + B.pal + '</div><div class="col">' + B.notes + B.rep + '</div></div>' +
+      '<section class="bloc"><div class="ligne-btn"><button class="btn" type="button" data-a="j-ouvrir">Bilans, journal et rapports</button></div></section>';
+    if (rb === "mej") return tete + repartitionsStatsHTML(l, A) + reponseRubriqueHTML("mej") + reponseRubriqueHTML("cotes") + secteurEstimeHTML("depart") + actionExosHTML("drive", "Exercices : mise en jeu") + '</section>';
+    if (rb === "attaque") { var Ra = erreursRecurrentes(l); return tete + '<ul class="constats">' + ligneErreurHTML(Ra, "gir") + ligneErreurHTML(Ra, "direction") + '</ul>' + secteurEstimeHTML("attaque") + actionExosHTML("fers", "Exercices : jeu de fers") + '</section>'; }
+    if (rb === "petit") { var Rp = erreursRecurrentes(l); return tete + '<ul class="constats">' + ligneErreurHTML(Rp, "approche") + '</ul>' + secteurEstimeHTML("petit") + actionExosHTML("approche", "Exercices : approches") + '</section>'; }
+    if (rb === "putting") return tete + reponseRubriqueHTML("putts") + reponseRubriqueHTML("troisPutts") + '</section>' + puttingStatsHTML() + B.rel + actionExosHTML("putt_long", "Exercices : putting long");
+    if (rb === "erreurs") return tete + '</section>' + erreursStatsHTML() + B.evit + B.def;
+    if (rb === "sg") return tete + reponseRubriqueHTML("secteur") + '</section>' + B.sg;
+    if (rb === "parcours") return tete + (etat.parcours.length ? reponseRubriqueHTML("parcours") : '<p class="aide">' + t("Aucun parcours enregistré : choisis ou ajoute un parcours au début d'une partie.") + '</p>') + '</section>' + parcoursListeHTML();
+    if (rb === "trous") return tete + reponseRubriqueHTML("trous") + (etat.parcours.length ? '<h3 class="titre-bloc">' + t("Trou par trou") + '</h3><ul class="liste-exos">' + etat.parcours.map(function (pc) {
+      return '<li><button class="ligne" type="button" data-a="pc-ouvrir" data-id="' + pc.id + '"><span class="quoi"><b>' + t(pc.nom) + '</b><small>' + t("Score moyen et passages de chaque trou") + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>';
+    }).join("") + '</ul>' : '') + '</section>';
+    if (rb === "clubs") return tete + '</section>' + clubsStatsHTML();
+    if (rb === "qualite") return tete + '<div class="ligne-btn"><button class="btn" type="button" data-a="md-ouvrir">Mes données : vérifier, corriger, sauvegarder</button></div></section>' + qualiteGolfHTML();
+    /* Comprendre mon jeu : les douze questions, ouvertes dans la fiche (période : filtre commun). */
+    return tete + '<p class="aide">' + t("Des réponses chiffrées, avec leur période et leur effectif, calculées sur la même période que les autres rubriques.") + '</p><ul class="liste-exos">' +
+      QUESTIONS_ANALYSTE.map(function (q) { return '<li><button class="ligne" type="button" data-a="an-ouvrir" data-v="' + q.id + '"><span class="quoi"><b>' + t(q.q) + '</b></span><span class="chev" aria-hidden="true">›</span></button></li>'; }).join("") +
+      '</ul><div class="ligne-btn"><button class="btn" type="button" data-a="ens-ouvrir">Tous les enseignements</button></div></section>';
+  }
+  ACTIONS.rubrique = function (el) { ui.rubrique = el.getAttribute("data-v"); rendre(); var b = app.querySelector('.rubriques [data-v="' + ui.rubrique + '"]'); if (b) { b.focus({ preventScroll: true }); if (b.scrollIntoView) b.scrollIntoView({ block: "nearest", inline: "center" }); } };
 
   /* ============================================================
      APRÈS LA PARTIE : bilan express au club-house, carte de score en image,
@@ -14093,7 +14229,7 @@ function choisirEnseignements(liste, n, graine) {
   ACTIONS.pli = function (el) { var id = el.getAttribute("data-v"); ui.plis[id] = !ui.plis[id]; rendreEtFocus(el); };
   ACTIONS.sommaire = function (el) {
     var id = el.getAttribute("data-v");
-    ui.plis[id] = true; rendre(); allerSection(id);
+    ui.plis[id] = true; if (ui.onglet === "bilan" && rubriqueDeSection(id)) ui.rubrique = rubriqueDeSection(id); rendre(); allerSection(id);
     var b = app.querySelector('[data-a="pli"][data-v="' + id + '"]'); if (b) b.focus({ preventScroll: true });
   };
   /* Aide repliée sous un intitulé. Le contenu est déjà du HTML sûr. */
@@ -14276,9 +14412,9 @@ function choisirEnseignements(liste, n, graine) {
     var B = F.derniers || PP ? tableauStats(selectionStats(F, true)) : null, C = B && B.parties ? comparerStats(A, B) : null;
     h += '<p class="aide mj-perimetre">' + t(perimetreTexte(l) + (C ? " Évolution : par rapport " + (F.derniers ? "aux " + pluriel(B.parties, "partie") + " précédentes." : "à la période de même durée juste avant.") : " Pas de période précédente à comparer.")) + '</p>';
     var cartes = [
-      { t: "Score", v: nbStat(A.ecart18, true), u: "écart au par, ramené à 18 trous", tend: C && tendanceStat(C.ecart18), n: A.trousScore + " trous avec score", s: "", prov: "Déclaré" },
-      { t: "Mises en jeu", v: A.mej.part == null ? "–" : A.mej.part + " %", u: "jouables, par 4 et 5", tend: C && tendanceStat(C.mej), n: A.mej.n ? A.mej.n + " départs renseignés" : "aucun départ renseigné", s: "st-erreurs", prov: "Observé" },
-      { t: "Greens en régulation", v: nbStat(A.gir18), u: "par 18 trous", tend: C && tendanceStat(C.gir18), n: A.trous + " trous", s: "", prov: "Déduit" },
+      { t: "Score", v: nbStat(A.ecart18, true), u: "écart au par, ramené à 18 trous", tend: C && tendanceStat(C.ecart18), n: A.trousScore + " trous avec score", s: "rb-perf", prov: "Déclaré" },
+      { t: "Mises en jeu", v: A.mej.part == null ? "–" : A.mej.part + " %", u: "jouables, par 4 et 5", tend: C && tendanceStat(C.mej), n: A.mej.n ? A.mej.n + " départs renseignés" : "aucun départ renseigné", s: "rb-mej", prov: "Observé" },
+      { t: "Greens en régulation", v: nbStat(A.gir18), u: "par 18 trous", tend: C && tendanceStat(C.gir18), n: A.trous + " trous", s: "rb-attaque", prov: "Déduit" },
       { t: "Putts", v: nbStat(A.putts18), u: "par 18 trous", tend: C && tendanceStat(C.putts18), n: A.trous + " trous", s: "st-putting", prov: "Observé" },
       { t: "Trois-putts", v: nbStat(A.troisPutts18), u: "par 18 trous", tend: C && tendanceStat(C.troisPutts18), n: A.trous + " trous", s: "st-putting", prov: "Observé" },
       { t: "Pénalités", v: nbStat(A.penalites18), u: "coups par 18 trous", tend: C && tendanceStat(C.penalites18), n: A.trous + " trous", s: "st-erreurs", prov: "Observé" }];

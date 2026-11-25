@@ -53,7 +53,7 @@
   ACTIONS.pli = function (el) { var id = el.getAttribute("data-v"); ui.plis[id] = !ui.plis[id]; rendreEtFocus(el); };
   ACTIONS.sommaire = function (el) {
     var id = el.getAttribute("data-v");
-    ui.plis[id] = true; rendre(); allerSection(id);
+    ui.plis[id] = true; if (ui.onglet === "bilan" && rubriqueDeSection(id)) ui.rubrique = rubriqueDeSection(id); rendre(); allerSection(id);
     var b = app.querySelector('[data-a="pli"][data-v="' + id + '"]'); if (b) b.focus({ preventScroll: true });
   };
   /* Aide repliée sous un intitulé. Le contenu est déjà du HTML sûr. */
@@ -236,9 +236,9 @@
     var B = F.derniers || PP ? tableauStats(selectionStats(F, true)) : null, C = B && B.parties ? comparerStats(A, B) : null;
     h += '<p class="aide mj-perimetre">' + t(perimetreTexte(l) + (C ? " Évolution : par rapport " + (F.derniers ? "aux " + pluriel(B.parties, "partie") + " précédentes." : "à la période de même durée juste avant.") : " Pas de période précédente à comparer.")) + '</p>';
     var cartes = [
-      { t: "Score", v: nbStat(A.ecart18, true), u: "écart au par, ramené à 18 trous", tend: C && tendanceStat(C.ecart18), n: A.trousScore + " trous avec score", s: "", prov: "Déclaré" },
-      { t: "Mises en jeu", v: A.mej.part == null ? "–" : A.mej.part + " %", u: "jouables, par 4 et 5", tend: C && tendanceStat(C.mej), n: A.mej.n ? A.mej.n + " départs renseignés" : "aucun départ renseigné", s: "st-erreurs", prov: "Observé" },
-      { t: "Greens en régulation", v: nbStat(A.gir18), u: "par 18 trous", tend: C && tendanceStat(C.gir18), n: A.trous + " trous", s: "", prov: "Déduit" },
+      { t: "Score", v: nbStat(A.ecart18, true), u: "écart au par, ramené à 18 trous", tend: C && tendanceStat(C.ecart18), n: A.trousScore + " trous avec score", s: "rb-perf", prov: "Déclaré" },
+      { t: "Mises en jeu", v: A.mej.part == null ? "–" : A.mej.part + " %", u: "jouables, par 4 et 5", tend: C && tendanceStat(C.mej), n: A.mej.n ? A.mej.n + " départs renseignés" : "aucun départ renseigné", s: "rb-mej", prov: "Observé" },
+      { t: "Greens en régulation", v: nbStat(A.gir18), u: "par 18 trous", tend: C && tendanceStat(C.gir18), n: A.trous + " trous", s: "rb-attaque", prov: "Déduit" },
       { t: "Putts", v: nbStat(A.putts18), u: "par 18 trous", tend: C && tendanceStat(C.putts18), n: A.trous + " trous", s: "st-putting", prov: "Observé" },
       { t: "Trois-putts", v: nbStat(A.troisPutts18), u: "par 18 trous", tend: C && tendanceStat(C.troisPutts18), n: A.trous + " trous", s: "st-putting", prov: "Observé" },
       { t: "Pénalités", v: nbStat(A.penalites18), u: "coups par 18 trous", tend: C && tendanceStat(C.penalites18), n: A.trous + " trous", s: "st-erreurs", prov: "Observé" }];

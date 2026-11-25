@@ -12,8 +12,8 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 | 2 | UX03 Navigation à 5 entrées | P0 | **Terminé** | `ux/ux03-navigation` · PR #19 (fusionnée) |
 | 3 | UX05 Enseignements personnalisés | P0 | **Terminé** | `ux/ux05-enseignements` · PR #20 (fusionnée) |
 | 4 | UX07 Filtres et visualisations (fonctionnel : filtres communs, types de graphiques) | P1 | **Terminé** | `ux/ux07-filtres` · PR #21 (fusionnée) |
-| 5 | UX04 Tableau de bord « Mon jeu » | P0 | **En revue** | `ux/ux04-mon-jeu` |
-| 6 | UX06 Espace Analyses | P0 | À faire | — |
+| 5 | UX04 Tableau de bord « Mon jeu » | P0 | **Terminé** | `ux/ux04-mon-jeu` · PR #22 (fusionnée) |
+| 6 | UX06 Espace Analyses | P0 | **En revue** | `ux/ux06-analyses` |
 | 7 | UX08 Mon sac | P1 | À faire | — |
 | 8 | UX09 Saisie sur le parcours | P1 | À faire | — |
 | 9 | UX10 Journal chronologique | P1 | À faire | — |
@@ -318,3 +318,31 @@ Encore utiles pour les chantiers UX : 4, 5, 7 et 8 — appliquées telles que pr
 - Difficultés : les cartes d'index étaient trop étroites à 390 px (trois colonnes) : deux colonnes sous 520 px,
   l'objectif sur toute la largeur. Les repères de l'ancien accueil comportaient leurs propres pastilles de période :
   sous le filtre commun d'Analyses, elles sont retirées.
+
+### UX06 — Analyses en douze rubriques (25/11/2026)
+
+- Objectif : remplacer la longue page de statistiques par des rubriques à structure commune, avec navigation en profondeur.
+- Modifications :
+  - `src/ui-rubriques.js` (nouveau) : douze rubriques (Performance générale, Mises en jeu, Attaque de green, Petit jeu,
+    Putting, Erreurs récurrentes, Coups perdus estimés, Analyse des parcours, Analyse des trous, Comparaison des clubs,
+    Qualité des données, Comprendre mon jeu) choisies par des pastilles défilantes. Chaque rubrique : titre, résumé d'une
+    ligne, enseignements liés (UX05), chiffres et graphiques (blocs existants), détail, actions (exercices du domaine).
+    Les blocs existants sont répartis sans changement de calcul : tableau de bord, palier, priorités, carte, jeu sur 100
+    et repères → Performance ; répartitions et réponses mises en jeu / côtés → Mises en jeu ; putting et relevés →
+    Putting ; erreurs, erreurs évitables, défauts → Erreurs ; objectif d'index → Coups perdus estimés ; parcours, trous,
+    clubs, qualité : leurs blocs. Attaque de green et Petit jeu : erreurs suivies (green manqué, double approche) et
+    secteur estimé, marqué « Estimé ». Comprendre : les douze questions.
+  - `ui-stats.js` : `tableauStatsHTML("filtres" | "contenu")`, `repartitionsStatsHTML` ; format, parcours, période libre
+    et comparaison repliés sous « Plus de filtres » (ouverts dès qu'un réglage diffère du défaut, ouverture mémorisée).
+  - Navigation en profondeur : `allerA` (et le sommaire, la fin de partie « voir les coups gagnés », les liens des
+    enseignements) ouvre la rubrique qui contient la section demandée ; les cartes de Mon jeu mènent à leur rubrique
+    (score → Performance, mises en jeu → Mises en jeu, GIR → Attaque de green, putts → Putting, pénalités → Erreurs).
+    La rubrique choisie est conservée quand on revient dans Analyses.
+  - Sans partie dans la période, les blocs issus du profil déclaré (palier, carte, défauts, objectif) restent affichés.
+- Tests : `npm test` (922 noms, 0 doublon), `test-startup.js`, essais 3 à 31 verts (essais 3, 4, 5, 6, 11, 18, 19, 21,
+  22, 23, 25, 31 adaptés : ouvrir la rubrique avant de lire un bloc), nouvel `essai32.js` (ordre, chaque rubrique vide et
+  remplie, filtre, contenus, conservation, liens depuis Mon jeu et la recherche, 360 et 390 px).
+- Difficultés : le filtre complet occupait tout le premier écran sur téléphone (repli de « Plus de filtres », bouton
+  des bilans déplacé en bas de Performance). Trois chemins menaient à une section sans passer par `allerA` (sommaire,
+  fin de partie, liens des enseignements) : corrigés. Pas de nouvel indicateur pour Attaque de green et Petit jeu :
+  seulement ce que les moteurs calculent déjà.

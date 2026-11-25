@@ -198,6 +198,7 @@ function partiePave(g, pars) {
     e.maj += 1; await ecrire(e); await recharger();
     e = await lire();
     await allerVue(page, 'bilan');
+    await allerVue(page, 'bilan', 'notes'); /* UX06 */
     if (!(await page.$eval('#notes', x => x.classList.contains('ouvert')))) await page.click('[data-a="pli"][data-v="notes"]');
     const no = A.notesSecteurs(e.parties), pr = A.prioriteSemaine(e.parties, 15);
     r.jauges = await page.$$eval('#notes .jn', l => l.map(x => x.getAttribute('aria-label')));
@@ -207,12 +208,14 @@ function partiePave(g, pars) {
     verifie(pr.priorite && r.priorite === pr.priorite.nom, nom + ' priorité de la semaine : ' + r.priorite + ' (calculée ' + (pr.priorite && pr.priorite.nom) + ')');
     await page.evaluate(() => document.getElementById('notes').scrollIntoView()); await page.waitForTimeout(80);
     await vue('09-notes');
+    await allerVue(page, 'bilan', 'sg'); /* UX06 */
     if (!(await page.$eval('#sg', x => x.classList.contains('ouvert')))) await page.click('[data-a="pli"][data-v="sg"]');
     r.deuxSecteurs = await page.$$eval('#sg .deux-secteurs li', l => l.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
     verifie(r.deuxSecteurs.length === Math.min(2, pr.deux.length), nom + ' deux secteurs face à l\'objectif : ' + r.deuxSecteurs.join(' | '));
     r.reperesPlus = await page.$$eval('#sg .titre-bloc + .defile tbody tr', l => l.map(x => x.textContent.replace(/\s+/g, ' ').trim())).catch(() => []);
     await page.evaluate(() => document.querySelector('#sg .deux-secteurs').scrollIntoView()); await page.waitForTimeout(80);
     await vue('10-objectif');
+    await allerVue(page, 'bilan', 'evitables'); /* UX06 */
     if (await page.locator('#evitables').count()) {
       if (!(await page.$eval('#evitables', x => x.classList.contains('ouvert')))) await page.click('[data-a="pli"][data-v="evitables"]');
       r.evitables = await page.$eval('#evitables .evit-total', x => x.textContent);
@@ -238,6 +241,7 @@ function partiePave(g, pars) {
     await page.evaluate(() => document.querySelector('.index-vise').scrollIntoView({ block: 'center' })); await page.waitForTimeout(80);
     await vue('13-profil-objectif');
     await allerVue(page, 'bilan');
+    await allerVue(page, 'bilan', 'sg'); /* UX06 */
     if (!(await page.$eval('#sg', x => x.classList.contains('ouvert')))) await page.click('[data-a="pli"][data-v="sg"]');
     r.cibleBilan = await page.textContent('#sg .cible .main');
     verifie(r.cibleBilan === '10', nom + ' bilan face à l\'index 10 : ' + r.cibleBilan);

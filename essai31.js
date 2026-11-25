@@ -66,6 +66,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     r.apresClic = await page.$eval('#barre [aria-current="page"]', b => b.textContent.trim());
     verifie(r.apresClic === 'Analyses' && await page.locator('#vue #st-putting').count() === 1, nom + ' clic Putts → Analyses › putting (' + r.apresClic + ')');
     /* Les anciens repères (petit jeu, coups gagnés estimés, conseils) restent dans Analyses */
+    await page.click('[data-a="rubrique"][data-v="perf"]'); /* UX06 : les repères sont dans Performance générale */
     verifie(await page.locator('#vue #reperes').count() === 1, nom + ' pli « Repères face à ton objectif » dans Analyses');
     await page.goBack(); await page.waitForTimeout(100);
     verifie(await page.locator('#vue #mj-perf').count() === 1, nom + ' retour vers Mon jeu');
