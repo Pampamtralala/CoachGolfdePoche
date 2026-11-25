@@ -9,22 +9,25 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 | Ordre | Chantier | Priorité | Statut | Branche · PR |
 | --- | --- | --- | --- | --- |
 | 1 | UX01 Audit et cartographie | P0 | **En revue** | `ux/ux01-audit` |
-| 2 | UX02 Identité visuelle et design system | P0 | À faire (après validation des décisions) | — |
-| 3 | UX03 Navigation à 5 entrées | P0 | À faire | — |
-| 4 | UX05 Enseignements personnalisés | P0 | À faire | — |
-| 5 | UX07 Filtres et visualisations | P1 | À faire | — |
-| 6 | UX04 Tableau de bord « Mon jeu » | P0 | À faire | — |
-| 7 | UX06 Espace Analyses | P0 | À faire | — |
-| 8 | UX08 Mon sac | P1 | À faire | — |
-| 9 | UX09 Saisie sur le parcours | P1 | À faire | — |
-| 10 | UX10 Journal chronologique | P1 | À faire | — |
-| 11 | UX11 Après partie | P1 | À faire | — |
-| 12 | UX12 Premier lancement et états vides | P1 | À faire | — |
-| 13 | UX13 Repositionnement du coaching | P2 | À faire | — |
-| 14 | UX14 Accessibilité et finitions | P2 | À faire | — |
+| 2 | UX03 Navigation à 5 entrées | P0 | En cours | `ux/ux03-navigation` |
+| 3 | UX05 Enseignements personnalisés | P0 | À faire | — |
+| 4 | UX07 Filtres et visualisations (fonctionnel : filtres communs, types de graphiques) | P1 | À faire | — |
+| 5 | UX04 Tableau de bord « Mon jeu » | P0 | À faire | — |
+| 6 | UX06 Espace Analyses | P0 | À faire | — |
+| 7 | UX08 Mon sac | P1 | À faire | — |
+| 8 | UX09 Saisie sur le parcours | P1 | À faire | — |
+| 9 | UX10 Journal chronologique | P1 | À faire | — |
+| 10 | UX11 Après partie | P1 | À faire | — |
+| 11 | UX12 Premier lancement et états vides | P1 | À faire | — |
+| 12 | UX13 Repositionnement du coaching | P2 | À faire | — |
+| 13 | UX14 Accessibilité (partie fonctionnelle : clavier, lecteur d'écran, zones tactiles) | P2 | À faire | — |
 | — | UX15 Tests et non-régression | P0 | Après chaque chantier | — |
+| Reporté | UX02 Identité visuelle et design system ; finitions visuelles d'UX14 | — | Reporté à la demande du propriétaire (25/11) | — |
 
-UX05 et UX07 sont avancés avant UX04 et UX06, qui utilisent les enseignements et la barre de période (décision 4).
+**Recentrage du 25/11 :** la refonte graphique est reportée. Les chantiers UX gardent le style actuel (jetons existants
+de `style.css`) ; la section 4 reste la référence pour plus tard. Les décisions 1, 2, 3 et 6 (typographie, couleurs,
+outil de graphiques, thème plein soleil) sont reportées avec elle. UX05 et UX07 passent avant UX04 et UX06, qui
+utilisent les enseignements et la barre de période (décision 4).
 
 ## 1. Inventaire de l'existant (état `app` 2528a5c)
 
@@ -134,7 +137,7 @@ Trois niveaux de lecture : synthèse (Mon jeu) → rubrique (Analyses) → déta
 
 Les anciens noms de pages et les 6 alias sont redirigés vers leur équivalent.
 
-## 4. Design system « Golf Performance »
+## 4. Design system « Golf Performance » (reporté)
 
 Contrastes calculés (WCAG 2.1 : 4,5:1 texte courant, 3:1 gros texte et icônes).
 
@@ -177,7 +180,9 @@ parcours, 9/18, club, type de coup, practice/parcours, provenance), kit de graph
 horizontales, dispersion, tableau, toujours une vue tableau), état vide utile, boutons, onglets, formulaires,
 fenêtres, confirmations, barre de navigation.
 
-## 5. Décisions à valider avant UX02
+## 5. Décisions à valider
+
+Encore utiles pour les chantiers UX : 4, 5, 7 et 8. Reportées avec la refonte graphique : 1, 2, 3 et 6.
 
 | # | Question | Proposition |
 | --- | --- | --- |
