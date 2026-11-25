@@ -1627,3 +1627,14 @@ main.entree { animation: entreeVue .22s ease-out; }
 .habituel th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
 .habituel td { padding: 8px 6px; }
 .habituel td.num { width: 56px; font-variant-numeric: tabular-nums; }
+
+/* ---------- Journal et rapports (P11) ---------- */
+.journal .fenetres { flex-wrap: wrap; }
+.ligne-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.journal-periode { margin: 6px 0 10px; }
+.journal-kpis { margin-bottom: 10px; }
+.journal-liste li small { white-space: normal; }
+.note-partie-ligne { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+.note-partie-ligne span { font-size: 14px; color: var(--encre-2); }
+.journal .fenetres { display: flex; flex-wrap: wrap; overflow: visible; gap: 6px; }
+.journal .fenetres .opt { flex: 1 1 auto; }

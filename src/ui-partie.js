@@ -109,6 +109,7 @@
       var cu = cumulParties(partiesAnalyse(), 54);
       h += '</tbody></table></div><p class="aide" style="margin-top:8px">' +
         t("Touche une partie pour voir sa carte.") + '</p>' +
+        '<p><button class="btn" type="button" data-a="j-ouvrir">Mon journal : bilans, notes, rapports, import</button></p>' +
         indexEstimeHTML() +
         '<button class="btn large" type="button" data-a="pt-voir-sg">Voir mes objectifs et l’estimation de mes coups gagnés</button>';
     }
@@ -152,7 +153,9 @@
     else h += '<p class="aide">Cette partie a été saisie avant la carte de score : elle n’a pas de score par trou.</p>';
     h += carteCompleteHTML(pt, i);
     if (sc.N && s.C) h += '<p>' + t(pluriel(s.C, "trou") + " à triple bogey ou pire.") + '</p>';
-    h += '<p style="margin-top:16px"><button class="btn large" type="button" data-a="pt-editer" data-v="' + i + '">Compléter ou corriger cette partie</button></p>' +
+    h += (pt.note ? '<p class="note-partie-ligne">' + t("Note : " + resumeNote(pt.note)) + '</p>' : '') +
+      '<p style="margin-top:16px"><button class="btn large" type="button" data-a="pt-editer" data-v="' + i + '">Compléter ou corriger cette partie</button></p>' +
+      '<p><button class="btn" type="button" data-a="j-note" data-v="' + i + '">' + (pt.note ? "Modifier la note" : "Ajouter une note (forme, météo, ressenti)") + '</button></p>' +
       '<p class="aide">' + t("Ajoute ce que tu n'as pas noté sur le parcours (mises en jeu, clubs, coups) ou corrige un trou. Rien n'est écrasé tant que tu n'as pas terminé.") + '</p>';
     return h + '<p style="margin-top:16px"><button class="btn danger large" type="button" data-a="pt-suppr" data-v="' + i + '">Supprimer cette partie</button></p></section>';
   }
@@ -220,7 +223,8 @@
       '<header><p class="surtitre">' + t(nomPartie(pt) + " · " + s.T + " trous") + '</p></header>' +
       '<h2 id="pt-titre">Ta partie en chiffres' + (recordPartie(pt) ? ' <span class="tampon">record ' + TRAIT + '</span>' : '') + '</h2><dl class="cinq">' +
       chiffre("Score", sc.complet ? sc.coups : "–", sc.complet ? (sc.ecart ? ecartLib(sc.ecart) + " par rapport au par" : "dans le par") : "") +
-      chiffre("Mises en jeu jouables", s.J, "sur " + s.T) + chiffre("Greens en régulation", s.G, "sur " + s.T) +
+      (function () { var M = misesEnJeu(pt.trous, pt.renseigne); return M.n ? chiffre("Mises en jeu jouables", M.jouables, "sur " + M.n + " renseignées") : chiffre("Mises en jeu", "–", "non renseignées"); })() +
+      chiffre("Greens en régulation", s.G, "sur " + s.T) +
       chiffre("Putts", s.P, s.P3 ? s.P3 + " fois 3 putts ou plus" : "") + chiffre("Coups de pénalité", s.X, "") + stablefordChiffre(pt, chiffre) + liesChiffre(pt, chiffre) + '</dl>' +
       '<p>' + t((sc.complet && s.C ? pluriel(s.C, "trou") + " à triple bogey ou pire. " : "") + "Ton bilan est à jour. Il s'appuie sur " + (cu.n > 1 ? "tes " + cu.n + " dernières parties, soit " + cu.T + " trous." : "cette partie.")) + '</p>';
     if (r) {
@@ -230,6 +234,9 @@
         (pire && pire.sg <= -0.5 ? " Secteur le plus coûteux : " + pire.nom.toLowerCase() + "." : "")) + '</p>';
     }
     h += erreursPartieHTML(pt);
+    /* P11 : note facultative (forme, météo, ressenti…). */
+    var ip = etat.parties.indexOf(pt);
+    if (ip >= 0) h += '<p class="note-partie-ligne">' + (pt.note ? '<span>' + t("Note : " + resumeNote(pt.note)) + '</span> ' : '') + '<button class="btn" type="button" data-a="j-note" data-v="' + ip + '">' + (pt.note ? "Modifier la note" : "Ajouter une note (facultatif)") + '</button></p>';
     return h + '<button class="lien" type="button" data-a="pt-bilan-carte">Voir ma carte de score</button>' +
       '<div class="pt-nav"><button class="btn" type="button" data-a="pt-bilan-fermer">Fermer</button>' +
       '<button class="btn principal" type="button" data-a="pt-voir-sg" id="pt-suiv">Voir l’analyse</button></div></section>';

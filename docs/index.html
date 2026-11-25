@@ -1645,6 +1645,17 @@ main.entree { animation: entreeVue .22s ease-out; }
 .habituel td { padding: 8px 6px; }
 .habituel td.num { width: 56px; font-variant-numeric: tabular-nums; }
 
+/* ---------- Journal et rapports (P11) ---------- */
+.journal .fenetres { flex-wrap: wrap; }
+.ligne-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.journal-periode { margin: 6px 0 10px; }
+.journal-kpis { margin-bottom: 10px; }
+.journal-liste li small { white-space: normal; }
+.note-partie-ligne { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+.note-partie-ligne span { font-size: 14px; color: var(--encre-2); }
+.journal .fenetres { display: flex; flex-wrap: wrap; overflow: visible; gap: 6px; }
+.journal .fenetres .opt { flex: 1 1 auto; }
+
 /* ---------- Sac de golf en perspective (fausse 3D) ----------
    Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
    --s3-bulle, --s3-bulle-texte, --s3-chiffre, --s3-focus. */
@@ -6938,6 +6949,146 @@ function limitesEstimation(r) {
 }
 
 
+/* Coach de golf de poche — journal de progression, notes, rapports et import (roadmap DATA, P11). Fonctions pures.
+   Une note de partie (forme, météo…) n'est jamais traitée comme une cause : on montre seulement des associations,
+   avec leurs effectifs. Un import ajoute des parties, il n'écrase jamais rien en silence. */
+
+/* ---------- Notes de partie ---------- */
+var NOTES_ECHELLES = {
+  driving: { lib: "Driving", v: [null, "difficile", "moyen", "bon"] },
+  putting: { lib: "Putting", v: [null, "difficile", "moyen", "bon"] },
+  forme: { lib: "Forme", v: [null, "fatigué", "normal", "en forme"] },
+  ressenti: { lib: "Ressenti", v: [null, "mauvaise journée", "journée moyenne", "bonne journée"] }
+};
+var NOTES_METEO = [{ id: "beau", lib: "beau temps" }, { id: "vent", lib: "vent" }, { id: "pluie", lib: "pluie" }, { id: "froid", lib: "froid" }, { id: "chaud", lib: "chaleur" }];
+var MIN_ASSOCIATION_NOTE = 3;
+
+/* Note assainie, ou null si vide. */
+function noteValide(n) {
+  if (!n || typeof n !== "object") return null;
+  var r = {}, ok = false;
+  Object.keys(NOTES_ECHELLES).forEach(function (k) { if (n[k] === 1 || n[k] === 2 || n[k] === 3) { r[k] = n[k]; ok = true; } });
+  if (NOTES_METEO.some(function (m) { return m.id === n.meteo; })) { r.meteo = n.meteo; ok = true; }
+  if (typeof n.texte === "string" && n.texte.trim()) { r.texte = n.texte.trim().slice(0, 140); ok = true; }
+  return ok ? r : null;
+}
+
+/* ---------- Périodes ---------- */
+function jourJ(d) { return typeof d === "string" ? d.slice(0, 10) : null; }
+function decalerJour(jour, n) { return new Date(Date.parse(jour + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10); }
+/* id : "mois" (30 jours), "trimestre" (90 jours), "saison" (depuis le 1er janvier), "libre" (debut et fin). */
+function bornesPeriode(id, aujourdHui, debut, fin) {
+  var j = jourJ(aujourdHui);
+  if (id === "mois") return { id: id, lib: "Un mois", debut: decalerJour(j, -29), fin: j };
+  if (id === "trimestre") return { id: id, lib: "Trois mois", debut: decalerJour(j, -89), fin: j };
+  if (id === "saison") return { id: id, lib: "Saison " + j.slice(0, 4), debut: j.slice(0, 4) + "-01-01", fin: j };
+  if (id === "libre" && /^\d{4}-\d{2}-\d{2}$/.test(debut || "") && /^\d{4}-\d{2}-\d{2}$/.test(fin || "") && debut <= fin) return { id: id, lib: "Période libre", debut: debut, fin: fin };
+  return null;
+}
+function partiesPeriode(parties, B) {
+  return (parties || []).filter(function (p) { var d = jourJ(p.d); return B && d && d >= B.debut && d <= B.fin; })
+    .sort(function (a, b) { return jourJ(a.d) < jourJ(b.d) ? -1 : 1; });
+}
+
+/* ---------- Associations entre notes et score ---------- */
+/* Pour chaque échelle : les parties notées « bas » (1) et « haut » (3), écart au par moyen sur 18 trous.
+   Rien n'est affiché si un des deux groupes a moins de MIN_ASSOCIATION_NOTE parties complètes. */
+function associationsNotes(parties) {
+  var out = [], complets = [];
+  (parties || []).forEach(function (p) {
+    var st = statsTrous(p.trous); if (!(st.T && st.N === st.T) || !p.note) return;
+    complets.push({ n: p.note, e: (st.S - st.PAR) * 18 / st.T });
+  });
+  function moy(l) { return Math.round(10 * l.reduce(function (a, x) { return a + x.e; }, 0) / l.length) / 10; }
+  Object.keys(NOTES_ECHELLES).forEach(function (k) {
+    var bas = complets.filter(function (x) { return x.n[k] === 1; }), haut = complets.filter(function (x) { return x.n[k] === 3; });
+    var ok = bas.length >= MIN_ASSOCIATION_NOTE && haut.length >= MIN_ASSOCIATION_NOTE;
+    out.push({ id: k, lib: NOTES_ECHELLES[k].lib, ok: ok, bas: { lib: NOTES_ECHELLES[k].v[1], n: bas.length, ecart18: bas.length ? moy(bas) : null },
+      haut: { lib: NOTES_ECHELLES[k].v[3], n: haut.length, ecart18: haut.length ? moy(haut) : null } });
+  });
+  NOTES_METEO.forEach(function (m) {
+    var avec = complets.filter(function (x) { return x.n.meteo === m.id; }), sans = complets.filter(function (x) { return x.n.meteo && x.n.meteo !== m.id; });
+    out.push({ id: "meteo-" + m.id, lib: "Météo : " + m.lib, ok: avec.length >= MIN_ASSOCIATION_NOTE && sans.length >= MIN_ASSOCIATION_NOTE,
+      bas: { lib: m.lib, n: avec.length, ecart18: avec.length ? moy(avec) : null }, haut: { lib: "autre météo notée", n: sans.length, ecart18: sans.length ? moy(sans) : null } });
+  });
+  return out;
+}
+
+/* ---------- Rapport ---------- */
+/* Tout ce qu'il faut pour un rapport daté et reproductible : mêmes parties et même période = même empreinte. */
+function rapportPeriode(parties, B, genereLe) {
+  var l = partiesPeriode(parties, B), T = tableauStats(l), P = analysePutting(l), R = erreursRecurrentes(l);
+  var empreinte = hashTexte(JSON.stringify([B.debut, B.fin, l.map(function (p) { return [p.id || "", jourJ(p.d), p.trous.map(function (t) { return t.slice(0, 6).join(","); }).join(";")]; })]));
+  return {
+    genereLe: genereLe, periode: B, empreinte: empreinte, parties: l.length, stats: T,
+    putting: { trous: P.total.trous, parTrou: P.total.parTrou, partUn: P.total.partUn, partTrois: P.total.partTrois },
+    erreurs: R.top.map(function (id) { return R.erreurs.filter(function (e) { return e.id === id; })[0]; }),
+    notes: { notees: l.filter(function (p) { return !!p.note; }).length, associations: associationsNotes(l).filter(function (a) { return a.ok; }) },
+    journal: l.map(function (p) { var s = scorePartie(p); return { id: p.id || null, d: jourJ(p.d), pc: p.pc || null, trous: p.trous.length, complet: s.complet, score: s.coups, ecart: s.ecart, note: p.note || null }; })
+  };
+}
+
+/* ---------- Import ---------- */
+/* CSV : une ligne par trou, séparateur ; ou , ; en-tête obligatoire :
+   date ; parcours ; trou ; par ; score ; putts ; penalites ; mise_en_jeu (o / n / vide = non renseignée). */
+var CSV_COLONNES = ["date", "parcours", "trou", "par", "score", "putts", "penalites", "mise_en_jeu"];
+function lireCSV(texte) {
+  var lignes = String(texte || "").replace(/^﻿/, "").split(/\r?\n/).filter(function (x) { return x.trim(); }), erreurs = [];
+  if (!lignes.length) return { parties: [], erreurs: [{ ligne: 0, msg: "Fichier vide." }] };
+  var sep = lignes[0].indexOf(";") >= 0 ? ";" : ",";
+  var tete = lignes[0].split(sep).map(function (x) { return x.trim().toLowerCase().replace(/[éè]/g, "e").replace(/\s+/g, "_"); });
+  var idx = {}; CSV_COLONNES.forEach(function (c) { idx[c] = tete.indexOf(c); });
+  var manque = ["date", "trou", "par", "score", "putts"].filter(function (c) { return idx[c] < 0; });
+  if (manque.length) return { parties: [], erreurs: [{ ligne: 1, msg: "Colonnes manquantes : " + manque.join(", ") + "." }] };
+  var groupes = {}, ordre = [];
+  lignes.slice(1).forEach(function (l, i) {
+    var c = l.split(sep).map(function (x) { return x.trim(); }), n = i + 2;
+    function ent(k, min, max) { var v = idx[k] >= 0 ? c[idx[k]] : ""; if (v === "" && k === "penalites") return 0; var x = /^\d+$/.test(v) ? parseInt(v, 10) : NaN; return x >= min && x <= max ? x : NaN; }
+    var d = idx.date >= 0 ? c[idx.date] : "", m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d) || /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d);
+    var jour = m ? (m[1].length === 4 ? m[1] + "-" + m[2] + "-" + m[3] : m[3] + "-" + m[2] + "-" + m[1]) : null;
+    var trou = ent("trou", 1, 18), par = ent("par", 3, 5), score = ent("score", 1, 15), putts = ent("putts", 0, 6), pen = ent("penalites", 0, 5);
+    if (!jour || isNaN(Date.parse(jour)) || isNaN(trou) || isNaN(par) || isNaN(score) || isNaN(putts) || isNaN(pen) || putts + pen > score) { erreurs.push({ ligne: n, msg: "Ligne ignorée : valeur manquante ou incohérente." }); return; }
+    var mej = idx.mise_en_jeu >= 0 ? (c[idx.mise_en_jeu] || "").toLowerCase() : "";
+    var cle = jour + "|" + (idx.parcours >= 0 ? c[idx.parcours] : "");
+    if (!groupes[cle]) { groupes[cle] = { jour: jour, parcours: idx.parcours >= 0 ? c[idx.parcours] : "", trous: {} }; ordre.push(cle); }
+    if (groupes[cle].trous[trou]) { erreurs.push({ ligne: n, msg: "Trou " + trou + " en double pour cette partie : ignoré." }); return; }
+    groupes[cle].trous[trou] = { par: par, score: score, putts: putts, pen: pen, mej: /^(o|oui|1|y|yes)$/.test(mej) ? 1 : /^(n|non|0|no)$/.test(mej) ? 0 : null };
+  });
+  var parties = [];
+  ordre.forEach(function (cle) {
+    var g = groupes[cle], nums = Object.keys(g.trous).map(Number).sort(function (a, b) { return a - b; });
+    if (nums.length !== 9 && nums.length !== 18) { erreurs.push({ ligne: 0, msg: "Partie du " + g.jour + (g.parcours ? " (" + g.parcours + ")" : "") + " : " + nums.length + " trou" + (nums.length > 1 ? "s" : "") + ", il en faut 9 ou 18 : ignorée." }); return; }
+    var o = nums[0] === 10 && nums.length === 9 ? 9 : 0;
+    var trous = [], renseigne = [];
+    nums.forEach(function (n) {
+      var t = g.trous[n], gir = t.score - t.putts - t.pen <= t.par - 2 ? 1 : 0;
+      trous.push([t.par === 3 ? 1 : (t.mej === 0 ? 0 : 1), gir, t.putts, t.pen, t.score, t.par, 0, 0, 0, 0, 0]);
+      renseigne.push(t.par >= 4 && t.mej != null ? 1 : 0);
+    });
+    parties.push({ d: g.jour + "T12:00:00.000Z", trous: trous, renseigne: renseigne, o: o, parcoursNom: g.parcours || null, source: "import" });
+  });
+  return { parties: parties, erreurs: erreurs };
+}
+/* JSON : un export de l'appli ({ parties: [...] }) ou une liste de parties. */
+function lireJSONParties(o) {
+  var l = Array.isArray(o) ? o : o && Array.isArray(o.parties) ? o.parties : null;
+  if (!l) return { parties: [], erreurs: [{ ligne: 0, msg: "Aucune liste de parties dans ce fichier." }] };
+  return { parties: l.filter(function (p) { return p && Array.isArray(p.trous); }), erreurs: l.length && !l.some(function (p) { return p && Array.isArray(p.trous); }) ? [{ ligne: 0, msg: "Parties illisibles." }] : [] };
+}
+/* Signature d'une partie : jour et scores trou par trou. Deux parties de même signature sont des doublons. */
+function signaturePartie(p) { return jourJ(p.d) + "|" + p.trous.map(function (t) { return (t[5] || "") + ":" + (t[4] || ""); }).join(","); }
+function fusionImport(existantes, nouvelles) {
+  var ids = {}, sig = {}, ajout = [], doublons = [];
+  (existantes || []).forEach(function (p) { if (p.id) ids[p.id] = true; sig[signaturePartie(p)] = true; });
+  (nouvelles || []).forEach(function (p) {
+    var s = signaturePartie(p);
+    if ((p.id && ids[p.id]) || sig[s]) { doublons.push(p); return; }
+    sig[s] = true; if (p.id) ids[p.id] = true; ajout.push(p);
+  });
+  return { ajout: ajout, doublons: doublons };
+}
+
+
 /* ============================================================
    INTERFACE : accueil, questionnaire, plan, bilan, exercices, profil.
    Les données du joueur sont gardées sur l'appareil et, quand c'est possible,
@@ -6949,7 +7100,7 @@ function limitesEstimation(r) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-25T06:53:08.174Z";
+  var VERSION_APPLI = "2026-11-25T07:11:47.873Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -7735,7 +7886,8 @@ function limitesEstimation(r) {
   VUES.bilan = function () {
     var p = etat.profil, pal = palierDe(indexNiveau(p)), P = PALIERS[pal - 1];
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
-    var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' + tableauStatsHTML() + '</section>' + erreursStatsHTML() + puttingStatsHTML() + clubsStatsHTML() + qualiteGolfHTML() +
+    var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' +
+      '<p><button class="btn" type="button" data-a="j-ouvrir">Bilans, journal et rapports</button></p>' + tableauStatsHTML() + '</section>' + erreursStatsHTML() + puttingStatsHTML() + clubsStatsHTML() + qualiteGolfHTML() +
       '<section class="bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
 
@@ -7881,6 +8033,7 @@ function limitesEstimation(r) {
     if (f && f.defaut && etat.profil && a(etat.profil.symptomes, f.defaut)) { c.innerHTML = defautFicheHTML(f.defaut); entreeFeuille(); majFige(); return; }
     if (f && f.conditions && etat.profil) { c.innerHTML = conditionsHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.donnees && etat.profil) { c.innerHTML = mesDonneesHTML(); entreeFeuille(); majFige(); return; }
+    if (f && f.journal && etat.profil) { c.innerHTML = journalHTML(); entreeFeuille(); majFige(); monterGraphes(); return; }
     if (f && f.sac && (f.sac === "putter" || CLUB[f.sac]) && etat.profil) { c.innerHTML = sacFeuilleHTML(f.sac); entreeFeuille(); majFige(); return; }
     if (f && f.sacComposer && etat.profil) { c.innerHTML = sacComposerHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.serie && ui.serie && etat.profil) { c.innerHTML = serieHTML(); entreeFeuille(); majFige(); return; }
@@ -7933,7 +8086,7 @@ function limitesEstimation(r) {
     var serie = ui.feuille && ui.feuille.serie ? enregistrerSerie() : null;
     if (ui.feuille && ui.feuille.serie) ui.serie = null;
     /* Le sac a pu être redessiné en aperçu pendant la saisie : il est remis à l'état enregistré. */
-    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.serie || ui.feuille.carte || ui.feuille.donnees);
+    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.serie || ui.feuille.carte || ui.feuille.donnees || ui.feuille.journal);
     var carteF = ui.feuille && ui.feuille.carte;
     if (serie) messageEnregistre("Série enregistrée. " + annonceSerie(serie));
     ui.sacApercu = null;
@@ -8475,6 +8628,7 @@ function limitesEstimation(r) {
       var r = { d: dateOk(p.d), trous: tr, pc: pc, o: decalage(p, pc, tr.length) }, cp = liste(p.coups);
       if (idValide(p.id, "p")) r.id = p.id;
       if (p.exclue === 1) r.exclue = 1;
+      var nt = noteValide(p.note); if (nt) r.note = nt;
       if (Array.isArray(p.renseigne)) r.renseigne = idx.map(function (i) { return entier(p.renseigne[i], 0, 7, 0); });
       if (pc && entier(p.rep, 0, 7, null) != null) r.rep = p.rep;
       r.validation = idx.map(function (i) { return liste(p.validation)[i] === "confirme" ? "confirme" : "inconnu"; });
@@ -9424,6 +9578,8 @@ function limitesEstimation(r) {
         { a: "fin-cycle", t: "Faire le bilan du cycle", k: "fin cycle nouveau plan" }] },
       { g: "Statistiques", l: [
         { p: "bilan", t: "Tableau de bord", k: "stats chiffres cles tendances index" },
+        { a: "j-ouvrir", t: "Bilans, journal et rapports", k: "journal bilan mois trimestre saison rapport export import csv notes forme meteo" },
+        { a: "md-ouvrir", t: "Mes données : vérifier, corriger, sauvegarder", k: "donnees provenance exclure corriger sauvegarde export restaurer" },
         { p: "bilan", s: "notes", t: "Ton jeu sur 100", k: "notes jauges priorite semaine" },
         { p: "bilan", s: "sg", t: "Objectif d’index et estimation des coups gagnés", k: "strokes gained coups gagnés perdus estimation cible" },
         { p: "bilan", s: "evitables", t: "Erreurs évitables", k: "penalites double approche trois putts" },
@@ -9686,6 +9842,7 @@ function limitesEstimation(r) {
       var cu = cumulParties(partiesAnalyse(), 54);
       h += '</tbody></table></div><p class="aide" style="margin-top:8px">' +
         t("Touche une partie pour voir sa carte.") + '</p>' +
+        '<p><button class="btn" type="button" data-a="j-ouvrir">Mon journal : bilans, notes, rapports, import</button></p>' +
         indexEstimeHTML() +
         '<button class="btn large" type="button" data-a="pt-voir-sg">Voir mes objectifs et l’estimation de mes coups gagnés</button>';
     }
@@ -9729,7 +9886,9 @@ function limitesEstimation(r) {
     else h += '<p class="aide">Cette partie a été saisie avant la carte de score : elle n’a pas de score par trou.</p>';
     h += carteCompleteHTML(pt, i);
     if (sc.N && s.C) h += '<p>' + t(pluriel(s.C, "trou") + " à triple bogey ou pire.") + '</p>';
-    h += '<p style="margin-top:16px"><button class="btn large" type="button" data-a="pt-editer" data-v="' + i + '">Compléter ou corriger cette partie</button></p>' +
+    h += (pt.note ? '<p class="note-partie-ligne">' + t("Note : " + resumeNote(pt.note)) + '</p>' : '') +
+      '<p style="margin-top:16px"><button class="btn large" type="button" data-a="pt-editer" data-v="' + i + '">Compléter ou corriger cette partie</button></p>' +
+      '<p><button class="btn" type="button" data-a="j-note" data-v="' + i + '">' + (pt.note ? "Modifier la note" : "Ajouter une note (forme, météo, ressenti)") + '</button></p>' +
       '<p class="aide">' + t("Ajoute ce que tu n'as pas noté sur le parcours (mises en jeu, clubs, coups) ou corrige un trou. Rien n'est écrasé tant que tu n'as pas terminé.") + '</p>';
     return h + '<p style="margin-top:16px"><button class="btn danger large" type="button" data-a="pt-suppr" data-v="' + i + '">Supprimer cette partie</button></p></section>';
   }
@@ -9797,7 +9956,8 @@ function limitesEstimation(r) {
       '<header><p class="surtitre">' + t(nomPartie(pt) + " · " + s.T + " trous") + '</p></header>' +
       '<h2 id="pt-titre">Ta partie en chiffres' + (recordPartie(pt) ? ' <span class="tampon">record ' + TRAIT + '</span>' : '') + '</h2><dl class="cinq">' +
       chiffre("Score", sc.complet ? sc.coups : "–", sc.complet ? (sc.ecart ? ecartLib(sc.ecart) + " par rapport au par" : "dans le par") : "") +
-      chiffre("Mises en jeu jouables", s.J, "sur " + s.T) + chiffre("Greens en régulation", s.G, "sur " + s.T) +
+      (function () { var M = misesEnJeu(pt.trous, pt.renseigne); return M.n ? chiffre("Mises en jeu jouables", M.jouables, "sur " + M.n + " renseignées") : chiffre("Mises en jeu", "–", "non renseignées"); })() +
+      chiffre("Greens en régulation", s.G, "sur " + s.T) +
       chiffre("Putts", s.P, s.P3 ? s.P3 + " fois 3 putts ou plus" : "") + chiffre("Coups de pénalité", s.X, "") + stablefordChiffre(pt, chiffre) + liesChiffre(pt, chiffre) + '</dl>' +
       '<p>' + t((sc.complet && s.C ? pluriel(s.C, "trou") + " à triple bogey ou pire. " : "") + "Ton bilan est à jour. Il s'appuie sur " + (cu.n > 1 ? "tes " + cu.n + " dernières parties, soit " + cu.T + " trous." : "cette partie.")) + '</p>';
     if (r) {
@@ -9807,6 +9967,9 @@ function limitesEstimation(r) {
         (pire && pire.sg <= -0.5 ? " Secteur le plus coûteux : " + pire.nom.toLowerCase() + "." : "")) + '</p>';
     }
     h += erreursPartieHTML(pt);
+    /* P11 : note facultative (forme, météo, ressenti…). */
+    var ip = etat.parties.indexOf(pt);
+    if (ip >= 0) h += '<p class="note-partie-ligne">' + (pt.note ? '<span>' + t("Note : " + resumeNote(pt.note)) + '</span> ' : '') + '<button class="btn" type="button" data-a="j-note" data-v="' + ip + '">' + (pt.note ? "Modifier la note" : "Ajouter une note (facultatif)") + '</button></p>';
     return h + '<button class="lien" type="button" data-a="pt-bilan-carte">Voir ma carte de score</button>' +
       '<div class="pt-nav"><button class="btn" type="button" data-a="pt-bilan-fermer">Fermer</button>' +
       '<button class="btn principal" type="button" data-a="pt-voir-sg" id="pt-suiv">Voir l’analyse</button></div></section>';
@@ -12309,6 +12472,188 @@ function limitesEstimation(r) {
     majIndicateursParties();
     apresModifDonnees(p.exclue ? "Partie exclue des calculs. Elle reste dans ton carnet." : "Partie réintégrée dans les calculs.");
     var b = document.querySelector('#feuille [data-a="md-partie"][data-v="' + el.getAttribute("data-v") + '"]'); if (b) b.focus({ preventScroll: true });
+  };
+
+  /* ============================================================
+     JOURNAL ET RAPPORTS (roadmap DATA, P11)
+     Bilan sur un mois, trois mois, la saison ou une période libre ; journal des parties ; notes facultatives
+     (associations, jamais des causes) ; rapport daté et reproductible ; import CSV / JSON sans écrasement.
+     ============================================================ */
+  var PERIODES_JOURNAL = [{ id: "mois", lib: "Un mois" }, { id: "trimestre", lib: "Trois mois" }, { id: "saison", lib: "Saison" }, { id: "libre", lib: "Période libre" }];
+  function etatJournal() { return ui.journal || (ui.journal = { periode: "trimestre", debut: "", fin: "" }); }
+  function bornesJournal() {
+    var J = etatJournal();
+    return bornesPeriode(J.periode, auj(), J.debut, J.fin) || bornesPeriode("trimestre", auj());
+  }
+  function resumeNote(n) {
+    if (!n) return "";
+    var l = [];
+    Object.keys(NOTES_ECHELLES).forEach(function (k) { if (n[k]) l.push(NOTES_ECHELLES[k].lib.toLowerCase() + " " + NOTES_ECHELLES[k].v[n[k]]); });
+    if (n.meteo) l.push(NOTES_METEO.filter(function (m) { return m.id === n.meteo; })[0].lib);
+    if (n.texte) l.push("« " + n.texte + " »");
+    return l.join(" · ");
+  }
+  function chiffreJournal(lib, v, sous) { return '<div class="kpi"><p class="kpi-t">' + t(lib) + '</p><p class="kpi-v"><span class="main">' + t(v) + '</span></p><p class="kpi-n">' + t(sous) + '</p></div>'; }
+  function journalHTML() {
+    var J = etatJournal(), B = bornesJournal(), R = rapportPeriode(partiesAnalyse(), B, auj()), S = R.stats;
+    var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer" tabindex="-1"></button>' +
+      '<section class="feuille journal" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
+      '<header><p class="surtitre">Journal de progression</p><h2 id="f-titre">Bilans et rapports</h2><button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>';
+    h += '<div class="fenetres" role="group" aria-label="Période">' + PERIODES_JOURNAL.map(function (p) {
+      return '<button class="opt" type="button" data-a="j-periode" data-v="' + p.id + '" aria-pressed="' + (J.periode === p.id) + '">' + t(p.lib) + '</button>';
+    }).join("") + '</div>';
+    if (J.periode === "libre") h += '<div class="ligne-dates"><div class="champ"><label for="j-debut">Du</label><input id="j-debut" type="date" value="' + at(J.debut) + '" data-c="j-debut"></div><div class="champ"><label for="j-fin">Au</label><input id="j-fin" type="date" value="' + at(J.fin) + '" data-c="j-fin"></div></div>';
+    h += '<p class="aide journal-periode">' + t(B.lib + " : " + periodeLib(B.debut, B.fin) + (/\.$/.test(periodeLib(B.debut, B.fin)) ? " " : ". ") + (R.parties ? pluriel(R.parties, "partie") + ", " + S.trous + " trous." : "Aucune partie sur cette période.")) + '</p>';
+    if (R.parties) {
+      h += '<div class="kpi-grille journal-kpis">' +
+        chiffreJournal("Score", S.ecart18 == null ? "–" : signe(S.ecart18), S.trousScore + " trous avec score, sur 18 trous") +
+        chiffreJournal("Putts par trou", S.puttsParTrou == null ? "–" : nb2(S.puttsParTrou), S.trous + " trous") +
+        chiffreJournal("Trois-putts", S.partTroisPutts == null ? "–" : S.partTroisPutts + " %", S.troisPutts + " sur " + S.trous + " trous") +
+        chiffreJournal("Mises en jeu jouables", S.mej.part == null ? "–" : S.mej.part + " %", S.mej.n + " renseignées" + (S.mej.inconnues ? ", " + S.mej.inconnues + " non" : "")) +
+        chiffreJournal("Greens en régulation", S.partGir == null ? "–" : S.partGir + " %", "déduits, " + S.trous + " trous") +
+        chiffreJournal("Pénalités", S.penalites18 == null ? "–" : nb1(S.penalites18), "sur 18 trous, " + S.penalites + " au total") + '</div>';
+      if (S.parPartie.length >= 2) h += grapheScoresHTML(S.parPartie);
+      if (R.erreurs.length) h += '<h3 class="titre-bloc">Erreurs les plus fréquentes</h3><ul class="constats">' + R.erreurs.map(function (e) {
+        return '<li>' + t(e.lib + " : " + e.n + " fois sur " + e.base + " " + e.baseLib + " (" + e.part + " %), " + nb1(e.par18) + " pour 18 trous.") + '</li>';
+      }).join("") + '</ul>';
+      h += '<h3 class="titre-bloc">Notes de partie</h3><p class="aide">' + t(R.notes.notees + " partie" + (R.notes.notees > 1 ? "s notées" : " notée") + " sur " + R.parties + ".") + '</p>';
+      if (R.notes.associations.length) h += '<ul class="constats">' + R.notes.associations.map(function (a) {
+        return '<li>' + t(a.lib + " : « " + a.bas.lib + " » " + signe(a.bas.ecart18) + " (" + pluriel(a.bas.n, "partie") + "), « " + a.haut.lib + " » " + signe(a.haut.ecart18) + " (" + pluriel(a.haut.n, "partie") + "), écart au par sur 18 trous.") + '</li>';
+      }).join("") + '</ul><p class="aide">' + t("Ce sont des associations, pas des causes : d'autres choses ont pu changer ces jours-là.") + '</p>';
+      else h += '<p class="aide">' + t("Pour comparer, il faut au moins " + MIN_ASSOCIATION_NOTE + " parties complètes de chaque côté (par exemple « fatigué » et « en forme »).") + '</p>';
+      h += '<h3 class="titre-bloc">Journal</h3><ul class="md-liste journal-liste">' + R.journal.slice().reverse().map(function (x) {
+        var i = etat.parties.map(function (p) { return p.id; }).indexOf(x.id), pc = parcoursDe(x.pc);
+        return '<li><p>' + t(dateCourte(x.d) + (pc ? " · " + pc.nom : "") + " · " + x.trous + " trous" + (x.complet ? " · " + x.score + " (" + ecartLib(x.ecart) + ")" : "")) + (x.note ? '<small>' + t(resumeNote(x.note)) + '</small>' : '') + '</p>' +
+          (i >= 0 ? '<div class="ligne-btn"><button class="btn" type="button" data-a="j-note" data-v="' + i + '">' + (x.note ? "Modifier la note" : "Noter") + '</button></div>' : '') + '</li>';
+      }).join("") + '</ul>';
+      h += '<div class="ligne-btn"><button class="btn principal" type="button" data-a="j-rapport">Télécharger le rapport</button></div>' +
+        '<p class="aide">' + t("Un fichier daté, avec ses chiffres, son graphique et le nombre d'observations. Mêmes parties et même période : même empreinte.") + '</p>';
+    }
+    h += '<h3 class="titre-bloc">Importer des parties</h3><p class="aide">' + t("CSV (une ligne par trou : date ; parcours ; trou ; par ; score ; putts ; penalites ; mise_en_jeu) ou export JSON de l'appli. Tu vois un aperçu avant d'ajouter ; les doublons sont écartés et rien n'est remplacé.") + '</p>' +
+      '<div class="ligne-btn"><label class="btn" for="j-import">Choisir un fichier<input id="j-import" type="file" accept=".csv,.json,text/csv,application/json" data-c="j-import" class="vh"></label><button class="btn" type="button" data-a="j-modele">Modèle CSV</button></div>';
+    return h + '</section>';
+  }
+  function rendreJournal(focusSel) {
+    var f = document.getElementById("feuille"), y = f ? f.scrollTop : 0;
+    rendreFeuille(); f = document.getElementById("feuille"); if (f) f.scrollTop = y;
+    var b = focusSel && document.querySelector("#feuille " + focusSel); if (b) b.focus({ preventScroll: true });
+  }
+  function telecharger(nom, contenu, type) {
+    var blob = new Blob([contenu], { type: type }), url = URL.createObjectURL(blob), lien = document.createElement("a");
+    lien.href = url; lien.download = nom; document.body.appendChild(lien); lien.click(); lien.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+  }
+  /* Rapport autonome : HTML imprimable, graphique en SVG, chaque chiffre avec son effectif. */
+  function rapportHTML(R) {
+    var S = R.stats, e = function (s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); };
+    var l = S.parPartie, svg = "";
+    if (l.length) {
+      var W = 640, H = 200, max = Math.max(1, Math.max.apply(null, l.map(function (x) { return Math.abs(x.ecart18); }))), bw = Math.max(4, Math.min(40, (W - 40) / l.length - 4));
+      svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Écart au par de chaque partie, ramené à 18 trous" style="width:100%;max-width:640px"><line x1="30" y1="' + (H - 20) + '" x2="' + W + '" y2="' + (H - 20) + '" stroke="#999"/>' +
+        l.map(function (x, i) { var h = Math.max(1, Math.abs(x.ecart18) / max * (H - 40)), X = 34 + i * (bw + 4); return '<rect x="' + X + '" y="' + (H - 20 - h) + '" width="' + bw + '" height="' + h + '" rx="2" fill="#2E9460"><title>' + e(x.d + " : " + (x.ecart18 > 0 ? "+" : "") + x.ecart18) + '</title></rect>'; }).join("") +
+        '<text x="30" y="14" font-size="11" fill="#555">' + e("max " + (max > 0 ? "+" : "") + Math.round(max)) + '</text></svg>';
+    }
+    var ligne = function (lib, v, n) { return '<tr><th>' + e(lib) + '</th><td>' + e(v) + '</td><td>' + e(n) + '</td></tr>'; };
+    var nb = function (v, d) { return v == null ? "–" : String(Math.round(v * Math.pow(10, d)) / Math.pow(10, d)).replace(".", ","); };
+    return '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + e("Rapport golf · " + R.periode.debut + " au " + R.periode.fin) + '</title>' +
+      '<style>body{font:15px/1.5 system-ui,sans-serif;color:#1d2320;max-width:720px;margin:24px auto;padding:0 16px}h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:24px 0 8px}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:6px 8px;border-top:1px solid #ddd}td{font-variant-numeric:tabular-nums}.aide{color:#555;font-size:13px}@media print{button{display:none}}</style></head><body>' +
+      '<h1>Rapport de golf</h1><p class="aide">' + e("Période : du " + R.periode.debut + " au " + R.periode.fin + " (" + R.periode.lib + "). Généré le " + R.genereLe.slice(0, 10) + " par Coach de golf de poche. Empreinte des données : " + R.empreinte + ".") + '</p>' +
+      '<button onclick="window.print()">Imprimer ou enregistrer en PDF</button>' +
+      '<h2>En chiffres</h2><table><thead><tr><th>Indicateur</th><th>Valeur</th><th>Observations</th></tr></thead><tbody>' +
+      ligne("Parties", R.parties, S.trous + " trous") +
+      ligne("Écart au par (sur 18 trous)", S.ecart18 == null ? "–" : (S.ecart18 > 0 ? "+" : "") + nb(S.ecart18, 1), S.trousScore + " trous avec score") +
+      ligne("Score brut moyen, 18 trous", S.scoreBrut18 == null ? "–" : nb(S.scoreBrut18, 1), S.parties18 + " parties de 18 trous") +
+      ligne("Putts par trou", nb(S.puttsParTrou, 2), S.trous + " trous") +
+      ligne("Trois-putts", S.partTroisPutts == null ? "–" : S.partTroisPutts + " %", S.troisPutts + " sur " + S.trous + " trous") +
+      ligne("Mises en jeu jouables", S.mej.part == null ? "–" : S.mej.part + " %", S.mej.n + " renseignées, " + S.mej.inconnues + " non renseignées") +
+      ligne("Greens en régulation (déduits)", S.partGir == null ? "–" : S.partGir + " %", S.trous + " trous") +
+      ligne("Pénalités (sur 18 trous)", nb(S.penalites18, 1), S.penalites + " au total") +
+      '</tbody></table>' +
+      (svg ? '<h2>Écart au par, partie par partie</h2>' + svg + '<p class="aide">' + e(l.length + " parties complètes, ramenées à 18 trous.") + '</p>' : '') +
+      (R.erreurs.length ? '<h2>Erreurs les plus fréquentes</h2><ul>' + R.erreurs.map(function (x) { return '<li>' + e(x.lib + " : " + x.n + " fois sur " + x.base + " " + x.baseLib + " (" + x.part + " %)") + '</li>'; }).join("") + '</ul>' : '') +
+      '<h2>Notes de partie</h2><p>' + e(R.notes.notees + " partie(s) notée(s) sur " + R.parties + ".") + '</p>' +
+      (R.notes.associations.length ? '<ul>' + R.notes.associations.map(function (a) { return '<li>' + e(a.lib + " : « " + a.bas.lib + " » " + a.bas.ecart18 + " (" + a.bas.n + " parties), « " + a.haut.lib + " » " + a.haut.ecart18 + " (" + a.haut.n + " parties)") + '</li>'; }).join("") + '</ul><p class="aide">Associations, pas des causes.</p>' : '') +
+      '<h2>Journal</h2><table><thead><tr><th>Date</th><th>Trous</th><th>Score</th><th>Note</th></tr></thead><tbody>' +
+      R.journal.map(function (x) { var pc = parcoursDe(x.pc); return '<tr><td>' + e(x.d + (pc ? " · " + pc.nom : "")) + '</td><td>' + x.trous + '</td><td>' + e(x.complet ? x.score + " (" + (x.ecart > 0 ? "+" : "") + x.ecart + ")" : "incomplet") + '</td><td>' + e(resumeNote(x.note)) + '</td></tr>'; }).join("") +
+      '</tbody></table><p class="aide">Les greens en régulation sont déduits du score et des putts. Les mises en jeu non renseignées ne sont jamais comptées comme jouables.</p></body></html>';
+  }
+  /* Import : aperçu, puis ajout sans rien remplacer. */
+  function preparerImport(nom, texte) {
+    var L, brut = null;
+    if (/\.json$/i.test(nom) || /^\s*[\[{]/.test(texte)) {
+      try { brut = JSON.parse(texte); } catch (e) { message("Fichier JSON illisible."); return; }
+      L = lireJSONParties(brut);
+    } else L = lireCSV(texte);
+    var parties = L.parties.map(function (p) {
+      if (p.parcoursNom && !p.pc) { var pc = etat.parcours.filter(function (x) { return x.nom.toLowerCase() === p.parcoursNom.toLowerCase() && (x.pars.length === p.trous.length || x.pars.length === 18); })[0]; if (pc) p.pc = pc.id; }
+      return p;
+    });
+    /* Passées par l'assainissement : seules les parties valides sont proposées. */
+    var propre = assainir(JSON.parse(JSON.stringify(Object.assign({}, etat, { parties: parties, partie: null })))), valides = propre ? propre.parties : [];
+    var F = fusionImport(etat.parties, valides);
+    ui.importJournal = F.ajout;
+    var err = L.erreurs.concat(parties.length > valides.length ? [{ ligne: 0, msg: (parties.length - valides.length) + " partie(s) refusée(s) par le contrôle des données." }] : []);
+    dialogue({ titre: "Aperçu de l’import", corps:
+      '<p>' + t(nom + " : " + pluriel(F.ajout.length, "partie") + " à ajouter" + (F.doublons.length ? ", " + pluriel(F.doublons.length, "doublon") + " écarté" + (F.doublons.length > 1 ? "s" : "") + " (déjà dans ton carnet)" : "") + ".") + '</p>' +
+      (F.ajout.length ? '<ul class="constats">' + F.ajout.slice(0, 6).map(function (p) { var s = scorePartie(p), pc = parcoursDe(p.pc); return '<li>' + t(dateCourte(p.d) + (pc ? " · " + pc.nom : "") + " · " + p.trous.length + " trous" + (s.complet ? " · " + s.coups : "")) + '</li>'; }).join("") + (F.ajout.length > 6 ? '<li>' + t("et " + (F.ajout.length - 6) + " autres") + '</li>' : '') + '</ul>' : '') +
+      (err.length ? '<p class="aide">' + t(pluriel(err.length, "remarque") + " : " + err.slice(0, 4).map(function (x) { return (x.ligne ? "ligne " + x.ligne + " : " : "") + x.msg; }).join(" ; ") + (err.length > 4 ? " ; …" : "")) + '</p>' : '') +
+      '<p class="aide">' + t("Rien n'est remplacé : les parties s'ajoutent à ton carnet, à leur date.") + '</p>',
+      boutons: F.ajout.length ? [{ l: "Annuler", a: "fermer-dialogue" }, { l: "Ajouter " + pluriel(F.ajout.length, "partie"), a: "j-import-ok", c: "principal" }] : [{ l: "Fermer", a: "fermer-dialogue" }] });
+  }
+  ACTIONS["j-ouvrir"] = function (el) { ui.retourFocus = el; ui.feuille = { journal: true }; rendreFeuille(); var b = document.getElementById("f-fermer"); if (b) b.focus(); };
+  ACTIONS["j-periode"] = function (el) { var J = etatJournal(); J.periode = el.getAttribute("data-v"); if (J.periode === "libre" && !J.debut) { var B = bornesPeriode("trimestre", auj()); J.debut = B.debut; J.fin = B.fin; } rendreJournal('[data-a="j-periode"][data-v="' + J.periode + '"]'); };
+  CHANGEMENTS["j-debut"] = function (el) { etatJournal().debut = el.value; rendreJournal("#j-debut"); };
+  CHANGEMENTS["j-fin"] = function (el) { etatJournal().fin = el.value; rendreJournal("#j-fin"); };
+  ACTIONS["j-rapport"] = function () {
+    var B = bornesJournal(), R = rapportPeriode(partiesAnalyse(), B, new Date().toISOString());
+    telecharger("rapport-golf-" + B.debut + "-au-" + B.fin + ".html", rapportHTML(R), "text/html");
+    message("Rapport préparé : " + pluriel(R.parties, "partie") + ", empreinte " + R.empreinte + ".");
+  };
+  ACTIONS["j-modele"] = function () {
+    var l = ["date;parcours;trou;par;score;putts;penalites;mise_en_jeu"], pars = [4, 4, 3, 5, 4, 4, 3, 5, 4];
+    pars.forEach(function (p, k) { l.push("2026-05-01;Mon parcours;" + (k + 1) + ";" + p + ";" + (p + 1) + ";2;0;" + (p === 3 ? "" : "o")); });
+    telecharger("modele-parties.csv", "﻿" + l.join("\n") + "\n", "text/csv");
+  };
+  CHANGEMENTS["j-import"] = function (el) {
+    var f = el.files && el.files[0]; if (!f) return;
+    if (f.size > 20e6) { message("Fichier trop volumineux."); return; }
+    var fr = new FileReader();
+    fr.onload = function () { preparerImport(f.name, String(fr.result)); };
+    fr.onerror = function () { message("Impossible de lire le fichier."); };
+    fr.readAsText(f); el.value = "";
+  };
+  ACTIONS["j-import-ok"] = function () {
+    var l = ui.importJournal || []; ui.importJournal = null;
+    if (!l.length) return;
+    l.forEach(function (p) { if (!idValide(p.id, "p")) p.id = nouvelId("p"); });
+    /* Insertion à la date de chaque partie : l'ordre chronologique du carnet est gardé. */
+    etat.parties = etat.parties.concat(l).map(function (p, i) { return { p: p, i: i }; })
+      .sort(function (a, b) { var da = String(a.p.d), db = String(b.p.d); return da < db ? -1 : da > db ? 1 : a.i - b.i; }).map(function (x) { return x.p; });
+    majIndicateursParties();
+    ui.dialogue = null; rendreDialogue(); rendre(); rendreFeuille();
+    sauverPuis(pluriel(l.length, "partie") + " ajoutée" + (l.length > 1 ? "s" : "") + " à ton carnet.");
+  };
+  /* Note de partie */
+  ACTIONS["j-note"] = function (el) {
+    var i = +el.getAttribute("data-v"), p = etat.parties[i]; if (!p) return;
+    ui.noteCible = i; var n = p.note || {};
+    function sel(k) {
+      var E = NOTES_ECHELLES[k];
+      return '<div class="champ"><label for="n-' + k + '">' + t(E.lib) + '</label><select id="n-' + k + '"><option value="">—</option>' + [1, 2, 3].map(function (v) { return '<option value="' + v + '"' + (n[k] === v ? " selected" : "") + '>' + t(E.v[v]) + '</option>'; }).join("") + '</select></div>';
+    }
+    dialogue({ titre: "Note de la partie du " + dateCourte(p.d), corps: '<p class="aide">' + t("Tout est facultatif. Ces notes servent à repérer des associations (par exemple la forme et le score), jamais des causes.") + '</p>' +
+      sel("driving") + sel("putting") + sel("forme") + sel("ressenti") +
+      '<div class="champ"><label for="n-meteo">Météo</label><select id="n-meteo"><option value="">—</option>' + NOTES_METEO.map(function (m) { return '<option value="' + m.id + '"' + (n.meteo === m.id ? " selected" : "") + '>' + t(m.lib) + '</option>'; }).join("") + '</select></div>' +
+      '<div class="champ"><label for="n-texte">Un mot <small>(140 caractères)</small></label><input id="n-texte" type="text" maxlength="140" value="' + at(n.texte || "") + '"></div>',
+      boutons: [{ l: "Annuler", a: "fermer-dialogue" }, { l: "Enregistrer", a: "j-note-ok", c: "principal" }] });
+  };
+  ACTIONS["j-note-ok"] = function () {
+    var p = etat.parties[ui.noteCible]; if (!p) return;
+    var v = function (id) { var x = document.getElementById(id); return x ? x.value : ""; };
+    var n = noteValide({ driving: +v("n-driving") || null, putting: +v("n-putting") || null, forme: +v("n-forme") || null, ressenti: +v("n-ressenti") || null, meteo: v("n-meteo") || null, texte: v("n-texte") });
+    if (n) p.note = n; else delete p.note;
+    ui.dialogue = null; rendreDialogue(); rendre(); rendreFeuille(); if (ui.partie) rendrePartie();
+    sauverPuis(n ? "Note enregistrée." : "Note retirée.");
   };
 
   /* ============================================================
