@@ -140,6 +140,9 @@
       '<div class="pv-penal-bloc"><button class="pv-penal" type="button" data-a="pv-penal" data-d="1"' + (v[3] >= 3 ? " disabled" : "") + ' aria-label="' + at("Pénalité ou drop : un coup de plus" + (v[3] ? ". " + v[3] + " déjà noté" + (v[3] > 1 ? "es" : "e") : "")) + '">' +
       '<span>Pénalité<br>ou drop</span><b>' + (v[3] ? "+" + v[3] : "+1") + '</b></button>' +
       (v[3] ? '<button class="pv-penal-moins" type="button" data-a="pv-penal" data-d="-1" aria-label="Retirer une pénalité">−1</button>' : '') + '</div></div>' +
+      /* Putting (P08), en Standard et en Expert : longueur du premier putt, puis second putt difficile. Facultatifs. */
+      (!expr && v[2] ? '<div class="pv-putt1">' + sousChoix("Premier putt (facultatif)", 8, v.length >= 11 ? PUTT1B : PUTT1, v) +
+        (v[2] >= 2 && v.length >= 11 ? sousChoix("Second putt difficile, laissé par le premier ?", 11, ["", "Oui"], v) : "") + '</div>' : '') +
       (!expr && v[5] >= 4 ? mejHTML(p, v) : '') +
       (!expr ? '<p class="aide pv-gir">' + t("Green en régulation : " + (v[1] ? "oui" : "non") + ", déduit du score et des putts.") + '</p>' : '');
 
@@ -168,7 +171,6 @@
 
     /* Détails facultatifs */
     if (niv === 2) h += '<details class="pv-plus"' + (detail ? " open" : "") + '><summary data-a="pt-detail">Plus de détails</summary>' +
-      (v[2] ? sousChoix("Premier putt", 8, v.length >= 11 ? PUTT1B : PUTT1, v) : "") +
       (v.length >= 11 ? sousChoix("Bunker près du green", 10, ["", "Sorti sur le green", "Resté à côté"], v) : "") + '</details>';
     h += '<div class="ligne-liens"><button class="lien" type="button" data-a="pv-eveil" aria-pressed="' + (etat.ecranAllume !== false) + '">' + (etat.ecranAllume !== false ? "Écran toujours allumé" : "Garder l’écran allumé") + '</button>' +
       (dernier ? "" : '<button class="lien" type="button" data-a="pt-terminer">Terminer la partie ici</button>') + '</div>' +

@@ -1599,6 +1599,16 @@ main.entree { animation: entreeVue .22s ease-out; }
 .erreurs-manque li { margin-bottom: 4px; }
 .erreurs-manque b { color: var(--encre); font-weight: 600; }
 
+/* ---------- Putting (P08) ---------- */
+.putt-ligne { margin: 0 0 10px; font-size: 15px; line-height: 1.45; }
+.putt-ligne b { display: block; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--encre-2); }
+.putt-gir th small, .putt-gir td small, .putt-longueur th small, .putt-longueur td small, .putt-parcours td small { display: block; font-size: 12px; font-weight: 400; color: var(--encre-2); }
+.putt-gir thead th.num, .putt-gir td.num, .putt-longueur thead th.num, .putt-longueur td.num, .putt-parcours thead th.num, .putt-parcours td.num { width: auto; padding-left: 6px; padding-right: 6px; }
+.putt-gir th[scope="row"], .putt-longueur th[scope="row"], .putt-parcours th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
+.putt-longueur th[scope="row"] small { max-width: 13em; }
+.pv-putt1 { margin: 4px 0 8px; padding: 2px 12px 10px; border-radius: var(--rayon-s); background: var(--carte); }
+.pv-putt1 .pt-sous { margin-top: 6px; }
+
 /* ---------- Sac de golf en perspective (fausse 3D) ----------
    Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
    --s3-bulle, --s3-bulle-texte, --s3-chiffre, --s3-focus. */
@@ -6645,6 +6655,78 @@ function erreursRecurrentes(parties) {
 function cleClubErreur(cle) { return /^f[1-4]$/.test(cle) ? { famille: true, nom: FAMILLES_ERREUR[+cle.slice(1)] } : { famille: false, id: cle }; }
 
 
+/* Coach de golf de poche — analyse du putting (roadmap DATA, P08). Fonctions pures.
+   Base : les trous joués avec un score (le nombre de putts y est toujours noté, 0 compris).
+   La longueur du premier putt est facultative : elle n'est lue que là où elle a été notée, regroupée en
+   court / moyen / long. Aucun taux de réussite à une distance précise n'est calculé. */
+
+/* Rang noté → catégorie. Échelle à cinq rangs (trous à 11 cases) : < 1 m, 1–2 m, 2–5 m, 5–10 m, > 10 m.
+   Ancienne échelle à quatre rangs : < 1 m, 1–3 m, 3–8 m, > 8 m. */
+var CATEGORIES_PUTT = [
+  { id: "court", lib: "Court", aide: "moins de 2 m (anciennes parties : moins de 3 m)" },
+  { id: "moyen", lib: "Moyen", aide: "de 2 à 5 m (anciennes parties : de 3 à 8 m)" },
+  { id: "long", lib: "Long", aide: "plus de 5 m (anciennes parties : plus de 8 m)" }
+];
+var RANG_CINQ = [null, "court", "court", "moyen", "long", "long"], RANG_QUATRE = [null, "court", "court", "moyen", "long"];
+
+function categoriePutt(t) {
+  if (!Array.isArray(t) || !(t[2] >= 1) || !(t[8] >= 1)) return null;
+  return (t.length >= 11 ? RANG_CINQ : RANG_QUATRE)[t[8]] || null;
+}
+function puttJoue(t) { return Array.isArray(t) && t[4] > 0 && t[5] > 0 && typeof t[2] === "number"; }
+function partP(a, b) { return b ? Math.round(100 * a / b) : null; }
+function moy2(a, b) { return b ? Math.round(100 * a / b) / 100 : null; }
+
+/* Agrégat d'une liste de trous joués. */
+function agregatPutts(trous) {
+  var r = { trous: trous.length, putts: 0, zero: 0, un: 0, deux: 0, troisPlus: 0, difficiles: 0 };
+  trous.forEach(function (t) {
+    r.putts += t[2];
+    if (t[2] === 0) r.zero++; else if (t[2] === 1) r.un++; else if (t[2] === 2) r.deux++; else r.troisPlus++;
+    if (t[11] === 1 && t[2] >= 2) r.difficiles++;
+  });
+  r.parTrou = moy2(r.putts, r.trous);
+  r.par18 = r.trous ? Math.round(10 * 18 * r.putts / r.trous) / 10 : null;
+  r.partUn = partP(r.un, r.trous); r.partDeux = partP(r.deux, r.trous); r.partTrois = partP(r.troisPlus, r.trous); r.partZero = partP(r.zero, r.trous);
+  return r;
+}
+
+function triPutt(l) { return l.slice().sort(function (a, b) { return (a.d || "") < (b.d || "") ? -1 : (a.d || "") > (b.d || "") ? 1 : 0; }); }
+
+/* parties : déjà filtrées (tableau de bord). */
+function analysePutting(parties) {
+  var l = triPutt((parties || []).filter(function (p) { return p && Array.isArray(p.trous); }));
+  var tous = [], parPartie = [], parPc = {}, gir = [], horsGir = [], cats = { court: [], moyen: [], long: [] }, sansLongueur = 0;
+  l.forEach(function (p) {
+    var tp = p.trous.filter(puttJoue);
+    parPartie.push(tp);
+    tp.forEach(function (t) {
+      tous.push(t);
+      (t[1] ? gir : horsGir).push(t);
+      if (p.pc) (parPc[p.pc] = parPc[p.pc] || []).push(t);
+      if (t[2] >= 1) { var c = categoriePutt(t); if (c) cats[c].push(t); else sansLongueur++; }
+    });
+  });
+  var r = { parties: l.length, total: agregatPutts(tous) };
+  r.gir = { avec: agregatPutts(gir), sans: agregatPutts(horsGir) };
+  r.premierPutt = { categories: CATEGORIES_PUTT.map(function (c) { var a = agregatPutts(cats[c.id]); a.id = c.id; a.lib = c.lib; a.aide = c.aide; return a; }), sansLongueur: sansLongueur };
+  r.premierPutt.notes = cats.court.length + cats.moyen.length + cats.long.length;
+  r.difficiles = { n: r.total.difficiles, apresLong: agregatPutts(cats.long).difficiles };
+  r.parcours = Object.keys(parPc).map(function (k) { var a = agregatPutts(parPc[k]); a.pc = k; return a; }).sort(function (a, b) { return b.trous - a.trous; });
+  /* Évolution : première moitié des parties contre la seconde, chacune avec au moins 18 trous. */
+  var m = Math.floor(l.length / 2);
+  r.evolution = null;
+  if (m >= 2) {
+    var A = agregatPutts([].concat.apply([], parPartie.slice(0, m))), B = agregatPutts([].concat.apply([], parPartie.slice(l.length - m)));
+    if (A.trous >= 18 && B.trous >= 18) r.evolution = { parties: m, avant: A, apres: B, dParTrou: Math.round(100 * (B.parTrou - A.parTrou)) / 100, dTrois: B.partTrois - A.partTrois };
+  }
+  /* Série par partie (putts ramenés à 18 trous), pour un graphique. */
+  r.serie = l.map(function (p, i) { var a = agregatPutts(parPartie[i]); return { id: p.id || null, d: typeof p.d === "string" ? p.d.slice(0, 10) : null, trous: a.trous, par18: a.par18 }; })
+    .filter(function (x) { return x.trous; });
+  return r;
+}
+
+
 /* ============================================================
    INTERFACE : accueil, questionnaire, plan, bilan, exercices, profil.
    Les données du joueur sont gardées sur l'appareil et, quand c'est possible,
@@ -6656,7 +6738,7 @@ function cleClubErreur(cle) { return /^f[1-4]$/.test(cle) ? { famille: true, nom
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-24T20:04:28.129Z";
+  var VERSION_APPLI = "2026-11-24T20:27:23.987Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -7401,7 +7483,7 @@ function cleClubErreur(cle) { return /^f[1-4]$/.test(cle) ? { famille: true, nom
   VUES.bilan = function () {
     var p = etat.profil, pal = palierDe(p.index), P = PALIERS[pal - 1];
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
-    var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' + tableauStatsHTML() + '</section>' + erreursStatsHTML() + clubsStatsHTML() + qualiteGolfHTML() +
+    var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' + tableauStatsHTML() + '</section>' + erreursStatsHTML() + puttingStatsHTML() + clubsStatsHTML() + qualiteGolfHTML() +
       '<section class="bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
 
@@ -7902,13 +7984,15 @@ function cleClubErreur(cle) { return /^f[1-4]$/.test(cle) ? { famille: true, nom
      Les parties d'avant la carte de score n'ont que les quatre premières valeurs ; celles notées avec le pavé
      en ont onze : le premier putt y suit l'échelle en cinq rangs, puis viennent les erreurs évitables et le bunker. */
   function assainirTrou(tr) {
-    if (!Array.isArray(tr) || (tr.length !== 4 && tr.length !== 9 && tr.length !== 11)) return null;
+    if (!Array.isArray(tr) || (tr.length !== 4 && tr.length !== 9 && tr.length !== 11 && tr.length !== 12)) return null;
     var j = entier(tr[0], 0, 1, null), g = entier(tr[1], 0, 1, null), p = entier(tr[2], 0, 5, null), x = entier(tr[3], 0, 3, null);
     if (j == null || g == null || p == null || x == null) return null;
-    var par = entier(tr[5], 3, 5, 0), sc = par ? entier(tr[4], 1, 15, 0) : 0, onze = tr.length === 11;
+    var par = entier(tr[5], 3, 5, 0), sc = par ? entier(tr[4], 1, 15, 0) : 0, onze = tr.length >= 11;
     if (sc) sc = Math.max(sc, scoreMini(p, x));
     var v = [j, g, p, x, sc, par, j ? 0 : entier(tr[6], 0, 3, 0), par === 3 ? 0 : entier(tr[7], 0, 4, 0), p ? entier(tr[8], 0, onze ? 5 : 4, 0) : 0];
     if (onze) v.push(entier(tr[9], 0, 7, 0) & (EVIT_DOUBLE | EVIT_PUTT3), entier(tr[10], 0, 2, 0));
+    /* Douzième case (P08), seulement quand elle a servi : le premier putt a laissé un second putt difficile. */
+    if (tr.length === 12) v.push(p >= 2 ? entier(tr[11], 0, 1, 0) : 0);
     return v;
   }
   /* Un trou noté avant le pavé, repris dans le pavé : onze cases ; seul un premier putt de moins d'un mètre garde son rang. */
@@ -9499,7 +9583,8 @@ function cleClubErreur(cle) { return /^f[1-4]$/.test(cle) ? { famille: true, nom
   ACTIONS["pt-set"] = function (el) {
     var p = etat.partie; if (!p) return;
     var k = parseInt(el.getAttribute("data-k"), 10), val = parseInt(el.getAttribute("data-v"), 10), v = trouCourant().slice();
-    if (!(k >= 0 && k <= 10) || k === 4 || k === 9 || isNaN(val)) return;
+    if (!(k >= 0 && k <= 11) || k === 4 || k === 9 || isNaN(val)) return;
+    if (k === 11 && v.length === 11) v.push(0);
     var suit = v[4] === scoreSuggere(v[5], v[1], v[2], v[3]);
     v[k] = k >= 6 && v[k] === val ? 0 : val;
     /* Côté d'une mise en jeu ratée : la mise en jeu est renseignée (ratée) ; club de départ, premier putt : renseignés. */
@@ -9507,6 +9592,7 @@ function cleClubErreur(cle) { return /^f[1-4]$/.test(cle) ? { famille: true, nom
     if (k === 7) marquerRenseigne(RENS_CLUB, !!v[7]);
     if (k === 8) marquerRenseigne(RENS_PUTT1, !!v[8]);
     if (k === 2 && v.length >= 11 && v[2] < 3) v[9] &= ~EVIT_PUTT3;
+    if (k === 2 && v.length === 12 && v[2] < 2) v[11] = 0;
     if (suit) v[4] = scoreSuggere(v[5], v[1], v[2], v[3]);
     v = assainirTrou(v); if (!v) return;
     p.trous[p.i] = v;
@@ -9752,6 +9838,9 @@ function cleClubErreur(cle) { return /^f[1-4]$/.test(cle) ? { famille: true, nom
       '<div class="pv-penal-bloc"><button class="pv-penal" type="button" data-a="pv-penal" data-d="1"' + (v[3] >= 3 ? " disabled" : "") + ' aria-label="' + at("Pénalité ou drop : un coup de plus" + (v[3] ? ". " + v[3] + " déjà noté" + (v[3] > 1 ? "es" : "e") : "")) + '">' +
       '<span>Pénalité<br>ou drop</span><b>' + (v[3] ? "+" + v[3] : "+1") + '</b></button>' +
       (v[3] ? '<button class="pv-penal-moins" type="button" data-a="pv-penal" data-d="-1" aria-label="Retirer une pénalité">−1</button>' : '') + '</div></div>' +
+      /* Putting (P08), en Standard et en Expert : longueur du premier putt, puis second putt difficile. Facultatifs. */
+      (!expr && v[2] ? '<div class="pv-putt1">' + sousChoix("Premier putt (facultatif)", 8, v.length >= 11 ? PUTT1B : PUTT1, v) +
+        (v[2] >= 2 && v.length >= 11 ? sousChoix("Second putt difficile, laissé par le premier ?", 11, ["", "Oui"], v) : "") + '</div>' : '') +
       (!expr && v[5] >= 4 ? mejHTML(p, v) : '') +
       (!expr ? '<p class="aide pv-gir">' + t("Green en régulation : " + (v[1] ? "oui" : "non") + ", déduit du score et des putts.") + '</p>' : '');
 
@@ -9780,7 +9869,6 @@ function cleClubErreur(cle) { return /^f[1-4]$/.test(cle) ? { famille: true, nom
 
     /* Détails facultatifs */
     if (niv === 2) h += '<details class="pv-plus"' + (detail ? " open" : "") + '><summary data-a="pt-detail">Plus de détails</summary>' +
-      (v[2] ? sousChoix("Premier putt", 8, v.length >= 11 ? PUTT1B : PUTT1, v) : "") +
       (v.length >= 11 ? sousChoix("Bunker près du green", 10, ["", "Sorti sur le green", "Resté à côté"], v) : "") + '</details>';
     h += '<div class="ligne-liens"><button class="lien" type="button" data-a="pv-eveil" aria-pressed="' + (etat.ecranAllume !== false) + '">' + (etat.ecranAllume !== false ? "Écran toujours allumé" : "Garder l’écran allumé") + '</button>' +
       (dernier ? "" : '<button class="lien" type="button" data-a="pt-terminer">Terminer la partie ici</button>') + '</div>' +
@@ -11664,7 +11752,7 @@ function cleClubErreur(cle) { return /^f[1-4]$/.test(cle) ? { famille: true, nom
     penalites: function () { return "Regarde sur quels trous et avec quel club elles arrivent : viser plus large ou jouer plus court au départ de ces trous est une piste."; },
     gir: function () { return "Un green manqué peut venir du départ, de la distance ou de la direction de l'approche : le profil des clubs et la fiche des parcours aident à trancher."; },
     approche: function () { return "Deux coups ou plus pour rejoindre le green après l'avoir manqué : le petit jeu autour du green est la piste la plus directe."; },
-    troisPutts: function () { return "Les trois-putts viennent souvent d'un premier putt long : note la longueur du premier putt (saisie Expert) pour le vérifier."; }
+    troisPutts: function () { return "Les trois-putts viennent souvent d'un premier putt long : note la longueur du premier putt (saisie Standard ou Expert, sous les putts) pour le vérifier."; }
   };
   var AIDES_ERREURS = {
     mej: "note la mise en jeu au départ des par 4 et 5 (saisie Standard ou Expert)",
@@ -11713,6 +11801,57 @@ function cleClubErreur(cle) { return /^f[1-4]$/.test(cle) ? { famille: true, nom
           '<td class="num">' + (e.base ? nb1(e.par18) : "–") + '</td>' +
           '<td class="num">' + (e.evolution ? t(e.evolution.avant.part + " → " + e.evolution.apres.part + " %") + '<small>' + t(e.evolution.sens === "hausse" ? "plus fréquent" : e.evolution.sens === "baisse" ? "moins fréquent" : "stable") + '</small>' : "–") + '</td></tr>';
       }).join("") + '</tbody></table></div><p class="aide">' + t("Fréquence : occurrences sur les occasions (départs, coups ou trous). Évolution : première moitié des parties contre la seconde, s'il y a assez d'occasions dans chacune ; un écart de moins de " + ECART_EVOLUTION + " points est dit stable.") + '</p></details>';
+    return h + '</section>';
+  }
+
+  /* ============================================================
+     PUTTING (roadmap DATA, P08)
+     Sur les parties choisies par les filtres du tableau de bord. Base : les trous joués.
+     La longueur du premier putt (court / moyen / long) n'est lue que là où elle a été notée.
+     ============================================================ */
+  function pctP(v) { return v == null ? "–" : v + " %"; }
+  function lignePuttHTML(lib, sous, a) {
+    return '<tr><th scope="row">' + t(lib) + (sous ? '<small>' + t(sous) + '</small>' : '') + '</th>' +
+      (a.trous ? '<td class="num">' + nb1(a.parTrou) + '<small>' + t(pluriel(a.trous, "trou")) + '</small></td><td class="num">' + pctP(a.partUn) + '</td><td class="num">' + pctP(a.partTrois) + '</td>'
+        : '<td class="num" colspan="3">' + t("aucun trou") + '</td>') + '</tr>';
+  }
+  function tablePuttHTML(classe, lignes) {
+    return '<div class="defile"><table class="carte-score ' + classe + '"><thead><tr><th scope="col"></th><th scope="col" class="num">Putts / trou</th><th scope="col" class="num">Un putt</th><th scope="col" class="num">Trois et +</th></tr></thead><tbody>' + lignes + '</tbody></table></div>';
+  }
+  function puttingStatsHTML() {
+    var F = filtresStats(), l = selectionStats(F), R = analysePutting(l), A = R.total;
+    var h = '<section class="bloc" id="st-putting"><h2>Putting</h2>';
+    if (!A.trous) return h + etatVideHTML("stats", "Pas encore de putts à analyser", "Enregistre des parties : le nombre de putts de chaque trou suffit.") + '</section>';
+    h += '<p class="aide putt-echantillon">' + t("Sur " + pluriel(A.trous, "trou") + " joué" + (A.trous > 1 ? "s" : "") + " (" + pluriel(R.parties, "partie") + "), " + A.putts + " putts.") + '</p>';
+    h += '<div class="kpi-grille putt-kpis">' +
+      [["Putts par trou", nb1(A.parTrou), "soit " + nb1(A.par18) + " sur 18 trous", pluriel(A.trous, "trou")], ["Un putt", pctP(A.partUn), "des trous joués", pluriel(A.un, "trou")],
+       ["Deux putts", pctP(A.partDeux), "des trous joués", pluriel(A.deux, "trou")], ["Trois putts et +", pctP(A.partTrois), "des trous joués", pluriel(A.troisPlus, "trou")]]
+        .map(function (k) { return '<article class="kpi"><p class="kpi-t">' + t(k[0]) + '</p><p class="kpi-v"><span class="main">' + t(k[1]) + '</span></p><p class="kpi-u">' + t(k[2]) + '</p><p class="kpi-n">' + t(k[3]) + '</p></article>'; }).join("") + '</div>';
+    h += barreRepartitionHTML("Putts par trou", [{ lib: "Un ou aucun", v: A.un + A.zero, c: "c" }, { lib: "Deux", v: A.deux, c: "k" }, { lib: "Trois et plus", v: A.troisPlus, c: "d" }],
+      pluriel(A.trous, "trou"), A.zero ? A.zero + " trou" + (A.zero > 1 ? "s" : "") + " sans putt (balle rentrée de hors du green), compté" + (A.zero > 1 ? "s" : "") + " avec « un ou aucun »." : "");
+    /* Évolution */
+    if (R.evolution) {
+      var E = R.evolution;
+      h += '<p class="putt-ligne"><b>Évolution</b> ' + t("Sur tes " + E.parties + " premières parties : " + nb1(E.avant.parTrou) + " putts par trou et " + E.avant.partTrois + " % de trois-putts (" + E.avant.trous + " trous) ; sur les " + E.parties + " dernières : " + nb1(E.apres.parTrou) + " et " + E.apres.partTrois + " % (" + E.apres.trous + " trous)" +
+        (Math.abs(E.dParTrou) < 0.05 ? " : stable." : E.dParTrou < 0 ? " : moins de putts." : " : plus de putts.")) + '</p>';
+    } else if (R.parties > 1) h += '<p class="putt-ligne"><b>Évolution</b> ' + t("à partir de 4 parties et 18 trous dans chaque moitié.") + '</p>';
+    /* Selon le green en régulation */
+    h += '<h3 class="titre-bloc">Selon le green</h3>' + tablePuttHTML("putt-gir",
+      lignePuttHTML("En régulation", "déduit du score", R.gir.avec) + lignePuttHTML("Manqué", "approche avant de putter", R.gir.sans)) +
+      '<p class="aide">' + t("Après un green pris en régulation, le premier putt est souvent plus long : plus de putts y est normal.") + '</p>';
+    /* Longueur du premier putt */
+    h += '<h3 class="titre-bloc">Longueur du premier putt</h3>';
+    var P = R.premierPutt;
+    if (P.notes) {
+      h += tablePuttHTML("putt-longueur", P.categories.map(function (c) { return lignePuttHTML(c.lib, c.aide, c); }).join("")) +
+        '<p class="aide">' + t("Notée sur " + pluriel(P.notes, "trou") + (P.sansLongueur ? " ; " + pluriel(P.sansLongueur, "trou") + " sans longueur notée, non compté" + (P.sansLongueur > 1 ? "s" : "") + " ici" : "") + ". Pas de taux de réussite à une distance précise : seulement trois catégories.") + '</p>';
+    } else {
+      h += '<p class="aide">' + t("Pas encore noté. En saisie Standard ou Expert, « Premier putt » apparaît sous le nombre de putts : une catégorie suffit, sans mesure GPS.") + '</p>';
+    }
+    h += '<p class="putt-ligne"><b>Second putt difficile</b> ' + t(R.difficiles.n ? "signalé " + R.difficiles.n + " fois" + (R.difficiles.apresLong ? ", dont " + R.difficiles.apresLong + " après un premier putt long" : "") + "." : "jamais signalé. En saisie Standard ou Expert, sous le nombre de putts, signale quand le premier putt a laissé un second putt difficile.") + '</p>';
+    /* Par parcours */
+    var pcs = R.parcours.filter(function (x) { return x.trous >= 9; });
+    if (pcs.length > 1) h += '<h3 class="titre-bloc">Par parcours</h3>' + tablePuttHTML("putt-parcours", pcs.map(function (x) { var pc = parcoursDe(x.pc); return lignePuttHTML(pc ? pc.nom : "Parcours supprimé", "", x); }).join(""));
     return h + '</section>';
   }
 

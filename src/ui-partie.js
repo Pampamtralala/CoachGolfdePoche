@@ -367,7 +367,8 @@
   ACTIONS["pt-set"] = function (el) {
     var p = etat.partie; if (!p) return;
     var k = parseInt(el.getAttribute("data-k"), 10), val = parseInt(el.getAttribute("data-v"), 10), v = trouCourant().slice();
-    if (!(k >= 0 && k <= 10) || k === 4 || k === 9 || isNaN(val)) return;
+    if (!(k >= 0 && k <= 11) || k === 4 || k === 9 || isNaN(val)) return;
+    if (k === 11 && v.length === 11) v.push(0);
     var suit = v[4] === scoreSuggere(v[5], v[1], v[2], v[3]);
     v[k] = k >= 6 && v[k] === val ? 0 : val;
     /* Côté d'une mise en jeu ratée : la mise en jeu est renseignée (ratée) ; club de départ, premier putt : renseignés. */
@@ -375,6 +376,7 @@
     if (k === 7) marquerRenseigne(RENS_CLUB, !!v[7]);
     if (k === 8) marquerRenseigne(RENS_PUTT1, !!v[8]);
     if (k === 2 && v.length >= 11 && v[2] < 3) v[9] &= ~EVIT_PUTT3;
+    if (k === 2 && v.length === 12 && v[2] < 2) v[11] = 0;
     if (suit) v[4] = scoreSuggere(v[5], v[1], v[2], v[3]);
     v = assainirTrou(v); if (!v) return;
     p.trous[p.i] = v;

@@ -213,3 +213,35 @@ BRANCHE / COMMIT / LIEN PR : data/p09-erreurs · PR #11 (brouillon)
 BLOCAGES / RISQUES : greens manqués et doubles approches sont déduits du score (dit à l'écran).
 PROCHAINE TÂCHE : P08 (putting), demandée dans le même message.
 ```
+
+```text
+DATE : 24/11/2026 (soir, suite)
+TÂCHE ACTUELLE : P08 — analyse du putting (même demande que P09)
+FONCTIONNALITÉS LIVRÉES (branche data/p08-putting, partie de data/p09-erreurs) :
+  - engine-putting.js (fonctions pures) : base = trous joués ; putts par trou et pour 18 trous ;
+    zéro / un / deux / trois-putts et plus (somme = trous) ; selon le green (GIR déduit) ; longueur
+    du premier putt regroupée en court / moyen / long (échelle à cinq rangs : < 2 m, 2–5 m, > 5 m ;
+    ancienne échelle à quatre rangs : < 3 m, 3–8 m, > 8 m) ; second putt difficile signalé ; par
+    parcours ; évolution (deux moitiés, 18 trous minimum chacune) ; série par partie ;
+  - saisie Expert : « Second putt difficile, laissé par le premier » à partir de 2 putts ; douzième
+    case du trou ajoutée seulement quand elle sert, retirée à moins de 2 putts ; l'assainissement
+    accepte 12 cases (les trous existants restent à 11) ;
+  - Statistiques : section Putting (suit les filtres).
+TESTS EXÉCUTÉS ET RÉSULTATS : npm test (putting : 18 vérifications) : 0 échec ; test-startup : OK ;
+  essai22 (P08) : OK ; essais 4, 5, 8 à 13, 15 à 21 : OK (essai18 lit désormais les seuls chiffres
+  du tableau de bord, la section Putting ayant ses propres cartes).
+BRANCHE / COMMIT / LIEN PR : data/p08-putting · PR #12 (brouillon, à fusionner après #11)
+BLOCAGES / RISQUES : le « second putt difficile » n'est qu'un signalement : son absence ne veut pas
+  dire « facile », aucun taux n'en est tiré.
+PROCHAINE TÂCHE AUTORISÉE : aucune sans accord ; candidat suivant : P04 (mes données, sauvegardes).
+```
+
+```text
+DATE : 24/11/2026 (soir, retour du propriétaire)
+RETOUR : « Je ne vois pas la possibilité de noter mes putts » — le premier putt et le second putt
+  difficile n'étaient proposés qu'en Expert, repliés sous « Plus de détails ».
+CORRECTION (PR #12) : bloc « Premier putt (facultatif) » et « Second putt difficile » directement
+  sous le compteur de putts, en Standard et en Expert ; l'Express reste score, putts, pénalités.
+TESTS : npm test 0 échec ; test-startup OK ; essai22 vérifie le bloc en Standard sans ouvrir de
+  détails et son absence en Express ; essais 4, 5, 6, 8, 9, 10, 12, 13, 16, 17, 18, 21 : OK.
+```
