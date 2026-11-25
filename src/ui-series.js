@@ -119,7 +119,7 @@
     S.c = id; S.v = []; S.l = []; S.lp = null;
     rendreFeuille(); rendre();
     var b = document.querySelector('#feuille [data-a="serie-club"][data-id="' + id + '"]'); if (b) b.focus({ preventScroll: true });
-    if (r) message("Série enregistrée. " + annonceSerie(r));
+    if (r) messageEnregistre("Série enregistrée. " + annonceSerie(r));
   };
   FORMULAIRES["serie-balle"] = function (form) {
     var S = ui.serie, inp = form.querySelector("#serie-val"), err = document.getElementById("serie-err"); if (!S) return;

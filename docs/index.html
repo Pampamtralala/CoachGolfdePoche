@@ -1609,6 +1609,23 @@ main.entree { animation: entreeVue .22s ease-out; }
 .pv-putt1 { margin: 4px 0 8px; padding: 2px 12px 10px; border-radius: var(--rayon-s); background: var(--carte); }
 .pv-putt1 .pt-sous { margin-top: 6px; }
 
+/* ---------- Mes données (P04) ---------- */
+#alerte-stockage { position: sticky; top: 0; z-index: 60; display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--alerte, #8a2c1d); color: #fff; font-size: 14.5px; }
+#alerte-stockage p { margin: 0; }
+#alerte-stockage .btn { flex: none; background: #fff; color: #8a2c1d; border-color: #fff; }
+.md-statut { margin: 0 0 8px; font-size: 15px; }
+.md-statut.alerte { padding: 10px 12px; border-radius: var(--rayon-s); background: rgba(194, 112, 61, .15); color: var(--encre); font-weight: 600; }
+.inventaire th small { display: block; font-size: 12px; font-weight: 400; color: var(--encre-2); }
+.inventaire th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
+.inventaire td.num { width: auto; padding-right: 12px; font-variant-numeric: tabular-nums; }
+.md-liste { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
+.md-liste li { padding: 10px 12px; border-radius: var(--rayon-s); background: var(--carte); }
+.feuille .md-liste li { background: var(--papier); }
+.md-liste li p { margin: 0 0 6px; font-weight: 600; }
+.md-liste li small { display: block; font-weight: 400; font-size: 13px; color: var(--encre-2); }
+.md-liste li.exclue { opacity: .75; }
+.md-liste .ligne-btn { margin: 0; }
+
 /* ---------- Sac de golf en perspective (fausse 3D) ----------
    Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
    --s3-bulle, --s3-bulle-texte, --s3-chiffre, --s3-focus. */
@@ -6192,6 +6209,80 @@ function croiserObservations(obs, axe, f) {
   }).sort(function (a, b) { return b.n - a.n || (a.cle < b.cle ? -1 : 1); });
 }
 
+/* ============================================================
+   MES DONNÉES (roadmap DATA, P04) : inventaire, exclusions réversibles, distances à vérifier.
+   Une partie exclue (exclue: 1) ne compte dans aucun calcul ; un coup exclu (x: 1) garde sa place
+   dans l'enchaînement des coups mais perd sa distance et sa direction pour les calculs. Rien n'est supprimé.
+   ============================================================ */
+function partiesPourCalculs(parties) {
+  return (parties || []).filter(function (p) { return p && !p.exclue; }).map(function (p) {
+    if (!Array.isArray(p.coups) || !p.coups.some(function (l) { return Array.isArray(l) && l.some(function (c) { return c && c.x; }); })) return p;
+    var q = {}; Object.keys(p).forEach(function (k) { q[k] = p[k]; });
+    q.coups = p.coups.map(function (l) {
+      return Array.isArray(l) ? l.map(function (c) {
+        if (!c || !c.x) return c;
+        var r = {}; Object.keys(c).forEach(function (k) { if (k !== "d" && k !== "l" && k !== "g") r[k] = c[k]; });
+        r.d = null; r.source = "inconnu"; r.distanceType = "inconnu";
+        return r;
+      }) : l;
+    });
+    return q;
+  });
+}
+
+/* Inventaire : provenance et effectif de chaque type de donnée. cartes : nombre de cartes GPS locales. */
+function inventaireDonnees(parties, carnet, cartes) {
+  var r = { parties: 0, exclues: 0, trous: 0, trousSansScore: 0, mej: 0, mejPossibles: 0, premiersPutts: 0,
+    coups: 0, coupsExclus: 0, directions: 0, distances: { gps: 0, declaree: 0, estimee: 0, inconnue: 0 },
+    seances: carnet && Array.isArray(carnet.series) ? carnet.series.length : 0, cartes: cartes || 0 };
+  (parties || []).forEach(function (p) {
+    if (!p || !Array.isArray(p.trous)) return;
+    r.parties++;
+    if (p.exclue) { r.exclues++; return; }
+    p.trous.forEach(function (t, k) {
+      if (!trouNote(t)) { r.trousSansScore++; return; }
+      r.trous++;
+      if (t[5] >= 4) { r.mejPossibles++; if (!Array.isArray(p.renseigne) || (p.renseigne[k] & 1)) r.mej++; }
+      if (t[2] >= 1 && t[8] >= 1) r.premiersPutts++;
+    });
+    (Array.isArray(p.coups) ? p.coups : []).forEach(function (l) {
+      (Array.isArray(l) ? l : []).forEach(function (c) {
+        if (!c) return;
+        r.coups++;
+        if (c.x) { r.coupsExclus++; return; }
+        if (typeof c.l === "number") r.directions++;
+        r.distances[statutDistance(c)]++;
+      });
+    });
+  });
+  return r;
+}
+
+/* Distances inhabituelles : pleins coups mesurés (GPS ou déclarés), loin de la médiane du club.
+   Il faut au moins MIN_SUSPECT mesures du club ; une distance confirmée (ok: 1) ou exclue n'est plus signalée. */
+var MIN_SUSPECT = 5, SUSPECT_BAS = 0.6, SUSPECT_HAUT = 1.4;
+function distancesSuspectes(parties) {
+  var mesures = {}, liste = [];
+  (parties || []).forEach(function (p, pi) {
+    if (!p || p.exclue || !Array.isArray(p.coups)) return;
+    p.coups.forEach(function (l, k) {
+      (Array.isArray(l) ? l : []).forEach(function (c, ci) {
+        if (!c || c.x || typeof c.d !== "number" || !coupPlein(c) || (c.a && c.a !== "plein")) return;
+        var st = statutDistance(c); if (st !== "gps" && st !== "declaree") return;
+        (mesures[c.c] = mesures[c.c] || []).push(c.d);
+        if (!c.ok) liste.push({ partie: pi, partieId: p.id || null, jour: typeof p.d === "string" ? p.d.slice(0, 10) : null, k: k, ci: ci, club: c.c, d: c.d, gps: st === "gps" });
+      });
+    });
+  });
+  var med = {};
+  Object.keys(mesures).forEach(function (id) {
+    var v = mesures[id].slice().sort(function (a, b) { return a - b; }), n = v.length;
+    if (n >= MIN_SUSPECT) med[id] = { m: n % 2 ? v[(n - 1) / 2] : (v[n / 2 - 1] + v[n / 2]) / 2, n: n };
+  });
+  return liste.filter(function (x) { var M = med[x.club]; return M && (x.d < SUSPECT_BAS * M.m || x.d > SUSPECT_HAUT * M.m); })
+    .map(function (x) { x.mediane = Math.round(med[x.club].m); x.n = med[x.club].n; return x; });
+}
+
 
 /* Coach de golf de poche — tableau de bord statistique (roadmap DATA, P05). Fonctions pures.
    Chaque chiffre vient avec son effectif ; les comparaisons 9 / 18 trous sont ramenées à 18 trous et le disent ;
@@ -6738,7 +6829,7 @@ function analysePutting(parties) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-24T20:27:23.987Z";
+  var VERSION_APPLI = "2026-11-25T05:53:39.925Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -6779,6 +6870,14 @@ function analysePutting(parties) {
     fileEcritures = fileEcritures.catch(function () {}).then(function () { return ecrireDB(json); })
       .then(function () { sauvegardeIndexee = "ok"; majStatut(); }, function () { sauvegardeIndexee = "erreur"; majStatut(); });
   }
+  /* Parties prises en compte dans les calculs (P04) : sans les parties exclues, coups exclus sans distance ni direction.
+     Recalculé seulement quand les données changent. */
+  var cacheCalculs = { maj: null, l: null, n: -1, v: [] };
+  function partiesAnalyse() {
+    var l = etat.parties;
+    if (cacheCalculs.maj !== etat.maj || cacheCalculs.l !== l || cacheCalculs.n !== l.length) cacheCalculs = { maj: etat.maj, l: l, n: l.length, v: partiesPourCalculs(l) };
+    return cacheCalculs.v;
+  }
   function sauver() {
     etat.maj = Math.max(Date.now(), (etat.maj || 0) + 1);
     var json = JSON.stringify(etat);
@@ -6786,7 +6885,16 @@ function analysePutting(parties) {
     persisterIndexe(json);
     planifierEnvoi();
     majStatut();
+    return sauvegardeLocaleOK;
   }
+  /* P04 : on n'annonce une réussite que si une écriture a abouti (copie locale, sinon sauvegarde de l'appareil). */
+  function stockageEnPanne() { return !sauvegardeLocaleOK && sauvegardeIndexee === "erreur"; }
+  var MSG_NON_ENREGISTRE = "Attention : ce n’est pas enregistré sur cet appareil (stockage plein ou bloqué). Télécharge une sauvegarde depuis Mes données.";
+  function messageEnregistre(ok, ko) {
+    if (sauvegardeLocaleOK) { message(ok); return; }
+    fileEcritures.then(function () { message(sauvegardeIndexee === "ok" ? ok : (ko || MSG_NON_ENREGISTRE)); });
+  }
+  function sauverPuis(ok, ko) { sauver(); messageEnregistre(ok, ko); }
   function restaurerIndexe() {
     ouvrirDB().then(function (db) {
       return new Promise(function (ok, ko) {
@@ -6880,6 +6988,13 @@ function analysePutting(parties) {
   }
   function majStatut() {
     var el = document.getElementById("statut-donnees"); if (el) el.textContent = texteStatut();
+    /* Bannière persistante tant que rien ne peut être écrit sur l'appareil. */
+    var ban = document.getElementById("alerte-stockage");
+    if (stockageEnPanne() && !ban && document.body) {
+      ban = document.createElement("div"); ban.id = "alerte-stockage"; ban.setAttribute("role", "alert");
+      ban.innerHTML = '<p>' + t("Tes dernières données ne sont pas enregistrées sur cet appareil (stockage plein ou bloqué).") + '</p><button class="btn" type="button" data-a="md-ouvrir">Sauvegarder</button>';
+      document.body.insertBefore(ban, document.body.firstChild);
+    } else if (!stockageEnPanne() && ban) ban.parentNode.removeChild(ban);
     var c = document.getElementById("statut-tete");
     if (c) { c.className = "statut-tete " + (distant.etat === "actif" ? "synchro" : "local"); c.setAttribute("aria-label", texteStatut()); c.title = texteStatut();
       c.lastChild.textContent = !sauvegardeLocaleOK && sauvegardeIndexee === "erreur" ? "Non enregistré" : (!sauvegardeLocaleOK && sauvegardeIndexee === "attente" ? "Sauvegarde…" : (distant.etat === "actif" ? "Synchronisé" : "Enregistré")); }
@@ -6908,6 +7023,13 @@ function analysePutting(parties) {
   function L(s) { return t(lat(s, lateralite())); }
   function auj() { return new Date().toISOString(); }
   function dateCourte(iso) { try { return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }); } catch (e) { return ""; } }
+  /* Période : l'année n'est ajoutée que si les deux dates ne sont pas de la même année, ou pas de l'année en cours. */
+  function periodeLib(a, b) {
+    var an = function (x) { return String(x || "").slice(0, 4); }, cour = String(new Date().getFullYear());
+    var avecAn = an(a) !== an(b) || an(b) !== cour;
+    var f = function (x) { try { return new Date(x).toLocaleDateString("fr-FR", avecAn ? { day: "numeric", month: "short", year: "numeric" } : { day: "numeric", month: "short" }); } catch (e) { return ""; } };
+    return "du " + f(a) + " au " + f(b);
+  }
   function dureeLib(min) {
     if (min < 60) return min + " min";
     var h = Math.floor(min / 60), m = min % 60;
@@ -7575,7 +7697,8 @@ function analysePutting(parties) {
     }
     h += '<button class="btn large" type="button" data-a="fin-cycle">Faire le bilan du cycle</button></section>';
 
-    h += '<section class="bloc" id="donnees"><h2>Tes données</h2><p id="statut-donnees">' + t(texteStatut()) + '</p><div class="ligne-btn">' +
+    h += '<section class="bloc" id="donnees"><h2>Tes données</h2><p id="statut-donnees">' + t(texteStatut()) + '</p>' +
+      '<p><button class="btn principal" type="button" data-a="md-ouvrir">Voir et corriger mes données</button></p><div class="ligne-btn">' +
       '<button class="btn" type="button" data-a="exporter-fichier">Télécharger mes données (.json)</button><label class="btn" for="importer-fichier">Restaurer un fichier<input id="importer-fichier" type="file" accept=".json,application/json" data-c="importer-fichier" class="vh"></label><button class="btn" type="button" data-a="exporter">Copier une sauvegarde</button><button class="btn" type="button" data-a="importer">Restaurer un texte</button></div>' +
       '<p style="margin-top:14px"><button class="btn danger large" type="button" data-a="effacer">Tout effacer</button></p></section>';
 
@@ -7612,6 +7735,7 @@ function analysePutting(parties) {
     if (f && f.parcours && parcoursDe(f.parcours) && etat.profil) { c.innerHTML = parcoursHTML(f.parcours); entreeFeuille(); majFige(); return; }
     if (f && f.defaut && etat.profil && a(etat.profil.symptomes, f.defaut)) { c.innerHTML = defautFicheHTML(f.defaut); entreeFeuille(); majFige(); return; }
     if (f && f.conditions && etat.profil) { c.innerHTML = conditionsHTML(); entreeFeuille(); majFige(); return; }
+    if (f && f.donnees && etat.profil) { c.innerHTML = mesDonneesHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.sac && (f.sac === "putter" || CLUB[f.sac]) && etat.profil) { c.innerHTML = sacFeuilleHTML(f.sac); entreeFeuille(); majFige(); return; }
     if (f && f.sacComposer && etat.profil) { c.innerHTML = sacComposerHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.serie && ui.serie && etat.profil) { c.innerHTML = serieHTML(); entreeFeuille(); majFige(); return; }
@@ -7664,9 +7788,9 @@ function analysePutting(parties) {
     var serie = ui.feuille && ui.feuille.serie ? enregistrerSerie() : null;
     if (ui.feuille && ui.feuille.serie) ui.serie = null;
     /* Le sac a pu être redessiné en aperçu pendant la saisie : il est remis à l'état enregistré. */
-    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.serie || ui.feuille.carte);
+    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.serie || ui.feuille.carte || ui.feuille.donnees);
     var carteF = ui.feuille && ui.feuille.carte;
-    if (serie) message("Série enregistrée. " + annonceSerie(serie));
+    if (serie) messageEnregistre("Série enregistrée. " + annonceSerie(serie));
     ui.sacApercu = null;
     ui.feuille = null; ui.pile = []; ui.defiEvt = null; rendreFeuille();
     var el = ui.retourFocus; ui.retourFocus = null;
@@ -7720,7 +7844,8 @@ function analysePutting(parties) {
     GEO.cartes = avant;
     return false;
   }
-  function codeSauvegarde() { return btoa(unescape(encodeURIComponent(JSON.stringify(etat)))); }
+  /* Le texte de sauvegarde contient tout, comme le fichier : cartes GPS comprises. */
+  function codeSauvegarde() { return btoa(unescape(encodeURIComponent(JSON.stringify(archiveComplete())))); }
 
   /* ============================================================
      RENDU GÉNÉRAL
@@ -7881,7 +8006,8 @@ function analysePutting(parties) {
       rendreDialogue(); rendreFeuille();
       ui.vue = "auto"; ui.partie = etat.partie ? "saisie" : null;
       rendre(); rendrePartie();
-      message(cartesOK ? "Données et cartes GPS du fichier restaurées." : "Données restaurées, mais les cartes GPS n’ont pas pu être enregistrées sur cet appareil.");
+      messageEnregistre(cartesOK ? "Données et cartes GPS du fichier restaurées." : "Données restaurées, mais les cartes GPS n’ont pas pu être enregistrées sur cet appareil.",
+        "Données chargées, mais pas enregistrées sur cet appareil (stockage plein ou bloqué). Ne ferme pas l’appli avant d’avoir libéré de la place.");
     },
     exporter: function () {
       dialogue({ titre: "Copier une sauvegarde", corps: '<p>Copie ce texte et garde-le dans une note ou un message. Il permet de restaurer tes données ici ou sur un autre appareil.</p><div class="champ"><label for="d-code">Ta sauvegarde</label><textarea id="d-code" readonly>' + codeSauvegarde() + '</textarea></div>',
@@ -7898,11 +8024,15 @@ function analysePutting(parties) {
     },
     "ok-importer": function () {
       var ta = document.getElementById("d-code"), err = document.getElementById("d-err"), o = null;
-      try { o = assainir(JSON.parse(decodeURIComponent(escape(atob(ta.value.replace(/\s+/g, "")))))); } catch (e) { o = null; }
+      var brut = null, cartes = null;
+      try { brut = JSON.parse(decodeURIComponent(escape(atob(ta.value.replace(/\s+/g, ""))))); o = assainir(brut); if (o && o.profil) cartes = lireCartesArchive(brut, o); } catch (e) { o = null; }
       if (!o || !o.profil) { err.textContent = "Ce texte n'est pas une sauvegarde valide. Vérifie qu'il est complet."; err.hidden = false; return; }
       etat = o;
       verifierPlan(); sauver();
-      ui.dialogue = null; ui.feuille = null; ui.depart = null; rendreDialogue(); rendreFeuille(); ui.vue = "auto"; ui.semaine = semaineCourante(); rendre(); message("Sauvegarde restaurée.");
+      var cartesOK = restaurerCartesArchive(cartes);
+      ui.dialogue = null; ui.feuille = null; ui.depart = null; rendreDialogue(); rendreFeuille(); ui.vue = "auto"; ui.semaine = semaineCourante(); rendre();
+      messageEnregistre(cartesOK ? (cartes ? "Sauvegarde et cartes GPS restaurées." : "Sauvegarde restaurée.") : "Sauvegarde restaurée, mais les cartes GPS n’ont pas pu être enregistrées sur cet appareil.",
+        "Sauvegarde chargée, mais pas enregistrée sur cet appareil (stockage plein ou bloqué).");
     },
     "fermer-dialogue": function () { ui.dialogue = null; rendreDialogue(); }
   };
@@ -8059,6 +8189,9 @@ function analysePutting(parties) {
       if (c.t && TYPES_COUP.some(function (x) { return x.id === c.t; })) r.t = c.t;
       if (c.dm === 1 && r.d) r.dm = 1;
       if (idValide(c.id, "c")) r.id = c.id;
+      /* P04 : coup exclu des calculs (réversible) ; distance inhabituelle confirmée par le joueur. */
+      if (c.x === 1) r.x = 1;
+      if (c.ok === 1) r.ok = 1;
       return r;
     }).filter(Boolean);
   }
@@ -8144,6 +8277,7 @@ function analysePutting(parties) {
       if (tr.length < 9) return null;
       var r = { d: dateOk(p.d), trous: tr, pc: pc, o: decalage(p, pc, tr.length) }, cp = liste(p.coups);
       if (idValide(p.id, "p")) r.id = p.id;
+      if (p.exclue === 1) r.exclue = 1;
       if (Array.isArray(p.renseigne)) r.renseigne = idx.map(function (i) { return entier(p.renseigne[i], 0, 7, 0); });
       if (pc && entier(p.rep, 0, 7, null) != null) r.rep = p.rep;
       r.validation = idx.map(function (i) { return liste(p.validation)[i] === "confirme" ? "confirme" : "inconnu"; });
@@ -8310,7 +8444,7 @@ function analysePutting(parties) {
   }
   function coupsGagnesHTML() {
     var p = etat.profil, cible = indexVise();
-    var r = coupsGagnes(etat.parties, cible);
+    var r = coupsGagnes(partiesAnalyse(), cible);
     var h = "";
     if (!r) {
       return { resume: "à mesurer en partie", corps: '<p>Saisis une partie d’au moins 9 trous dans le carnet. L’appli te dira ce qu’il te manque pour jouer l’index que tu vises, et où tu gagnes et perds des coups, secteur par secteur.</p>' +
@@ -8328,7 +8462,7 @@ function analysePutting(parties) {
     var pire = mesures.slice().sort(function (x, y) { return x.sg - y.sg; })[0];
     if (pire && pire.sg <= -0.5) {
       /* Putting : la longueur du premier putt dit s'il faut travailler les longs putts ou les courts. */
-      var rl = releveDetail(etat.parties, 90), p3 = rl.p1[1][2] + rl.p1[2][2] + rl.p1[3][2] + rl.p1[4][2];
+      var rl = releveDetail(partiesAnalyse(), 90), p3 = rl.p1[1][2] + rl.p1[2][2] + rl.p1[3][2] + rl.p1[4][2];
       if (pire.id === "putting" && p3 >= 3 && rl.p1[4][2] * 2 < p3) pire = { nom: pire.nom, sg: pire.sg, d: "putt_court" };
       h += '<p>' + t("Le secteur qui te coûte le plus : " + pire.nom.toLowerCase() + ", " + coupsLib(pire.sg, "perdu") + " par partie.") + '</p>' +
         '<button class="btn large" type="button" data-a="voir-exos" data-v="' + pire.d + '">' + t("Exercices : " + DOM[pire.d].nom.toLowerCase()) + '</button>';
@@ -8628,7 +8762,7 @@ function analysePutting(parties) {
     etat.carnet.sac = CLUBS.filter(function (c) { return ids.indexOf(c.id) >= 0; }).map(function (c) { return c.id; }).slice(0, SAC_MAX);
   }
   /* Coups mesurés sur le parcours (parties notées et partie en cours). */
-  function coupsDuParcours() { return mesuresParcours(etat.partie ? etat.parties.concat([etat.partie]) : etat.parties); }
+  function coupsDuParcours() { return mesuresParcours(etat.partie ? partiesAnalyse().concat([etat.partie]) : partiesAnalyse()); }
   /* Mesures du practice et du parcours réunies : la base des distances du sac. */
   function mesuresTout() { return fusionMesures(etat.carnet.clubs, coupsDuParcours().clubs); }
   /* Matrice de wedges : cases saisies, complétées par les coups du parcours. */
@@ -8782,7 +8916,7 @@ function analysePutting(parties) {
       (s && s.n > 1 ? '<p class="aide">' + t("Moyenne de " + pluriel(s.n, "mesure") + (parc.length ? " dont " + parc.length + " sur le parcours" : "") + ", de " + s.min + " à " + s.max + " m." + (mes.length > 1 ? " Enregistrer une autre moyenne remplace les mesures du practice." : "")) + '</p>' : '') +
       '<button class="btn principal large" type="submit">Enregistrer</button></form>';
     h += ellipseClubHTML(id) || dispersionClubHTML(tout);
-    var nCoups = (clubsNotes(etat.parties, []).filter(function (x) { return x.club === id; })[0] || {}).n;
+    var nCoups = (clubsNotes(partiesAnalyse(), []).filter(function (x) { return x.club === id; })[0] || {}).n;
     if (nCoups) h += '<button class="lien voir-profil" type="button" data-a="st-voir-club" data-v="' + at(id) + '">' + t("Voir le profil de ce club : direction, résultat, tendance (" + pluriel(nCoups, "coup") + ")") + '</button>';
     if (parc.length) h += '<p class="sac-parcours">' + t("Sur le parcours : " + parc.slice(-8).join(", ") + " m" + (parc.length > 8 ? " (" + parc.length + " coups)" : "") + ".") + '</p>';
     h += '<p class="sac-serie"><button class="btn large" type="button" data-a="serie-ouvrir" data-id="' + id + '">Faire une série de balles avec ce club</button></p>';
@@ -9242,7 +9376,7 @@ function analysePutting(parties) {
 
   /* Reporte dans le profil les chiffres des dernières parties. */
   function majIndicateursParties() {
-    var r = indicateursParties(etat.parties);
+    var r = indicateursParties(partiesAnalyse());
     if (!r) return;
     Object.keys(r.vals).forEach(function (id) {
       etat.profil.indicateurs[id] = { val: Math.min(IND[id].max, r.vals[id]), src: "partie", date: r.date };
@@ -9288,7 +9422,7 @@ function analysePutting(parties) {
   }
 
   function indexEstimeHTML() {
-    var p = etat.profil, r = indexEstime(etat.parties, function (pt) { return parcoursDe(pt.pc); }, p.index);
+    var p = etat.profil, r = indexEstime(partiesAnalyse(), function (pt) { return parcoursDe(pt.pc); }, p.index);
     if (!r.n) return "";
     if (r.v == null) return '<p class="aide">' + t("Index estimé : encore " + pluriel(3 - r.n, "partie") + " avec un score à chaque trou, et l'appli pourra l'estimer.") + '</p>';
     var ecart = Math.round((r.v - p.index) * 10) / 10;
@@ -9317,12 +9451,12 @@ function analysePutting(parties) {
         '<th scope="col" class="num">Score</th><th scope="col" class="num">Greens</th><th scope="col" class="num">Putts</th><th scope="col" class="num">Pén.</th></tr></thead><tbody>';
       for (var i = l.length - 1; i >= Math.max(0, l.length - 8); i--) {
         var s = statsTrous(l[i].trous), sc = scorePartie(l[i]), pci = parcoursDe(l[i].pc);
-        var sous = (pci ? pci.nom : "") + (s.T < 18 ? (pci ? " · " : "") + s.T + " trous" : "");
+        var sous = (pci ? pci.nom : "") + (s.T < 18 ? (pci ? " · " : "") + s.T + " trous" : "") + (l[i].exclue ? " · exclue des calculs" : "");
         h += '<tr><th scope="row"><button class="rang-lien" type="button" data-a="pt-carte" data-id="' + i + '"><span>' + t(dateCourte(l[i].d)) + '</span>' + (sous ? '<small>' + t(sous) + '</small>' : '') + '</button></th>' +
           '<td class="num">' + (sc.complet ? '<span class="main">' + ecartLib(sc.ecart) + '</span><small>' + sc.coups + '</small>' : '<span class="marque inconnu">–</span>') + '</td>' +
           [s.G, s.P, s.X].map(function (v) { return '<td class="num"><span class="main">' + v + '</span></td>'; }).join("") + '</tr>';
       }
-      var cu = cumulParties(l, 54);
+      var cu = cumulParties(partiesAnalyse(), 54);
       h += '</tbody></table></div><p class="aide" style="margin-top:8px">' +
         t("Touche une partie pour voir sa carte.") + '</p>' +
         indexEstimeHTML() +
@@ -9386,7 +9520,7 @@ function analysePutting(parties) {
   function planDuTrou(p) {
     var pc = parcoursDe(p.pc);
     if (!pc) return "";
-    var an = analyseParcours(etat.parties, pc), h = trouPhysique(p, p.i);
+    var an = analyseParcours(partiesAnalyse(), pc), h = trouPhysique(p, p.i);
     var noir = an.noirs.filter(function (x) { return x.h === h; })[0];
     if (!noir) return "";
     return '<p class="pt-plan"><b>' + t("Trou noir · " + signe(noir.moy) + " en moyenne") + '</b>' + t(planTrou(noir, an).conseils[0]) + '</p>';
@@ -9429,8 +9563,8 @@ function analysePutting(parties) {
 
   /* ---------- Bilan de fin de partie ---------- */
   function bilanPartieHTML() {
-    var pt = ui.bilanPartie, s = statsTrous(pt.trous), sc = scorePartie(pt), cu = cumulParties(etat.parties, 54);
-    var cible = cibleCourante(), r = coupsGagnes(etat.parties, cible);
+    var pt = ui.bilanPartie, s = statsTrous(pt.trous), sc = scorePartie(pt), cu = cumulParties(partiesAnalyse(), 54);
+    var cible = cibleCourante(), r = coupsGagnes(partiesAnalyse(), cible);
     function chiffre(lib, v, sur) { return '<div><dt>' + t(lib) + '</dt><dd><span class="main">' + v + '</span>' + (sur ? '<small>' + t(sur) + '</small>' : '') + '</dd></div>'; }
     var h = '<section class="partie bilan' + (etat.ecranClair ? " clair" : "") + '" role="dialog" aria-modal="true" aria-labelledby="pt-titre">' +
       '<header><p class="surtitre">' + t(nomPartie(pt) + " · " + s.T + " trous") + '</p></header>' +
@@ -9495,6 +9629,8 @@ function analysePutting(parties) {
     if (p.joueurs && p.joueurs.length) pt.joueurs = p.joueurs.map(function (j) { return { nom: j.nom, s: idx.map(function (k) { return j.s[k] == null ? null : j.s[k]; }) }; });
     /* Partie complétée après coup : elle remplace l'originale, à sa place ; sinon elle s'ajoute. */
     var deja = p.edition ? etat.parties.map(function (x) { return x.id; }).indexOf(pt.id) : -1;
+    /* Une partie exclue des calculs le reste après avoir été complétée. */
+    if (deja >= 0 && etat.parties[deja].exclue) pt.exclue = 1;
     if (deja >= 0) etat.parties[deja] = pt; else etat.parties.push(pt);
     etat.partie = null;
     majIndicateursParties();
@@ -10170,7 +10306,7 @@ function analysePutting(parties) {
       if (s.c !== id || !s.l) return;
       s.v.forEach(function (d, i) { if (s.l[i] != null) l.push({ d: d, l: s.l[i], src: "serie", date: s.d }); });
     });
-    var pts = etat.partie ? etat.parties.concat([etat.partie]) : etat.parties;
+    var pts = etat.partie ? partiesAnalyse().concat([etat.partie]) : partiesAnalyse();
     pts.forEach(function (pt) {
       (pt.coups || []).forEach(function (cs, k) {
         (cs || []).forEach(function (c) {
@@ -11218,16 +11354,16 @@ function analysePutting(parties) {
   function secteurDomaine(pr) {
     var x = pr.priorite; if (!x) return null;
     if (x.id === "putting") {
-      var rl = releveDetail(etat.parties, 90), p3 = rl.p1[1][2] + rl.p1[2][2] + rl.p1[3][2] + rl.p1[4][2];
+      var rl = releveDetail(partiesAnalyse(), 90), p3 = rl.p1[1][2] + rl.p1[2][2] + rl.p1[3][2] + rl.p1[4][2];
       return p3 >= 3 && rl.p1[4][2] * 2 >= p3 ? "putt_long" : "putt_court";
     }
     return x.d;
   }
   /* Bloc « Ton jeu sur 100 » : quatre jauges et la priorité de la semaine. */
   function notesHTML(court, sansPrio) {
-    var cible = indexVise(), pr = prioriteSemaine(etat.parties, cible), no = pr.notes;
+    var cible = indexVise(), pr = prioriteSemaine(partiesAnalyse(), cible), no = pr.notes;
     if (!no) {
-      var T = etat.parties.reduce(function (s, p) { return s + p.trous.length; }, 0);
+      var T = partiesAnalyse().reduce(function (s, p) { return s + p.trous.length; }, 0);
       return { vide: true, resume: "à mesurer en partie", html: '<p>' + t("Les notes sur 100 demandent " + NOTES_MIN_TROUS + " trous saisis" + (T ? " : encore " + Math.max(0, NOTES_MIN_TROUS - T) + "." : ", soit deux ou trois parties.")) + '</p>' };
     }
     var x = pr.priorite, d = secteurDomaine(pr);
@@ -11249,14 +11385,14 @@ function analysePutting(parties) {
 
   /* Les deux secteurs qui coûtent le plus face à l'objectif, puis les repères qui s'ajoutent aux objectifs. */
   function deuxSecteursHTML(cible) {
-    var pr = prioriteSemaine(etat.parties, cible);
+    var pr = prioriteSemaine(partiesAnalyse(), cible);
     if (!pr.deux.length) return "";
     return '<div class="deux-secteurs"><p class="tf-titre">' + t("Où tu perds le plus face à l'index " + cible) + '</p><ol>' + pr.deux.map(function (s) {
       return '<li><b class="main">' + signe(s.sg) + '</b><span><b>' + t(s.nom) + '</b><small>' + t("coup" + (Math.abs(s.sg) >= 2 ? "s" : "") + " par partie" + (s.note != null ? " · note " + s.note + "/100" : "")) + '</small></span></li>';
     }).join("") + '</ol></div>';
   }
   function reperesPlusHTML(cible) {
-    var l = comparaisonObjectif(etat.parties, cible).filter(function (c) { return ["prox", "sable", "double", "r2", "r5", "jouable"].indexOf(c.id) >= 0; });
+    var l = comparaisonObjectif(partiesAnalyse(), cible).filter(function (c) { return ["prox", "sable", "double", "r2", "r5", "jouable"].indexOf(c.id) >= 0; });
     var fmt = function (v, c) { return v == null ? null : c.unite === "%" ? Math.round(v) + " %" : (Math.round(v * Math.pow(10, c.dec)) / Math.pow(10, c.dec)).toString().replace(".", ",") + (c.unite === "m" ? " m" : ""); };
     var mesurees = l.filter(function (c) { return c.moi != null; });
     var h = '<h3 class="titre-bloc">' + t("Plus de repères face à l'index " + cible) + '</h3>';
@@ -11274,7 +11410,7 @@ function analysePutting(parties) {
 
   /* ---------- Erreurs évitables ---------- */
   function erreursGlobalesHTML() {
-    var e = erreursEvitables(etat.parties, 90);
+    var e = erreursEvitables(partiesAnalyse(), 90);
     if (!e) return null;
     var h = '<p class="evit-total"><span class="main">' + nb1(e.erreurs) + '</span>' + t(" erreur" + (e.erreurs >= 2 ? "s" : "") + " évitable" + (e.erreurs >= 2 ? "s" : "") + " par partie") + '</p>' +
       '<dl class="disp-chiffres evit"><div><dt>Pénalités</dt><dd><span class="main">' + nb1(e.pen) + '</span></dd></div>' +
@@ -11358,12 +11494,12 @@ function analysePutting(parties) {
       h += '<button class="carte-tb lien-tb" type="button" data-a="voir-seance" data-id="' + at(pr.se.id) + '" data-v="' + pr.w + '"><p class="surtitre">' + t(pr.retard ? "Séance à rattraper" : "Prochaine séance") + '</p>' +
         '<p class="tb-titre">' + t(pr.se.doms.map(function (d) { return DOM[d].court; }).join(" et ")) + '</p><p class="tb-meta">' + t("Semaine " + pr.w + " · " + dureeLib(pr.se.min)) + '</p>' + icone("chevron") + '</button>';
     } else h += '<button class="carte-tb lien-tb" type="button" data-a="fin-cycle"><p class="surtitre">Programme</p><p class="tb-titre">Cycle terminé</p><p class="tb-meta">Fais le bilan pour lancer le suivant</p>' + icone("chevron") + '</button>';
-    var prs = prioriteSemaine(etat.parties, obj), prio = prs.priorite;
+    var prs = prioriteSemaine(partiesAnalyse(), obj), prio = prs.priorite;
     var d0 = prio ? secteurDomaine(prs) : plan.priorites[0];
     h += '<button class="carte-tb lien-tb" type="button" data-a="' + (d0 && DOM[d0] ? 'voir-exos" data-v="' + d0 : 'onglet" data-v="bilan') + '"><p class="surtitre">Priorité technique</p>' +
       '<p class="tb-titre">' + t(prio ? prio.nom : d0 && DOM[d0] ? DOM[d0].nom : "À définir") + '</p><p class="tb-meta">' + t(prio ? (prio.sg != null ? coupsLib(prio.sg, "perdu") + " par partie face à l’index " + obj : "Ta note la plus basse") : "D’après ton profil et ton programme") + '</p>' + icone("chevron") + '</button></div>';
     /* Résumé : dernière partie et jeu sur 100 */
-    var l = etat.parties, der = l.length ? l[l.length - 1] : null;
+    var l = partiesAnalyse(), der = l.length ? l[l.length - 1] : null;
     h += '<h2 class="titre-bref">Ton jeu</h2>';
     if (der) {
       var sc = scorePartie(der), st = statsTrous(der.trous);
@@ -11382,9 +11518,9 @@ function analysePutting(parties) {
 
   /* Qualité des données : transparence sur l'échantillon et les sources. */
   function qualiteGolfHTML() {
-    var obs = observationsGolf(etat.parties, etat.carnet, etat.parcours), q = qualiteObservations(obs);
+    var obs = observationsGolf(partiesAnalyse(), etat.carnet, etat.parcours), q = qualiteObservations(obs);
     var confirmes = 0, suivis = 0;
-    etat.parties.forEach(function (p) {
+    partiesAnalyse().forEach(function (p) {
       (p.trous || []).forEach(function (tr, i) {
         if (!tr) return;
         suivis++;
@@ -11395,12 +11531,12 @@ function analysePutting(parties) {
       '<p class="aide">' + t(q.total ? q.total + " observations · distances : " + q.statuts.declaree + " déclarées, " + q.statuts.gps + " GPS (approximatives, roulé compris), " + q.statuts.inconnue + " inconnues · " + q.direction + " directions gauche / droite connues." : "Les observations apparaîtront après tes premières mesures et tes premiers coups.") + '</p>' +
       (q.total ? '<p class="aide">' + t("Une distance inconnue peut être remplacée par ta moyenne du club, affichée « ≈ … (moyenne) » : c'est une estimation, jamais comptée comme une mesure ni réintégrée dans ta moyenne.") + '</p>' : '') +
       '<p class="aide">' + t(suivis ? confirmes + " scores confirmés sur " + suivis + " trous historiques. Les anciens scores restent utilisables, mais leur confirmation n’est pas connue." : "Aucun trou historique pour le moment.") + '</p>' +
-      '<p class="aide">Chaque coup peut conserver sa source (manuel, GPS, import), sa date, son type de distance et son niveau de confiance. Les anciennes données non documentées restent marquées comme inconnues.</p></section>';
+      '<p class="aide">Chaque coup peut conserver sa source (manuel, GPS, import), sa date, son type de distance et son niveau de confiance. Les anciennes données non documentées restent marquées comme inconnues.</p><p><button class="btn" type="button" data-a="md-ouvrir">Voir et corriger mes données</button></p></section>';
   }
 
   /* ---------- Statistiques : chiffres clés ---------- */
   function chiffresClesHTML() {
-    var n = ui.fenetre || 5, l = etat.parties, c = cumulParties(l, n * 18), avant = cumulParties(l.slice(0, Math.max(0, l.length - c.n)), n * 18);
+    var n = ui.fenetre || 5, l = partiesAnalyse(), c = cumulParties(l, n * 18), avant = cumulParties(l.slice(0, Math.max(0, l.length - c.n)), n * 18);
     if (!c.T) return etatVideHTML("stats", "Pas encore de statistiques", "Note une partie avec le pavé : score, putts et pénalités suffisent pour démarrer.", "partie-rapide", "Lancer une partie");
     var k = 18 / c.T, ka = avant.T ? 18 / avant.T : 0, obj = indexVise(), ref = repereSG(obj);
     var tend = function (v, va, mieuxHaut) {
@@ -11566,7 +11702,7 @@ function analysePutting(parties) {
       if (!pp) return [];
       f.debut = pp.debut; f.fin = pp.fin;
     }
-    return selectionParties(etat.parties, f);
+    return selectionParties(partiesAnalyse(), f);
   }
   function nbStat(v, signe) { return v == null ? "–" : (signe && v > 0 ? "+" : "") + String(v).replace(".", ",").replace("-", "−"); }
   function tendanceStat(c) {
@@ -11618,7 +11754,7 @@ function analysePutting(parties) {
       (comparable ? '<label class="case"><input type="checkbox" data-c="st-comparer"' + (F.comparer ? " checked" : "") + '> ' + t(F.derniers ? "Comparer avec les " + F.derniers + " parties précédentes" : "Comparer avec les " + PP.jours + " jours précédents, du " + dateCourte(PP.debut) + " au " + dateCourte(PP.fin)) + '</label>' : '') + '</div>';
     if (!A.parties) return h + etatVideHTML("stats", "Aucune partie pour ces filtres", etat.parties.length ? "Élargis la période, le format ou le parcours." : "Note une partie : score, putts et pénalités suffisent pour démarrer.", etat.parties.length ? "" : "partie-rapide", "Lancer une partie");
     var mixte = A.parties9 && A.parties18;
-    h += '<p class="aide stats-echantillon">' + t("Sur " + pluriel(A.parties, "partie") + " (" + A.trous + " trous), du " + dateCourte(A.premiere) + " au " + dateCourte(A.derniere) + (/\.$/.test(dateCourte(A.derniere)) ? "" : ".") +
+    h += '<p class="aide stats-echantillon">' + t("Sur " + pluriel(A.parties, "partie") + " (" + A.trous + " trous), " + periodeLib(A.premiere, A.derniere) + (/\.$/.test(periodeLib(A.premiere, A.derniere)) ? "" : ".") +
       (C ? (F.derniers ? " Comparé aux " + pluriel(B.parties, "partie") + " précédentes (" + B.trous + " trous)." : " Comparé à la période précédente : " + pluriel(B.parties, "partie") + " (" + B.trous + " trous).") : F.comparer && comparable ? (F.derniers ? " Pas de parties précédentes à comparer." : " Aucune partie sur la période précédente.") : "") +
       (mixte ? " Parties de 9 et de 18 trous : les chiffres sont ramenés à 18 trous." : "")) + '</p>';
     var cartes = [
@@ -11854,6 +11990,99 @@ function analysePutting(parties) {
     if (pcs.length > 1) h += '<h3 class="titre-bloc">Par parcours</h3>' + tablePuttHTML("putt-parcours", pcs.map(function (x) { var pc = parcoursDe(x.pc); return lignePuttHTML(pc ? pc.nom : "Parcours supprimé", "", x); }).join(""));
     return h + '</section>';
   }
+
+  /* ============================================================
+     MES DONNÉES (roadmap DATA, P04)
+     Ce que contient le carnet et d'où vient chaque donnée ; exclure une partie ou un coup des calculs
+     sans rien supprimer ; vérifier les distances inhabituelles ; sauvegarder tout, cartes GPS comprises.
+     ============================================================ */
+  function ligneInventaire(lib, v, sous) {
+    return '<tr><th scope="row">' + t(lib) + (sous ? '<small>' + t(sous) + '</small>' : '') + '</th><td class="num">' + t(String(v)) + '</td></tr>';
+  }
+  function partieLib(p) {
+    var pc = parcoursDe(p.pc), sc = scorePartie(p);
+    return dateCourte(p.d) + (pc ? " · " + pc.nom : "") + " · " + p.trous.length + " trous" + (sc.complet ? " · " + sc.coups : "");
+  }
+  function mesDonneesHTML() {
+    var I = inventaireDonnees(etat.parties, etat.carnet, Object.keys(cartesStock()).length), D = I.distances;
+    var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer" tabindex="-1"></button>' +
+      '<section class="feuille mes-donnees" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
+      '<header><p class="surtitre">Provenance et sauvegarde</p><h2 id="f-titre">Mes données</h2><button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>';
+    /* Stockage */
+    var panne = stockageEnPanne();
+    h += '<p class="md-statut' + (panne ? ' alerte' : '') + '"' + (panne ? ' role="alert"' : '') + '>' + t(texteStatut()) + '</p>';
+    /* Inventaire */
+    h += '<h3 class="titre-bloc">Ce que contient ton carnet</h3><div class="defile"><table class="carte-score inventaire"><tbody>' +
+      ligneInventaire("Parties", I.parties, I.exclues ? I.exclues + " exclue" + (I.exclues > 1 ? "s" : "") + " des calculs" : "") +
+      ligneInventaire("Trous joués avec un score", I.trous, I.trousSansScore ? I.trousSansScore + " sans score, non comptés" : "") +
+      ligneInventaire("Mises en jeu renseignées", I.mej + " / " + I.mejPossibles, "sur les par 4 et 5 joués") +
+      ligneInventaire("Premiers putts notés", I.premiersPutts, "longueur, en Standard ou Expert") +
+      ligneInventaire("Coups notés", I.coups, I.coupsExclus ? I.coupsExclus + " exclu" + (I.coupsExclus > 1 ? "s" : "") + " des calculs" : "") +
+      ligneInventaire("Directions connues", I.directions, "gauche ou droite notée sur un coup") +
+      ligneInventaire("Distances GPS", D.gps, "roulé compris, approximatives") +
+      ligneInventaire("Distances déclarées", D.declaree, "tapées par toi") +
+      ligneInventaire("Distances estimées", D.estimee, "jamais dans les moyennes") +
+      ligneInventaire("Coups sans distance", D.inconnue, "") +
+      ligneInventaire("Séances de practice", I.seances, "") +
+      ligneInventaire("Cartes GPS de parcours", I.cartes, "gardées sur cet appareil") +
+      '</tbody></table></div>';
+    /* Distances à vérifier */
+    var S = distancesSuspectes(etat.parties);
+    h += '<h3 class="titre-bloc">Distances à vérifier</h3>';
+    if (S.length) {
+      h += '<p class="aide">' + t("Loin de ce que tu tapes d'habitude avec le même club (moins de 60 % ou plus de 140 % de ta médiane). Exclure ne supprime rien : tu peux réintégrer à tout moment.") + '</p><ul class="md-liste">' +
+        S.slice(0, 12).map(function (x) {
+          var att = ' data-p="' + x.partie + '" data-k="' + x.k + '" data-ci="' + x.ci + '"';
+          return '<li><p>' + t(nomClub(x.club) + " · " + x.d + " m" + (x.gps ? " (GPS)" : "") + (x.jour ? " · " + dateCourte(x.jour) : "")) + '<small>' + t("Ta médiane : " + x.mediane + " m sur " + x.n + " mesures.") + '</small></p>' +
+            '<div class="ligne-btn"><button class="btn" type="button" data-a="md-coup-exclure"' + att + '>Exclure des calculs</button><button class="btn" type="button" data-a="md-coup-ok"' + att + '>C’est juste</button></div></li>';
+        }).join("") + '</ul>' + (S.length > 12 ? '<p class="aide">' + t((S.length - 12) + " autres à vérifier ensuite.") + '</p>' : '');
+    } else h += '<p class="aide">' + t("Aucune distance inhabituelle. La comparaison commence à " + MIN_SUSPECT + " mesures d'un même club.") + '</p>';
+    /* Coups exclus */
+    var exclus = [];
+    etat.parties.forEach(function (p, pi) { (p.coups || []).forEach(function (l, k) { (l || []).forEach(function (c, ci) { if (c && c.x) exclus.push({ p: p, pi: pi, k: k, ci: ci, c: c }); }); }); });
+    if (exclus.length) h += '<h3 class="titre-bloc">Coups exclus des calculs</h3><ul class="md-liste">' + exclus.map(function (x) {
+      return '<li><p>' + t(nomClub(x.c.c) + (x.c.d ? " · " + x.c.d + " m" : "") + " · " + dateCourte(x.p.d) + " · trou " + numeroTrou(x.p, x.k)) + '</p><div class="ligne-btn"><button class="btn" type="button" data-a="md-coup-reintegrer" data-p="' + x.pi + '" data-k="' + x.k + '" data-ci="' + x.ci + '">Réintégrer</button></div></li>';
+    }).join("") + '</ul>';
+    /* Parties */
+    if (etat.parties.length) {
+      var idx = [];
+      for (var i = etat.parties.length - 1; i >= 0; i--) if (idx.length < 20 || etat.parties[i].exclue) idx.push(i);
+      h += '<h3 class="titre-bloc">Tes parties</h3><p class="aide">' + t("Corrige une partie (trous, mises en jeu, coups, directions) ou exclus-la des statistiques sans l'effacer.") + '</p><ul class="md-liste md-parties">' +
+        idx.map(function (i) {
+          var p = etat.parties[i];
+          return '<li' + (p.exclue ? ' class="exclue"' : '') + '><p>' + t(partieLib(p)) + (p.exclue ? '<small>' + t("Exclue des calculs") + '</small>' : '') + '</p><div class="ligne-btn">' +
+            '<button class="btn" type="button" data-a="pt-editer" data-v="' + i + '">Corriger</button>' +
+            '<button class="btn" type="button" data-a="md-partie" data-v="' + i + '" aria-pressed="' + !!p.exclue + '">' + (p.exclue ? "Réintégrer" : "Exclure des calculs") + '</button></div></li>';
+        }).join("") + '</ul>' + (etat.parties.length > idx.length ? '<p class="aide">' + t("Les parties plus anciennes sont dans le carnet.") + '</p>' : '');
+    }
+    /* Sauvegarde */
+    h += '<h3 class="titre-bloc">Sauvegarde complète</h3><p class="aide">' + t("Le fichier et le texte contiennent toutes tes données, y compris les cartes GPS de tes parcours. Une restauration remplace les données de cet appareil.") + '</p>' +
+      '<div class="ligne-btn"><button class="btn" type="button" data-a="exporter-fichier">Télécharger mes données (.json)</button><label class="btn" for="md-importer">Restaurer un fichier<input id="md-importer" type="file" accept=".json,application/json" data-c="importer-fichier" class="vh"></label>' +
+      '<button class="btn" type="button" data-a="exporter">Copier une sauvegarde</button><button class="btn" type="button" data-a="importer">Restaurer un texte</button></div>';
+    return h + '</section>';
+  }
+  function coupCible(el) {
+    var p = etat.parties[+el.getAttribute("data-p")], k = +el.getAttribute("data-k"), ci = +el.getAttribute("data-ci");
+    return p && p.coups && p.coups[k] && p.coups[k][ci] ? p.coups[k][ci] : null;
+  }
+  function apresModifDonnees(msg) {
+    var f = document.getElementById("feuille"), y = f ? f.scrollTop : 0;
+    sauverPuis(msg, "Modification faite, mais pas enregistrée sur cet appareil : exporte une sauvegarde.");
+    rendre(); rendreFeuille();
+    f = document.getElementById("feuille"); if (f) f.scrollTop = y;
+    var b = document.getElementById("f-fermer"); if (b && document.activeElement === document.body) b.focus({ preventScroll: true });
+  }
+  ACTIONS["md-ouvrir"] = function (el) { ui.retourFocus = el; ui.feuille = { donnees: true }; rendreFeuille(); var b = document.getElementById("f-fermer"); if (b) b.focus(); };
+  ACTIONS["md-coup-exclure"] = function (el) { var c = coupCible(el); if (!c) return; c.x = 1; delete c.ok; apresModifDonnees("Coup exclu des calculs. Rien n’est supprimé."); };
+  ACTIONS["md-coup-ok"] = function (el) { var c = coupCible(el); if (!c) return; c.ok = 1; apresModifDonnees("Distance gardée : elle ne sera plus signalée."); };
+  ACTIONS["md-coup-reintegrer"] = function (el) { var c = coupCible(el); if (!c) return; delete c.x; apresModifDonnees("Coup réintégré dans les calculs."); };
+  ACTIONS["md-partie"] = function (el) {
+    var p = etat.parties[+el.getAttribute("data-v")]; if (!p) return;
+    if (p.exclue) delete p.exclue; else p.exclue = 1;
+    majIndicateursParties();
+    apresModifDonnees(p.exclue ? "Partie exclue des calculs. Elle reste dans ton carnet." : "Partie réintégrée dans les calculs.");
+    var b = document.querySelector('#feuille [data-a="md-partie"][data-v="' + el.getAttribute("data-v") + '"]'); if (b) b.focus({ preventScroll: true });
+  };
 
   /* ============================================================
      APRÈS LA PARTIE : bilan express au club-house, carte de score en image,
@@ -12159,7 +12388,7 @@ function analysePutting(parties) {
     S.c = id; S.v = []; S.l = []; S.lp = null;
     rendreFeuille(); rendre();
     var b = document.querySelector('#feuille [data-a="serie-club"][data-id="' + id + '"]'); if (b) b.focus({ preventScroll: true });
-    if (r) message("Série enregistrée. " + annonceSerie(r));
+    if (r) messageEnregistre("Série enregistrée. " + annonceSerie(r));
   };
   FORMULAIRES["serie-balle"] = function (form) {
     var S = ui.serie, inp = form.querySelector("#serie-val"), err = document.getElementById("serie-err"); if (!S) return;
@@ -12215,7 +12444,7 @@ function analysePutting(parties) {
     if (!etat.parcours.length) return "";
     var h = '<section class="bloc" id="c-parcours"><h2>Mes parcours</h2><ul class="liste-exos">';
     etat.parcours.forEach(function (pc) {
-      var an = analyseParcours(etat.parties, pc);
+      var an = analyseParcours(partiesAnalyse(), pc);
       var pire = pireTrouLib(an);
       var sous = resumeParcours(pc, an) + (pire ? " · " + pire : an.noirs.length ? " · " + pluriel(an.noirs.length, "trou") + " noir" + (an.noirs.length > 1 ? "s" : "") : "");
       h += '<li><button class="ligne" type="button" data-a="pc-ouvrir" data-id="' + pc.id + '"><span class="quoi"><b>' + t(pc.nom) + '</b><small>' + t(sous) + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>';
@@ -12364,7 +12593,7 @@ function analysePutting(parties) {
     pc.reps = reps.slice(0, 8); pc.hcp = hcp;
     pc.sss = reps[0] ? reps[0].sss : null; pc.slope = reps[0] ? reps[0].slope : null;
     ui.pcCarte = null;
-    majIndicateursParties(); sauver(); rendre(); rendreFeuille(); message("Carte de score enregistrée.");
+    majIndicateursParties(); sauver(); rendre(); rendreFeuille(); messageEnregistre("Carte de score enregistrée.");
   };
   FORMULAIRES["pc-coller"] = function (form) {
     var pc = parcoursDe(form.getAttribute("data-id")); if (!pc) return;
@@ -12384,7 +12613,7 @@ function analysePutting(parties) {
       etat.parties.forEach(suivre); suivre(etat.partie);
     }
     ui.pcCarte = null;
-    majIndicateursParties(); sauver(); rendre(); rendreFeuille(); rendrePartie(); message("Carte de score enregistrée.");
+    majIndicateursParties(); sauver(); rendre(); rendreFeuille(); rendrePartie(); messageEnregistre("Carte de score enregistrée.");
     var b = document.getElementById("f-fermer"); if (b) b.focus({ preventScroll: true });
   };
 
@@ -12415,7 +12644,7 @@ function analysePutting(parties) {
     return l.map(function (c) { return nomClub(c.c) + (c.d != null ? " " + Math.round(c.d) + " m" + (c.gps ? " GPS" : "") : ""); }).join(" → ");
   }
   function trouParcoursHTML(pc, h) {
-    var P = passagesTrou(etat.parties, pc, h), R = bilanPassages(P), l = P.passages;
+    var P = passagesTrou(partiesAnalyse(), pc, h), R = bilanPassages(P), l = P.passages;
     var s = '<div class="pc-trou" id="pc-trou-detail"><h4>' + t("Trou " + (h + 1) + (pc.pars[h] ? " · par " + pc.pars[h] : "") + " · " + pluriel(R.n, "passage")) + '</h4>';
     if (!R.n) return s + '<p class="aide">' + t(P.sansScore ? "Joué sans score : pas encore de passage à comparer." : "Pas encore joué.") + '</p></div>';
     var bouts = ["moyenne " + signe(R.moyenne), "meilleur " + ecartLib(R.meilleur), "pire " + ecartLib(R.pire), nb1(R.putts) + " putts par passage"];
@@ -12454,7 +12683,7 @@ function analysePutting(parties) {
 
   /* Fiche d'un parcours, dans le calque des fiches. */
   function parcoursHTML(id) {
-    var pc = parcoursDe(id), an = analyseParcours(etat.parties, pc), F = ficheParcours(etat.parties, pc);
+    var pc = parcoursDe(id), an = analyseParcours(partiesAnalyse(), pc), F = ficheParcours(partiesAnalyse(), pc);
     var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer le parcours" tabindex="-1"></button>' +
       '<section class="feuille" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
       '<header><p class="surtitre">' + t("Parcours · " + resumeParcours(pc, an)) + '</p><h2 id="f-titre">' + t(pc.nom) + '</h2>' +
@@ -12513,7 +12742,7 @@ function analysePutting(parties) {
     var nom = texteCourt(document.getElementById("pc-nom").value, 40);
     if (!nom) { err.textContent = "Donne un nom au parcours."; err.hidden = false; return; }
     pc.nom = nom;
-    sauver(); rendre(); rendreFeuille(); message("Parcours enregistré.");
+    sauver(); rendre(); rendreFeuille(); messageEnregistre("Parcours enregistré.");
   };
   ACTIONS["pc-suppr"] = function (el) {
     var pc = parcoursDe(el.getAttribute("data-v")); if (!pc) return;
@@ -12559,7 +12788,7 @@ function analysePutting(parties) {
   }
 
   function objectifsHTML(cible) {
-    var n = FENETRES.indexOf(ui.fenetre) >= 0 ? ui.fenetre : 5, f = statsFenetre(etat.parties, n), O = objectifs(cible), i = 0;
+    var n = FENETRES.indexOf(ui.fenetre) >= 0 ? ui.fenetre : 5, f = statsFenetre(partiesAnalyse(), n), O = objectifs(cible), i = 0;
     var h = '<h3 class="titre-bloc">' + t("Pour jouer index " + cible) + '</h3>' +
       '<p>' + t("Un joueur d'index " + cible + " touche en moyenne " + nb1(O.gir) + " greens, prend " + nb1(O.putts) + " putts et " + nb1(O.pen) + " coup" + (O.pen >= 2 ? "s" : "") + " de pénalité par partie.") + '</p>' +
       '<div class="filtres" role="group" aria-label="Nombre de parties prises en compte">' + FENETRES.map(function (k) {
@@ -12590,7 +12819,7 @@ function analysePutting(parties) {
   /* ---------- Relevés de la saisie détaillée ---------- */
   function relevesHTML() {
     if (!etat.parties.length) return null;
-    var r = releveDetail(etat.parties, 90), p = etat.profil, pal = palierDe(p.index), l = [];
+    var r = releveDetail(partiesAnalyse(), 90), p = etat.profil, pal = palierDe(p.index), l = [];
     var h = "";
     /* Côté des mises en jeu ratées, relié au défaut correspondant. */
     var cote = coteDominant(r.cotes, 5);
@@ -12622,7 +12851,7 @@ function analysePutting(parties) {
       l.push({ t: tc, alerte: !!mieux });
     }
     /* Positions de jeu notées avec les coups : rough, bunker, arbres, recentrages. */
-    var bl = bilanLies(etat.parties.slice(-10));
+    var bl = bilanLies(partiesAnalyse().slice(-10));
     if (bl.notes >= 10) {
       var pc = function (k) { return Math.round(100 * (bl.lies[k] || 0) / bl.notes); }, rec = bl.types.rec || 0;
       l.push({ t: "Coups notés sur tes dernières parties : " + pc("fw") + " % du fairway, " + pc("ro") + " % du rough, " + pc("bk") + " % du bunker, " + pc("ar") + " % des arbres." +
@@ -12762,7 +12991,7 @@ function analysePutting(parties) {
   function recordPartie(pt) {
     var sc = scorePartie(pt);
     if (!sc.complet || sc.T !== 18) return false;
-    var autres = etat.parties.filter(function (x) { var s = scorePartie(x); return x !== pt && s.complet && s.T === 18; });
+    var autres = partiesAnalyse().filter(function (x) { var s = scorePartie(x); return x !== pt && (!pt.id || x.id !== pt.id) && s.complet && s.T === 18; });
     return autres.length > 0 && autres.every(function (x) { return scorePartie(x).ecart > sc.ecart; });
   }
 
@@ -12915,7 +13144,7 @@ function analysePutting(parties) {
      ============================================================ */
   var SECTEUR_DE = { drive: "depart", fers: "attaque", wedge: "petit", approche: "petit", bunker: "petit", putt_court: "putting", putt_long: "putting", strategie: "penal" };
   function uneBilanHTML(prios, sc, pal) {
-    var x = prios[0], cible = cibleCourante(), r = coupsGagnes(etat.parties, cible);
+    var x = prios[0], cible = cibleCourante(), r = coupsGagnes(partiesAnalyse(), cible);
     var h = '<div class="une"><p class="surtitre">Ta priorité</p><p class="une-titre">' + t(DOM[x.d].nom) + '</p>';
     var v = sc[x.d].vals.filter(function (y) { return y.val != null && y.etat === "dessous"; })[0];
     if (v) h += '<p>' + t(v.ind.nom + " : " + v.val + " " + v.ind.unite + ", pour un repère de " + v.ind.rep[pal - 1] + " à ton palier.") + '</p>';

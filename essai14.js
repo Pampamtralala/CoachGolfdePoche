@@ -55,7 +55,7 @@ const BASE = '/CoachGolfdePoche/';
   await page.fill('#carte-q', 'Jonchère'); await page.click('.carte-form button[type="submit"]');
   await page.waitForSelector('#feuille .erreur', { timeout: 20000 });
   res.erreurHorsLigne = await page.textContent('#feuille .erreur');
-  verifie(/échoué/.test(res.erreurHorsLigne), 'sans réseau, la recherche le dit : ' + res.erreurHorsLigne);
+  verifie(/échoué|n.ont pas répondu.*réseau/.test(res.erreurHorsLigne), 'sans réseau, la recherche le dit : ' + res.erreurHorsLigne);
   await page.screenshot({ path: 'shots13/pwa-recherche-hors-ligne.png' });
   await ctx.setOffline(false);
   console.log(JSON.stringify({ res, ko, errs }, null, 1));

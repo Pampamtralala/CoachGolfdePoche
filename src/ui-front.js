@@ -105,7 +105,7 @@
   function recordPartie(pt) {
     var sc = scorePartie(pt);
     if (!sc.complet || sc.T !== 18) return false;
-    var autres = etat.parties.filter(function (x) { var s = scorePartie(x); return x !== pt && s.complet && s.T === 18; });
+    var autres = partiesAnalyse().filter(function (x) { var s = scorePartie(x); return x !== pt && (!pt.id || x.id !== pt.id) && s.complet && s.T === 18; });
     return autres.length > 0 && autres.every(function (x) { return scorePartie(x).ecart > sc.ecart; });
   }
 
@@ -258,7 +258,7 @@
      ============================================================ */
   var SECTEUR_DE = { drive: "depart", fers: "attaque", wedge: "petit", approche: "petit", bunker: "petit", putt_court: "putting", putt_long: "putting", strategie: "penal" };
   function uneBilanHTML(prios, sc, pal) {
-    var x = prios[0], cible = cibleCourante(), r = coupsGagnes(etat.parties, cible);
+    var x = prios[0], cible = cibleCourante(), r = coupsGagnes(partiesAnalyse(), cible);
     var h = '<div class="une"><p class="surtitre">Ta priorité</p><p class="une-titre">' + t(DOM[x.d].nom) + '</p>';
     var v = sc[x.d].vals.filter(function (y) { return y.val != null && y.etat === "dessous"; })[0];
     if (v) h += '<p>' + t(v.ind.nom + " : " + v.val + " " + v.ind.unite + ", pour un repère de " + v.ind.rep[pal - 1] + " à ton palier.") + '</p>';

@@ -11,7 +11,7 @@
       if (s.c !== id || !s.l) return;
       s.v.forEach(function (d, i) { if (s.l[i] != null) l.push({ d: d, l: s.l[i], src: "serie", date: s.d }); });
     });
-    var pts = etat.partie ? etat.parties.concat([etat.partie]) : etat.parties;
+    var pts = etat.partie ? partiesAnalyse().concat([etat.partie]) : partiesAnalyse();
     pts.forEach(function (pt) {
       (pt.coups || []).forEach(function (cs, k) {
         (cs || []).forEach(function (c) {

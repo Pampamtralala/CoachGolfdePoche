@@ -1591,3 +1591,20 @@ main.entree { animation: entreeVue .22s ease-out; }
 .putt-longueur th[scope="row"] small { max-width: 13em; }
 .pv-putt1 { margin: 4px 0 8px; padding: 2px 12px 10px; border-radius: var(--rayon-s); background: var(--carte); }
 .pv-putt1 .pt-sous { margin-top: 6px; }
+
+/* ---------- Mes données (P04) ---------- */
+#alerte-stockage { position: sticky; top: 0; z-index: 60; display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--alerte, #8a2c1d); color: #fff; font-size: 14.5px; }
+#alerte-stockage p { margin: 0; }
+#alerte-stockage .btn { flex: none; background: #fff; color: #8a2c1d; border-color: #fff; }
+.md-statut { margin: 0 0 8px; font-size: 15px; }
+.md-statut.alerte { padding: 10px 12px; border-radius: var(--rayon-s); background: rgba(194, 112, 61, .15); color: var(--encre); font-weight: 600; }
+.inventaire th small { display: block; font-size: 12px; font-weight: 400; color: var(--encre-2); }
+.inventaire th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
+.inventaire td.num { width: auto; padding-right: 12px; font-variant-numeric: tabular-nums; }
+.md-liste { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
+.md-liste li { padding: 10px 12px; border-radius: var(--rayon-s); background: var(--carte); }
+.feuille .md-liste li { background: var(--papier); }
+.md-liste li p { margin: 0 0 6px; font-weight: 600; }
+.md-liste li small { display: block; font-weight: 400; font-size: 13px; color: var(--encre-2); }
+.md-liste li.exclue { opacity: .75; }
+.md-liste .ligne-btn { margin: 0; }

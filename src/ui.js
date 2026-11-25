@@ -50,6 +50,14 @@
     fileEcritures = fileEcritures.catch(function () {}).then(function () { return ecrireDB(json); })
       .then(function () { sauvegardeIndexee = "ok"; majStatut(); }, function () { sauvegardeIndexee = "erreur"; majStatut(); });
   }
+  /* Parties prises en compte dans les calculs (P04) : sans les parties exclues, coups exclus sans distance ni direction.
+     Recalculé seulement quand les données changent. */
+  var cacheCalculs = { maj: null, l: null, n: -1, v: [] };
+  function partiesAnalyse() {
+    var l = etat.parties;
+    if (cacheCalculs.maj !== etat.maj || cacheCalculs.l !== l || cacheCalculs.n !== l.length) cacheCalculs = { maj: etat.maj, l: l, n: l.length, v: partiesPourCalculs(l) };
+    return cacheCalculs.v;
+  }
   function sauver() {
     etat.maj = Math.max(Date.now(), (etat.maj || 0) + 1);
     var json = JSON.stringify(etat);
@@ -57,7 +65,16 @@
     persisterIndexe(json);
     planifierEnvoi();
     majStatut();
+    return sauvegardeLocaleOK;
   }
+  /* P04 : on n'annonce une réussite que si une écriture a abouti (copie locale, sinon sauvegarde de l'appareil). */
+  function stockageEnPanne() { return !sauvegardeLocaleOK && sauvegardeIndexee === "erreur"; }
+  var MSG_NON_ENREGISTRE = "Attention : ce n’est pas enregistré sur cet appareil (stockage plein ou bloqué). Télécharge une sauvegarde depuis Mes données.";
+  function messageEnregistre(ok, ko) {
+    if (sauvegardeLocaleOK) { message(ok); return; }
+    fileEcritures.then(function () { message(sauvegardeIndexee === "ok" ? ok : (ko || MSG_NON_ENREGISTRE)); });
+  }
+  function sauverPuis(ok, ko) { sauver(); messageEnregistre(ok, ko); }
   function restaurerIndexe() {
     ouvrirDB().then(function (db) {
       return new Promise(function (ok, ko) {
@@ -151,6 +168,13 @@
   }
   function majStatut() {
     var el = document.getElementById("statut-donnees"); if (el) el.textContent = texteStatut();
+    /* Bannière persistante tant que rien ne peut être écrit sur l'appareil. */
+    var ban = document.getElementById("alerte-stockage");
+    if (stockageEnPanne() && !ban && document.body) {
+      ban = document.createElement("div"); ban.id = "alerte-stockage"; ban.setAttribute("role", "alert");
+      ban.innerHTML = '<p>' + t("Tes dernières données ne sont pas enregistrées sur cet appareil (stockage plein ou bloqué).") + '</p><button class="btn" type="button" data-a="md-ouvrir">Sauvegarder</button>';
+      document.body.insertBefore(ban, document.body.firstChild);
+    } else if (!stockageEnPanne() && ban) ban.parentNode.removeChild(ban);
     var c = document.getElementById("statut-tete");
     if (c) { c.className = "statut-tete " + (distant.etat === "actif" ? "synchro" : "local"); c.setAttribute("aria-label", texteStatut()); c.title = texteStatut();
       c.lastChild.textContent = !sauvegardeLocaleOK && sauvegardeIndexee === "erreur" ? "Non enregistré" : (!sauvegardeLocaleOK && sauvegardeIndexee === "attente" ? "Sauvegarde…" : (distant.etat === "actif" ? "Synchronisé" : "Enregistré")); }
@@ -179,6 +203,13 @@
   function L(s) { return t(lat(s, lateralite())); }
   function auj() { return new Date().toISOString(); }
   function dateCourte(iso) { try { return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }); } catch (e) { return ""; } }
+  /* Période : l'année n'est ajoutée que si les deux dates ne sont pas de la même année, ou pas de l'année en cours. */
+  function periodeLib(a, b) {
+    var an = function (x) { return String(x || "").slice(0, 4); }, cour = String(new Date().getFullYear());
+    var avecAn = an(a) !== an(b) || an(b) !== cour;
+    var f = function (x) { try { return new Date(x).toLocaleDateString("fr-FR", avecAn ? { day: "numeric", month: "short", year: "numeric" } : { day: "numeric", month: "short" }); } catch (e) { return ""; } };
+    return "du " + f(a) + " au " + f(b);
+  }
   function dureeLib(min) {
     if (min < 60) return min + " min";
     var h = Math.floor(min / 60), m = min % 60;
@@ -846,7 +877,8 @@
     }
     h += '<button class="btn large" type="button" data-a="fin-cycle">Faire le bilan du cycle</button></section>';
 
-    h += '<section class="bloc" id="donnees"><h2>Tes données</h2><p id="statut-donnees">' + t(texteStatut()) + '</p><div class="ligne-btn">' +
+    h += '<section class="bloc" id="donnees"><h2>Tes données</h2><p id="statut-donnees">' + t(texteStatut()) + '</p>' +
+      '<p><button class="btn principal" type="button" data-a="md-ouvrir">Voir et corriger mes données</button></p><div class="ligne-btn">' +
       '<button class="btn" type="button" data-a="exporter-fichier">Télécharger mes données (.json)</button><label class="btn" for="importer-fichier">Restaurer un fichier<input id="importer-fichier" type="file" accept=".json,application/json" data-c="importer-fichier" class="vh"></label><button class="btn" type="button" data-a="exporter">Copier une sauvegarde</button><button class="btn" type="button" data-a="importer">Restaurer un texte</button></div>' +
       '<p style="margin-top:14px"><button class="btn danger large" type="button" data-a="effacer">Tout effacer</button></p></section>';
 
@@ -883,6 +915,7 @@
     if (f && f.parcours && parcoursDe(f.parcours) && etat.profil) { c.innerHTML = parcoursHTML(f.parcours); entreeFeuille(); majFige(); return; }
     if (f && f.defaut && etat.profil && a(etat.profil.symptomes, f.defaut)) { c.innerHTML = defautFicheHTML(f.defaut); entreeFeuille(); majFige(); return; }
     if (f && f.conditions && etat.profil) { c.innerHTML = conditionsHTML(); entreeFeuille(); majFige(); return; }
+    if (f && f.donnees && etat.profil) { c.innerHTML = mesDonneesHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.sac && (f.sac === "putter" || CLUB[f.sac]) && etat.profil) { c.innerHTML = sacFeuilleHTML(f.sac); entreeFeuille(); majFige(); return; }
     if (f && f.sacComposer && etat.profil) { c.innerHTML = sacComposerHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.serie && ui.serie && etat.profil) { c.innerHTML = serieHTML(); entreeFeuille(); majFige(); return; }
@@ -935,9 +968,9 @@
     var serie = ui.feuille && ui.feuille.serie ? enregistrerSerie() : null;
     if (ui.feuille && ui.feuille.serie) ui.serie = null;
     /* Le sac a pu être redessiné en aperçu pendant la saisie : il est remis à l'état enregistré. */
-    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.serie || ui.feuille.carte);
+    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.serie || ui.feuille.carte || ui.feuille.donnees);
     var carteF = ui.feuille && ui.feuille.carte;
-    if (serie) message("Série enregistrée. " + annonceSerie(serie));
+    if (serie) messageEnregistre("Série enregistrée. " + annonceSerie(serie));
     ui.sacApercu = null;
     ui.feuille = null; ui.pile = []; ui.defiEvt = null; rendreFeuille();
     var el = ui.retourFocus; ui.retourFocus = null;
@@ -991,7 +1024,8 @@
     GEO.cartes = avant;
     return false;
   }
-  function codeSauvegarde() { return btoa(unescape(encodeURIComponent(JSON.stringify(etat)))); }
+  /* Le texte de sauvegarde contient tout, comme le fichier : cartes GPS comprises. */
+  function codeSauvegarde() { return btoa(unescape(encodeURIComponent(JSON.stringify(archiveComplete())))); }
 
   /* ============================================================
      RENDU GÉNÉRAL
@@ -1152,7 +1186,8 @@
       rendreDialogue(); rendreFeuille();
       ui.vue = "auto"; ui.partie = etat.partie ? "saisie" : null;
       rendre(); rendrePartie();
-      message(cartesOK ? "Données et cartes GPS du fichier restaurées." : "Données restaurées, mais les cartes GPS n’ont pas pu être enregistrées sur cet appareil.");
+      messageEnregistre(cartesOK ? "Données et cartes GPS du fichier restaurées." : "Données restaurées, mais les cartes GPS n’ont pas pu être enregistrées sur cet appareil.",
+        "Données chargées, mais pas enregistrées sur cet appareil (stockage plein ou bloqué). Ne ferme pas l’appli avant d’avoir libéré de la place.");
     },
     exporter: function () {
       dialogue({ titre: "Copier une sauvegarde", corps: '<p>Copie ce texte et garde-le dans une note ou un message. Il permet de restaurer tes données ici ou sur un autre appareil.</p><div class="champ"><label for="d-code">Ta sauvegarde</label><textarea id="d-code" readonly>' + codeSauvegarde() + '</textarea></div>',
@@ -1169,11 +1204,15 @@
     },
     "ok-importer": function () {
       var ta = document.getElementById("d-code"), err = document.getElementById("d-err"), o = null;
-      try { o = assainir(JSON.parse(decodeURIComponent(escape(atob(ta.value.replace(/\s+/g, "")))))); } catch (e) { o = null; }
+      var brut = null, cartes = null;
+      try { brut = JSON.parse(decodeURIComponent(escape(atob(ta.value.replace(/\s+/g, ""))))); o = assainir(brut); if (o && o.profil) cartes = lireCartesArchive(brut, o); } catch (e) { o = null; }
       if (!o || !o.profil) { err.textContent = "Ce texte n'est pas une sauvegarde valide. Vérifie qu'il est complet."; err.hidden = false; return; }
       etat = o;
       verifierPlan(); sauver();
-      ui.dialogue = null; ui.feuille = null; ui.depart = null; rendreDialogue(); rendreFeuille(); ui.vue = "auto"; ui.semaine = semaineCourante(); rendre(); message("Sauvegarde restaurée.");
+      var cartesOK = restaurerCartesArchive(cartes);
+      ui.dialogue = null; ui.feuille = null; ui.depart = null; rendreDialogue(); rendreFeuille(); ui.vue = "auto"; ui.semaine = semaineCourante(); rendre();
+      messageEnregistre(cartesOK ? (cartes ? "Sauvegarde et cartes GPS restaurées." : "Sauvegarde restaurée.") : "Sauvegarde restaurée, mais les cartes GPS n’ont pas pu être enregistrées sur cet appareil.",
+        "Sauvegarde chargée, mais pas enregistrée sur cet appareil (stockage plein ou bloqué).");
     },
     "fermer-dialogue": function () { ui.dialogue = null; rendreDialogue(); }
   };
@@ -1263,6 +1302,7 @@
   /*INCLURE:ui-clubs.js*/
   /*INCLURE:ui-erreurs.js*/
   /*INCLURE:ui-putting.js*/
+  /*INCLURE:ui-donnees.js*/
   /*INCLURE:ui-apres.js*/
   /*INCLURE:ui-series.js*/
   /*INCLURE:ui-parcours.js*/

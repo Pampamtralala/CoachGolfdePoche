@@ -15,16 +15,16 @@
   function secteurDomaine(pr) {
     var x = pr.priorite; if (!x) return null;
     if (x.id === "putting") {
-      var rl = releveDetail(etat.parties, 90), p3 = rl.p1[1][2] + rl.p1[2][2] + rl.p1[3][2] + rl.p1[4][2];
+      var rl = releveDetail(partiesAnalyse(), 90), p3 = rl.p1[1][2] + rl.p1[2][2] + rl.p1[3][2] + rl.p1[4][2];
       return p3 >= 3 && rl.p1[4][2] * 2 >= p3 ? "putt_long" : "putt_court";
     }
     return x.d;
   }
   /* Bloc « Ton jeu sur 100 » : quatre jauges et la priorité de la semaine. */
   function notesHTML(court, sansPrio) {
-    var cible = indexVise(), pr = prioriteSemaine(etat.parties, cible), no = pr.notes;
+    var cible = indexVise(), pr = prioriteSemaine(partiesAnalyse(), cible), no = pr.notes;
     if (!no) {
-      var T = etat.parties.reduce(function (s, p) { return s + p.trous.length; }, 0);
+      var T = partiesAnalyse().reduce(function (s, p) { return s + p.trous.length; }, 0);
       return { vide: true, resume: "à mesurer en partie", html: '<p>' + t("Les notes sur 100 demandent " + NOTES_MIN_TROUS + " trous saisis" + (T ? " : encore " + Math.max(0, NOTES_MIN_TROUS - T) + "." : ", soit deux ou trois parties.")) + '</p>' };
     }
     var x = pr.priorite, d = secteurDomaine(pr);
@@ -46,14 +46,14 @@
 
   /* Les deux secteurs qui coûtent le plus face à l'objectif, puis les repères qui s'ajoutent aux objectifs. */
   function deuxSecteursHTML(cible) {
-    var pr = prioriteSemaine(etat.parties, cible);
+    var pr = prioriteSemaine(partiesAnalyse(), cible);
     if (!pr.deux.length) return "";
     return '<div class="deux-secteurs"><p class="tf-titre">' + t("Où tu perds le plus face à l'index " + cible) + '</p><ol>' + pr.deux.map(function (s) {
       return '<li><b class="main">' + signe(s.sg) + '</b><span><b>' + t(s.nom) + '</b><small>' + t("coup" + (Math.abs(s.sg) >= 2 ? "s" : "") + " par partie" + (s.note != null ? " · note " + s.note + "/100" : "")) + '</small></span></li>';
     }).join("") + '</ol></div>';
   }
   function reperesPlusHTML(cible) {
-    var l = comparaisonObjectif(etat.parties, cible).filter(function (c) { return ["prox", "sable", "double", "r2", "r5", "jouable"].indexOf(c.id) >= 0; });
+    var l = comparaisonObjectif(partiesAnalyse(), cible).filter(function (c) { return ["prox", "sable", "double", "r2", "r5", "jouable"].indexOf(c.id) >= 0; });
     var fmt = function (v, c) { return v == null ? null : c.unite === "%" ? Math.round(v) + " %" : (Math.round(v * Math.pow(10, c.dec)) / Math.pow(10, c.dec)).toString().replace(".", ",") + (c.unite === "m" ? " m" : ""); };
     var mesurees = l.filter(function (c) { return c.moi != null; });
     var h = '<h3 class="titre-bloc">' + t("Plus de repères face à l'index " + cible) + '</h3>';
@@ -71,7 +71,7 @@
 
   /* ---------- Erreurs évitables ---------- */
   function erreursGlobalesHTML() {
-    var e = erreursEvitables(etat.parties, 90);
+    var e = erreursEvitables(partiesAnalyse(), 90);
     if (!e) return null;
     var h = '<p class="evit-total"><span class="main">' + nb1(e.erreurs) + '</span>' + t(" erreur" + (e.erreurs >= 2 ? "s" : "") + " évitable" + (e.erreurs >= 2 ? "s" : "") + " par partie") + '</p>' +
       '<dl class="disp-chiffres evit"><div><dt>Pénalités</dt><dd><span class="main">' + nb1(e.pen) + '</span></dd></div>' +

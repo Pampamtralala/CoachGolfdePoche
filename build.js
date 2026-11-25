@@ -6,6 +6,9 @@ const ui = p('ui.js').replace(/[ \t]*\/\*INCLURE:([a-z0-9-]+\.js)\*\/\n/g, (m, f
 if (/INCLURE:/.test(ui)) throw new Error('inclusion non résolue');
 const version = new Date().toISOString();
 const js = (moteur.map(f => strip(p(f))).join('\n') + '\n' + ui).replace('/*VERSION*/', version);
+/* Une erreur de syntaxe ne doit jamais produire une page blanche : le build s'arrête. */
+try { new (require('vm').Script)(js, { filename: 'app.js' }); }
+catch (e) { console.error('Build arrêté : erreur de syntaxe dans le code assemblé.\n' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 3).join('\n')); process.exit(1); }
 if (/<\/script/i.test(js)) throw new Error('balise script dans le JS');
 if (/typeof module/.test(js)) throw new Error('reste de module');
 /* Chart.js (licence MIT) est intégré à la page : aucune dépendance à un service extérieur. */

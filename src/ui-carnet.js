@@ -81,6 +81,9 @@
       if (c.t && TYPES_COUP.some(function (x) { return x.id === c.t; })) r.t = c.t;
       if (c.dm === 1 && r.d) r.dm = 1;
       if (idValide(c.id, "c")) r.id = c.id;
+      /* P04 : coup exclu des calculs (réversible) ; distance inhabituelle confirmée par le joueur. */
+      if (c.x === 1) r.x = 1;
+      if (c.ok === 1) r.ok = 1;
       return r;
     }).filter(Boolean);
   }
@@ -166,6 +169,7 @@
       if (tr.length < 9) return null;
       var r = { d: dateOk(p.d), trous: tr, pc: pc, o: decalage(p, pc, tr.length) }, cp = liste(p.coups);
       if (idValide(p.id, "p")) r.id = p.id;
+      if (p.exclue === 1) r.exclue = 1;
       if (Array.isArray(p.renseigne)) r.renseigne = idx.map(function (i) { return entier(p.renseigne[i], 0, 7, 0); });
       if (pc && entier(p.rep, 0, 7, null) != null) r.rep = p.rep;
       r.validation = idx.map(function (i) { return liste(p.validation)[i] === "confirme" ? "confirme" : "inconnu"; });
@@ -332,7 +336,7 @@
   }
   function coupsGagnesHTML() {
     var p = etat.profil, cible = indexVise();
-    var r = coupsGagnes(etat.parties, cible);
+    var r = coupsGagnes(partiesAnalyse(), cible);
     var h = "";
     if (!r) {
       return { resume: "à mesurer en partie", corps: '<p>Saisis une partie d’au moins 9 trous dans le carnet. L’appli te dira ce qu’il te manque pour jouer l’index que tu vises, et où tu gagnes et perds des coups, secteur par secteur.</p>' +
@@ -350,7 +354,7 @@
     var pire = mesures.slice().sort(function (x, y) { return x.sg - y.sg; })[0];
     if (pire && pire.sg <= -0.5) {
       /* Putting : la longueur du premier putt dit s'il faut travailler les longs putts ou les courts. */
-      var rl = releveDetail(etat.parties, 90), p3 = rl.p1[1][2] + rl.p1[2][2] + rl.p1[3][2] + rl.p1[4][2];
+      var rl = releveDetail(partiesAnalyse(), 90), p3 = rl.p1[1][2] + rl.p1[2][2] + rl.p1[3][2] + rl.p1[4][2];
       if (pire.id === "putting" && p3 >= 3 && rl.p1[4][2] * 2 < p3) pire = { nom: pire.nom, sg: pire.sg, d: "putt_court" };
       h += '<p>' + t("Le secteur qui te coûte le plus : " + pire.nom.toLowerCase() + ", " + coupsLib(pire.sg, "perdu") + " par partie.") + '</p>' +
         '<button class="btn large" type="button" data-a="voir-exos" data-v="' + pire.d + '">' + t("Exercices : " + DOM[pire.d].nom.toLowerCase()) + '</button>';
