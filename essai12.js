@@ -51,7 +51,7 @@ function partie(g, pars) {
 
     /* ---- Accueil ---- */
     r.barre = await page.$$eval('#barre .barre-item', l => l.map(b => b.textContent + (b.getAttribute('aria-current') ? ' ●' : '')).join(' | '));
-    verifie(/^Accueil ● \| Jouer \| Progresser \| Statistiques \| Mon sac$/.test(r.barre), nom + ' barre : ' + r.barre);
+    verifie(/^Mon jeu ● \| Analyses \| Jouer \| Mon sac \| Journal$/.test(r.barre), nom + ' barre : ' + r.barre);
     r.statut = await page.textContent('#statut-tete');
     /* Accueil « Mon jeu » (refonte du 19/11) : accès rapides, dernière partie, tendances, qualité du carnet. */
     r.accueil = (await page.textContent('.mon-jeu h1')).replace(/\s+/g, ' ').trim() + ' · ' + await page.$$eval('.mon-jeu .acces-rapides button', l => l.map(b => b.textContent.trim()).join(' | '));
@@ -81,7 +81,7 @@ function partie(g, pars) {
     await page.evaluate(() => window.scrollTo(0, 0)); await vue('03-statistiques');
     r.largeurStats = await largeur(); verifie(r.largeurStats <= w, nom + ' statistiques sans débordement');
 
-    /* ---- Progresser ---- */
+    /* ---- Coaching (dans Analyses) ---- */
     await allerVue(page, 'practice');
     r.progression = await page.textContent('.progression');
     r.badges = await page.$$eval('.badge', l => l.map(x => (x.classList.contains('obtenu') ? '✓ ' : '· ') + x.querySelector('b').textContent));
@@ -92,7 +92,7 @@ function partie(g, pars) {
     await page.evaluate(() => document.getElementById('badges').scrollIntoView()); await page.waitForTimeout(80); await vue('05-badges');
     await page.click('#vue [data-a="onglet"][data-v="exercices"]');
     r.exercicesBarre = await page.$eval('#barre [aria-current="page"]', b => b.textContent);
-    verifie(r.exercicesBarre === 'Progresser', nom + ' exercices rangés sous Progresser');
+    verifie(r.exercicesBarre === 'Analyses', nom + ' exercices rangés sous Analyses (coaching)');
     await page.click('#vue .retour'); r.retour = await page.evaluate(() => location.hash);
 
     /* ---- Mon sac ---- */
@@ -135,7 +135,9 @@ function partie(g, pars) {
 
     /* ---- Profil : objectif et données ---- */
     await allerVue(page, 'profil');
-    r.profilBarre = await page.$eval('#barre [aria-current="page"]', b => b.textContent);
+    /* UX03 : le profil s'ouvre depuis l'en-tête et n'a pas d'entrée dans la barre. */
+    r.profilBarre = await page.$$eval('#barre [aria-current="page"]', l => l.map(b => b.textContent).join('') || 'aucune entrée');
+    verifie(r.profilBarre === 'aucune entrée', nom + ' profil : aucune entrée de la barre marquée');
     r.donnees = await page.textContent('#donnees h2');
     await page.evaluate(() => document.getElementById('objectif-index').scrollIntoView()); await page.waitForTimeout(80);
     await vue('10-profil');

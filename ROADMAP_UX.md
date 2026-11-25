@@ -9,7 +9,7 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 | Ordre | Chantier | Priorité | Statut | Branche · PR |
 | --- | --- | --- | --- | --- |
 | 1 | UX01 Audit et cartographie | P0 | **En revue** | `ux/ux01-audit` |
-| 2 | UX03 Navigation à 5 entrées | P0 | En cours | `ux/ux03-navigation` |
+| 2 | UX03 Navigation à 5 entrées | P0 | **En revue** | `ux/ux03-navigation` (après #18) |
 | 3 | UX05 Enseignements personnalisés | P0 | À faire | — |
 | 4 | UX07 Filtres et visualisations (fonctionnel : filtres communs, types de graphiques) | P1 | À faire | — |
 | 5 | UX04 Tableau de bord « Mon jeu » | P0 | À faire | — |
@@ -213,3 +213,26 @@ Encore utiles pour les chantiers UX : 4, 5, 7 et 8. Reportées avec la refonte g
 - Difficultés : 3 couleurs de la palette V3 ne peuvent pas servir de texte sur fond clair (vert accent, vigilance,
   vert performance en petit corps) → variantes texte proposées (décision 2). L'index estimé de la roadmap n'est
   affichable que si un moteur le calcule déjà (décision 7).
+
+### UX03 — Navigation à cinq entrées (25/11/2026)
+
+- Objectif : barre Mon jeu · Analyses · Jouer · Mon sac · Journal, profil et recherche dans l'en-tête, coaching rangé
+  dans Analyses, sans retirer de fonction ni changer le style.
+- Modifications :
+  - `ui-menu.js` : nouvelles entrées (Jouer au centre, marqué comme action principale), sous-navigation commune des
+    pages d'Analyses (Statistiques, Comprendre mon jeu, Programme, Exercices et défis), catalogue de recherche regroupé
+    (Mon jeu, Analyses, Coaching, Jouer, Mon sac, Journal, Profil) ; le profil n'a plus d'entrée marquée dans la barre.
+  - `ui.js` : page `journal` ; alias conservés (`parties` mène désormais au Journal) et nouveaux noms (`analyses`,
+    `statistiques`, `jouer`, `progresser`, `coaching`, `monjeu`…) ; en-têtes « Analyses » et « Analyses · Coaching ».
+  - `ui-partie.js` : `partiesHTML` séparé en partie en direct (Jouer) et tableau de toutes les parties (Journal,
+    avec état vide utile) ; fin de partie « voir la carte » mène au Journal.
+  - `ui-journal.js` : page Journal (parties, bilans, import, Mes données). `ui-carnet.js` : la série de practice est
+    aussi proposée dans Mon sac. `ui-front.js` : « Mes parties » mène au Journal.
+  - `style.css` : deux règles (pastille de Jouer, marge de la sous-navigation), avec les jetons existants.
+- Tests : `npm test` (883 noms, 0 doublon), `test-startup.js`, essais Playwright 3 à 27 verts, nouvel `essai28.js`
+  (ordre de la barre, chaque entrée, 19 anciens noms et alias, profil, sous-navigation, Journal vide et rempli,
+  touche retour, 29 fonctions de la recherche sans échec, aucun débordement à 360, 390, 412 et 1 280 px).
+- Difficultés : 5 essais supposaient l'ancienne barre (Progresser, liste des parties dans Jouer) : adaptés, avec le
+  helper commun `nav-essai.js`. Placer l'appel « série » en haut de Mon sac décalait la scène du sac 3D (essai 7) :
+  il est placé après la matrice de wedges. Le bouton « Comprendre mon jeu » du tableau de bord, en double avec la
+  sous-navigation, est retiré de cet endroit (la fonction reste dans la sous-navigation, l'accueil et la recherche).
