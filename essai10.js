@@ -112,6 +112,7 @@ function partieType(graine, pars) {
     await page.click('.pv-panneau [data-a="pv-dist"][data-d="5"]'); await page.click('.pv-panneau [data-a="pv-dist"][data-d="1"]');
     r.apresReglage = await page.inputValue('#pv-dist');
     /* GPS : départ ici, arrivée 150 m plus au nord */
+    await page.click('.pv-panneau .pv-plus-coup:not([open]) > summary').catch(() => {}); /* UX09 : GPS dans « Plus de détails » */
     r.gpsBoutons = await page.locator('.pv-gps button').count();
     await page.click('.pv-panneau [data-a="pv-gps"][data-v="a"]'); await page.waitForSelector('.pv-gps button[data-v="b"]:not([disabled])');
     await ctx.setGeolocation({ latitude: 48.8566 + 150 / 111195, longitude: 2.3522, accuracy: 5 });
@@ -124,6 +125,7 @@ function partieType(graine, pars) {
     /* Un coup de wedge à mi-swing, distance tapée */
     await page.click('#calque-partie [data-a="pv-coup"][data-v="-1"]');
     await page.click('.pv-panneau [data-a="pv-club"][data-id="sw"]');
+    await page.click('.pv-panneau .pv-plus-coup:not([open]) > summary').catch(() => {}); 
     await page.click('.pv-panneau [data-a="pv-amplitude"][data-v="a2"]');
     await page.fill('#pv-dist', '42'); await page.dispatchEvent('#pv-dist', 'input');
     await vue('07-coup-wedge');

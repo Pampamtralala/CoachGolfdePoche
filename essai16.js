@@ -97,7 +97,7 @@ async function toucherCarte(page, dx, dy) {
     for (let i = 0; i < 3; i++) await page.click('#pt-suiv');
     if (!(await page.locator('[data-a="pv-coup"][data-v="-1"]').count())) await page.click('#calque-partie [data-a="mode-saisie"][data-v="detail"]');   /* express par défaut */
     /* 1. Panneau d'un coup */
-    await page.click('[data-a="pv-coup"][data-v="-1"]'); await page.waitForSelector('.pv-panneau [data-a="pv-lie"]');
+    await page.click('[data-a="pv-coup"][data-v="-1"]'); await page.waitForSelector('.pv-panneau [data-a="pv-lie"]', { state: 'attached' }); await page.click('.pv-panneau .pv-plus-coup:not([open]) > summary').catch(() => {}); 
     r.clubs = await page.$$eval('.pv-panneau > .pv-clubs [data-a="pv-club"]', l => l.map(b => b.getAttribute('data-id')).join(','));
     r.autres = await page.locator('.pv-autres summary').textContent();
     r.lieDefaut = await page.$$eval('[data-a="pv-lie"][aria-pressed="true"]', l => l.map(b => b.textContent).join(','));
@@ -110,10 +110,10 @@ async function toucherCarte(page, dx, dy) {
     r.clubDepart = p.trous[3] ? p.trous[3][7] : (await page.evaluate(() => 0));
     verifie(p.coups[3][0].p === 'dep' && !p.coups[3][0].t, nom + ' coup 1 : ' + r.coup1);
     /* 2. Recentrage depuis les arbres, avec un club hors du sac */
-    await page.click('[data-a="pv-coup"][data-v="-1"]'); await page.waitForSelector('.pv-panneau [data-a="pv-lie"]');
+    await page.click('[data-a="pv-coup"][data-v="-1"]'); await page.waitForSelector('.pv-panneau [data-a="pv-lie"]', { state: 'attached' }); await page.click('.pv-panneau .pv-plus-coup:not([open]) > summary').catch(() => {}); 
     r.lie2 = await page.$$eval('[data-a="pv-lie"][aria-pressed="true"]', l => l.length);
     await page.click('[data-a="pv-lie"][data-v="ar"]'); await page.click('[data-a="pv-type"][data-v="rec"]');
-    r.horsSac = net(await page.textContent('.pv-panneau .aide'));
+    r.horsSac = net(await page.textContent('.pv-panneau .pv-plus-coup .aide'));
     await page.click('.pv-autres summary'); await page.click('.pv-autres [data-a="pv-club"][data-id="f4"]');
     await page.fill('#pv-dist', '60');
     await vue('02-recentrage');

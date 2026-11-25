@@ -204,8 +204,8 @@
   function coupPanneauHTML() {
     var p = etat.partie, C = ui.pvCoup, n = C.i < 0 ? coupsDuTrou(p, p.i).length + 1 : C.i + 1, club = CLUB[C.c], gps = gpsPossible();
     var h = '<div class="pv-voile" aria-hidden="true"></div><div class="pv-panneau" role="dialog" aria-modal="true" aria-labelledby="pv-coup-titre">' +
-      '<h3 id="pv-coup-titre">' + t("Coup " + n + " · trou " + numeroTrou(p, p.i)) + '</h3>' +
-      '<p class="pv-etiq">Balle</p><div class="pv-choix" role="group" aria-label="Position de la balle">' + LIES.map(function (x) {
+      '<h3 id="pv-coup-titre">' + t("Coup " + n + " · trou " + numeroTrou(p, p.i)) + '</h3>';
+    var plusH = '<p class="pv-etiq">Balle</p><div class="pv-choix" role="group" aria-label="Position de la balle">' + LIES.map(function (x) {
         return '<button type="button" data-a="pv-lie" data-v="' + x.id + '" aria-pressed="' + (C.p === x.id) + '">' + t(x.nom) + '</button>';
       }).join("") + '</div>' +
       '<p class="pv-etiq">Coup</p><div class="pv-choix" role="group" aria-label="Type de coup">' + TYPES_COUP.map(function (x) {
@@ -221,10 +221,9 @@
     if (autres.length) h += '<details class="pv-autres"' + (C.autres || autres.indexOf(C.c) >= 0 ? " open" : "") + '><summary data-a="pv-autres">' + t(sacCompose() ? "Un club qui n'est pas dans ton sac" : "Autres clubs") + '</summary><div class="pv-clubs petit" role="group" aria-label="Autres clubs">' +
       autres.map(function (id) { return '<button type="button" data-a="pv-club" data-id="' + id + '" aria-pressed="' + (C.c === id) + '">' + t(courtSac(CLUB[id]).replace(/^(\d)$/, "Fer $1")) + '</button>'; }).join("") + '</div>' +
       (sacCompose() ? "" : '<p class="aide">' + t("La liste du haut : les clubs que tu as déjà mesurés. Compose ton sac dans « Mon sac » pour la fixer.") + '</p>') + '</details>';
-    if (club && club.fam === "w") {
-      h += '<div class="pv-amplitudes" role="group" aria-label="Amplitude du swing">' + [{ id: "plein", nom: "Plein" }].concat(AMPLITUDES.slice().reverse()).map(function (am) {
-        return '<button type="button" data-a="pv-amplitude" data-v="' + am.id + '" aria-pressed="' + ((C.a || "plein") === am.id) + '">' + t(am.nom) + '</button>';
-      }).join("") + '</div>';
+    if (club) {
+      var el = ellipseDe(C.c);
+      h += poseurHTML({ ell: el, ctx: "coup", l: C.l, dd: C.d != null && el ? C.d - el.d : 0, titre: "À gauche ou à droite ?" });
     }
     var moyC = club && (C.a || "plein") === "plein" ? moyenneClub(mesuresTout(), C.c) : null;
     h += '<div class="pv-dist"><label for="pv-dist">Distance mesurée, en mètres (facultatif)</label><div class="pv-dist-reglage">' +
@@ -232,18 +231,25 @@
       '<input id="pv-dist" type="text" inputmode="numeric" maxlength="3" autocomplete="off" data-i="pv-dist" value="' + (C.d || "") + '" placeholder="' + (moyC ? "moy. " + moyC : "m") + '" aria-describedby="pv-dist-aide">' +
       [1, 5].map(function (d) { return '<button class="pv-pm petit" type="button" data-a="pv-dist" data-d="' + d + '" aria-label="' + at(d + " mètre" + (d > 1 ? "s" : "") + " de plus") + '">+' + d + '</button>'; }).join("") + '</div></div>';
     h += '<p class="aide" id="pv-dist-aide">' + t(moyC ? "Facultatif. Laisse vide si tu ne la connais pas : la distance reste inconnue, et ta moyenne au " + nomClub(C.c).replace(/^Fer /, "fer ") + " (" + moyC + " m) sert seulement d'estimation dans les calculs, sans jamais compter comme une mesure." : "Facultatif : laisse vide si tu ne la connais pas.") + '</p>';
-    if (club) {
-      var el = ellipseDe(C.c);
-      h += poseurHTML({ ell: el, ctx: "coup", l: C.l, dd: C.d != null && el ? C.d - el.d : 0, titre: "À gauche ou à droite ?" });
+    if (club && club.fam === "w") {
+      plusH += '<p class="pv-etiq">Amplitude</p><div class="pv-amplitudes" role="group" aria-label="Amplitude du swing">' + [{ id: "plein", nom: "Plein" }].concat(AMPLITUDES.slice().reverse()).map(function (am) {
+        return '<button type="button" data-a="pv-amplitude" data-v="' + am.id + '" aria-pressed="' + ((C.a || "plein") === am.id) + '">' + t(am.nom) + '</button>';
+      }).join("") + '</div>';
     }
     if (gps) {
       var g = C.g || [];
-      h += '<div class="pv-gps"><button class="btn" type="button" data-a="pv-gps" data-v="a">' + (g[0] != null ? "Départ marqué " + TRAIT : "Marquer le départ") + '</button>' +
+      plusH += '<div class="pv-gps"><button class="btn" type="button" data-a="pv-gps" data-v="a">' + (g[0] != null ? "Départ marqué " + TRAIT : "Marquer le départ") + '</button>' +
         '<button class="btn" type="button" data-a="pv-gps" data-v="b"' + (g[0] == null ? " disabled" : "") + '>' + (g[2] != null ? "Arrivée marquée " + TRAIT : "Marquer l’arrivée") + '</button></div>' +
         '<p class="aide" id="pv-gps-etat" aria-live="polite">' + t(C.gpsMsg || "Marque ta position à la balle, puis là où elle s'arrête : la distance se remplit seule.") + '</p>';
     } else if (GPS.refuse || navigator.geolocation) {
-      h += '<p class="aide">' + t("La position GPS n'est pas accessible ici : saisis la distance au compteur ou à la carte du parcours.") + '</p>';
+      plusH += '<p class="aide">' + t("La position GPS n'est pas accessible ici : saisis la distance au compteur ou à la carte du parcours.") + '</p>';
     }
+    /* UX09 : club, direction et distance d'abord ; position, type de coup, amplitude et GPS repliés, avec leur valeur
+       affichée dans le titre. Rien n'est choisi à la place du joueur : la position vient du départ ou de la carte GPS. */
+    var lieNom = (LIES.filter(function (x) { return x.id === C.p; })[0] || {}).nom, typeNom = (TYPES_COUP.filter(function (x) { return x.id === (C.t || ""); })[0] || {}).nom;
+    var resumePlus = [lieNom ? "Balle : " + lieNom.toLowerCase() : "Balle : non notée", typeNom && C.t ? typeNom.toLowerCase() : "", club && club.fam === "w" && C.a && C.a !== "plein" ? "amplitude notée" : "", gps && C.g && C.g[0] != null ? "GPS" : ""].filter(Boolean).join(" · ");
+    var ouvrirPlus = C.plus || !!C.t || (C.a && C.a !== "plein") || (C.i >= 0 && C.p && C.p !== "dep");
+    h += '<details class="pv-plus-coup"' + (ouvrirPlus ? " open" : "") + '><summary data-a="pv-plus-coup">' + t("Plus de détails") + '<small>' + t(resumePlus) + '</small></summary>' + plusH + '</details>';
     h += '<p class="erreur" id="pv-coup-err" role="alert" hidden></p><div class="pv-panneau-pied">' +
       '<button class="btn" type="button" data-a="pv-coup-annuler">Annuler</button>' +
       (C.i >= 0 ? '<button class="btn danger" type="button" data-a="pv-coup-suppr">Supprimer</button>' : '') +
@@ -347,6 +353,7 @@
     rendrePartie(); focusPartie('[data-a="pv-type"][data-v="' + v + '"]');
   };
   ACTIONS["pv-autres"] = function () { var C = ui.pvCoup; if (C) C.autres = !C.autres; };
+  ACTIONS["pv-plus-coup"] = function () { var C = ui.pvCoup; if (C) C.plus = !C.plus; };
   ACTIONS["pv-club"] = function (el) {
     var C = ui.pvCoup, id = el.getAttribute("data-id"); if (!C || !CLUB[id]) return;
     var avant = C.c; C.c = id;
