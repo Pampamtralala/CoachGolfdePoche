@@ -250,7 +250,7 @@
   VUES.sac = function () {
     return '<section class="bloc premier"><p class="surtitre">Mon sac</p><h1>Sac et distances</h1><div class="raccourcis"><button class="btn" type="button" data-a="serie-ouvrir">Série de balles</button><button class="btn" type="button" data-a="aller-a" data-v="sac" data-s="c-historique">Historique des mesures</button></div></section>' +
       '<section class="bloc" id="c-distances" style="border-top:0;padding-top:0">' + sacHTML() + distancesHTML() + '</section>' +
-      '<section class="bloc" id="c-wedges"><h2>Ma matrice de wedges</h2>' + wedgesHTML() + '</section>' + historiqueMesuresHTML();
+      '<section class="bloc" id="c-wedges"><h2>Ma matrice de wedges</h2>' + wedgesHTML() + '</section>' + serieAppelHTML() + historiqueMesuresHTML();
   };
 
   /* Régularité : la dispersion des balles de chaque club, quand au moins un club a plusieurs mesures. */

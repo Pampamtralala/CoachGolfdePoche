@@ -177,13 +177,15 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   anciennes.push({ d: jours(3), trous: partieType(31).slice(9), pc: id, o: 9 });
   e.parties = anciennes.concat(e.parties); e.maj += 1;
   await ecrire(e); await recharger();
-  await onglet('carnet');
+  /* UX03 : le tableau des parties et l'index estimé sont dans Journal ; les parcours restent dans Jouer. */
+  await onglet('parties');
   e = await lire();
   res.tableParties = await page.$$eval('.parties tbody tr', l => l.map(r => Array.from(r.cells).map(c => c.textContent).join(' ; ')));
   const idx = E.indexEstime(e.parties, p => e.parcours.find(x => x.id === p.pc) || null, 18);
   res.indexEstime = (await page.textContent('.index-estime .main')) + ' (calculé ' + idx.v + ', ' + idx.n + ' parties, ' + idx.k + ' retenues)';
   verifie(res.indexEstime.startsWith(String(idx.v).replace('.', ',') + ' '), 'index estimé affiché = calculé');
   res.indexTexte = await page.textContent('.index-estime .aide');
+  await onglet('carnet');
   res.listeParcours = await page.textContent('#c-parcours .ligne');
   res.largeurCarnet = await largeur();
   await long('25-carnet', 2);
@@ -213,9 +215,11 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   e = await lire();
   verifie(e.parcours[0].sss === 70.4 && e.parcours[0].slope === 128 && e.parcours[0].nom === 'Golf des Essais', 'SSS, slope et nom enregistrés');
   await page.keyboard.press('Escape');
+  await onglet('parties');
   const idx2 = E.indexEstime(e.parties, p => e.parcours.find(x => x.id === p.pc) || null, 18);
   res.indexAvecSlope = (await page.textContent('.index-estime .main')) + ' (calculé ' + idx2.v + ')';
   verifie(res.indexAvecSlope.startsWith(String(idx2.v).replace('.', ',') + ' '), 'index estimé avec SSS et slope');
+  await onglet('carnet');
   /* Le plan du trou noir s'affiche pendant la saisie. */
   await page.click('[data-a="dp-ouvrir"]');
   res.departConnu = (await page.$eval('#dp-pc', s => s.options[s.selectedIndex].textContent)) + ' · ' + await page.$$eval('[data-k="jeu"]', l => l.map(x => x.textContent).join(' | '));
@@ -264,7 +268,7 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   vieux.parties = [{ d: jours(60), trous: partieType(5).map(t => t.slice(0, 4)) }];
   await ecrire(vieux); await recharger();
   await onglet('plan'); await page.click('[data-a="fait"][data-id="c1-m1"]'); await page.click('[data-a="fait"][data-id="c1-m1"]');
-  await onglet('carnet');
+  await onglet('parties');
   e = await lire();
   verifie(e.parties.length === 1 && e.parties[0].trous.every(t => t.length === 9 && t[4] === 0 && t[5] === 0) && canon(e.parties[0].trous.map(t => t.slice(0, 4))) === canon(vieux.parties[0].trous) && e.parties[0].pc === null && canon(e.parcours) === '[]' && e.detail === false, 'ancienne partie conservée');
   res.vieilleLigne = await page.$$eval('.parties tbody tr', l => l.map(r => Array.from(r.cells).map(c => c.textContent).join(' ; ')));
@@ -301,13 +305,13 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   await page.fill('#d-code', Buffer.from(JSON.stringify(mal), 'utf8').toString('base64'));
   await page.click('[data-a="ok-importer"]');
   await page.waitForSelector('.tete .ident');
-  for (const o of ['carnet', 'bilan', 'exercices', 'plan', 'profil']) await onglet(o);
+  for (const o of ['carnet', 'parties', 'bilan', 'exercices', 'plan', 'profil']) await onglet(o);
   await onglet('plan'); await page.click('[data-a="fait"][data-id="c1-m1"]'); await page.click('[data-a="fait"][data-id="c1-m1"]');
   const apresImport = await lire();
   await onglet('carnet');
   await page.click('[data-a="pt-reprendre"]'); await page.keyboard.press('Escape');
   await page.click('[data-a="pc-ouvrir"]'); await page.keyboard.press('Escape');
-  await page.click('[data-a="pt-carte"]'); await page.keyboard.press('Escape');
+  await onglet('parties'); await page.click('[data-a="pt-carte"]'); await page.keyboard.press('Escape'); await onglet('carnet');
   await page.click('[data-a="pt-abandonner"]'); await page.click('.dialogue [data-a="pt-ok-abandon"]');
   await page.click('[data-a="dp-ouvrir"]');
   res.hostileOptions = await page.$$eval('#dp-pc option', l => l.map(o => o.textContent).join(' | '));
@@ -327,7 +331,7 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   await page.setViewportSize({ width: 360, height: 740 });
   await recharger();
   const l360 = {};
-  for (const o of ['carnet', 'bilan']) { await onglet(o); l360[o] = await largeur(); }
+  for (const o of ['carnet', 'parties', 'bilan']) { await onglet(o); l360[o] = await largeur(); }
   await page.evaluate(() => document.getElementById('sg').scrollIntoView()); await vue('31-objectifs-360');
   await onglet('carnet');
   await page.click('[data-a="pc-ouvrir"]');
@@ -335,11 +339,11 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   await page.evaluate(() => { const f = document.getElementById('feuille'); const el = f.querySelector('.pars'); f.scrollTop = el.offsetTop - 60; });
   await vue('32-parcours-360');
   await page.keyboard.press('Escape');
-  await page.click('[data-a="pt-carte"]');
+  await onglet('parties'); await page.click('[data-a="pt-carte"]');
   l360.carte = await page.$eval('#feuille', f => f.scrollWidth + '/' + f.clientWidth);
   await vue('33-carte-360');
   await page.keyboard.press('Escape');
-  await page.click('[data-a="dp-ouvrir"]'); await page.click('[data-a="pt-nouvelle"]');
+  await onglet('carnet'); await page.click('[data-a="dp-ouvrir"]'); await page.click('[data-a="pt-nouvelle"]');
   await page.click(P + '[data-a="pv-mej"][data-v="r"]');
   res.partie360 = await page.evaluate(() => { const p = document.querySelector('.partie'); return { large: p.scrollWidth, haut: p.scrollHeight, ecran: innerHeight }; });
   res.debordements360 = await page.$$eval('#calque-partie button', l => l.filter(b => b.scrollWidth > b.clientWidth + 1).map(b => b.textContent).join(' | '));

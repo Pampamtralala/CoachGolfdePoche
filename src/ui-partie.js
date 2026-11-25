@@ -83,8 +83,14 @@
         (etat.parcours.some(function (x) { return !x.sss || !x.slope; }) ? " Ajoute le SSS et le slope de tes parcours, dans leur fiche, pour l'affiner." : "")) + '</p>', "Comment il est calculé") + '</div>';
   }
 
+  /* UX03 : la partie en cours reste dans Jouer ; la liste des parties passe dans Journal. */
   function partiesHTML() {
-    var p = etat.partie, l = etat.parties;
+    var l = etat.parties;
+    return partieEnDirectHTML() + (l.length ? '<section class="bloc journal-lien"><h2>Mes parties</h2><p class="aide">' +
+      t(pluriel(l.length, "partie") + " dans ton journal, avec leur carte de score.") + '</p><button class="btn" type="button" data-a="onglet" data-v="journal">Voir mes parties dans le journal</button></section>' : '');
+  }
+  function partieEnDirectHTML() {
+    var p = etat.partie;
     var h = '<section class="bloc" id="c-partie" style="border-top:0;padding-top:0">' + (p || ui.depart ? '<h2>Partie en direct</h2>' : '');
     if (p) {
       var n = nbSaisis(p), pc = parcoursDe(p.pc);
@@ -96,10 +102,16 @@
     } else {
       h += comment('<p>Sur le parcours, note chaque trou en marchant vers le départ suivant : mise en jeu, green, putts, pénalités et score. Les réponses les plus courantes sont déjà cochées. Tes chiffres mettent à jour ton bilan, tes objectifs et l’estimation de tes coups gagnés.</p>');
     }
+    return h + '</section>';
+  }
+  /* Tableau des parties (Journal), de la plus récente à la plus ancienne. */
+  function dernieresPartiesHTML() {
+    var l = etat.parties, h = '<section class="bloc" id="c-parties" style="border-top:0;padding-top:0">';
+    if (!l.length) h += '<p>' + t("Aucune partie pour l'instant. Lance ta première partie depuis Jouer : elle apparaîtra ici avec sa carte de score.") + '</p><button class="btn principal" type="button" data-a="partie-rapide">Nouvelle partie</button>';
     if (l.length) {
-      h += '<h3>Tes dernières parties</h3><div class="defile"><table class="carte-score parties"><thead><tr><th scope="col">Partie</th>' +
+      h += '<h2>Toutes mes parties</h2><div class="defile"><table class="carte-score parties"><thead><tr><th scope="col">Partie</th>' +
         '<th scope="col" class="num">Score</th><th scope="col" class="num">Greens</th><th scope="col" class="num">Putts</th><th scope="col" class="num">Pén.</th></tr></thead><tbody>';
-      for (var i = l.length - 1; i >= Math.max(0, l.length - 8); i--) {
+      for (var i = l.length - 1; i >= 0; i--) {
         var s = statsTrous(l[i].trous), sc = scorePartie(l[i]), pci = parcoursDe(l[i].pc);
         var sous = (pci ? pci.nom : "") + (s.T < 18 ? (pci ? " · " : "") + s.T + " trous" : "") + (l[i].exclue ? " · exclue des calculs" : "");
         h += '<tr><th scope="row"><button class="rang-lien" type="button" data-a="pt-carte" data-id="' + i + '"><span>' + t(dateCourte(l[i].d)) + '</span>' + (sous ? '<small>' + t(sous) + '</small>' : '') + '</button></th>' +
@@ -109,7 +121,6 @@
       var cu = cumulParties(partiesAnalyse(), 54);
       h += '</tbody></table></div><p class="aide" style="margin-top:8px">' +
         t("Touche une partie pour voir sa carte.") + '</p>' +
-        '<p><button class="btn" type="button" data-a="j-ouvrir">Mon journal : bilans, notes, rapports, import</button></p>' +
         indexEstimeHTML() +
         '<button class="btn large" type="button" data-a="pt-voir-sg">Voir mes objectifs et l’estimation de mes coups gagnés</button>';
     }
@@ -478,7 +489,7 @@
   };
   ACTIONS["pt-bilan-carte"] = function () {
     var i = etat.parties.indexOf(ui.bilanPartie);
-    ui.partie = null; ui.bilanPartie = null; rendrePartie(); allerOnglet("parcours", true);
+    ui.partie = null; ui.bilanPartie = null; rendrePartie(); allerOnglet("journal", true);
     if (i >= 0) { ui.feuille = { partie: i }; ui.retourFocus = app.querySelector('[data-a="pt-carte"][data-id="' + i + '"]'); rendreFeuille(); var b = document.getElementById("f-fermer"); if (b) b.focus(); }
   };
   ACTIONS["pt-voir-sg"] = function () {

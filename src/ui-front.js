@@ -205,7 +205,7 @@
   /* ============================================================
      ACCUEIL : trois portes (le sac, le parcours, le practice), puis l'essentiel du jour
      ============================================================ */
-  /* Accueil centré sur les données du joueur : le coaching reste dans Progresser. */
+  /* Accueil centré sur les données du joueur : le coaching est rangé dans Analyses. */
   VUES.accueil = function () {
     var p = etat.profil, pt = etat.partie, parties = etat.parties;
     var totalTrous = parties.reduce(function (n, x) { return n + (x.trous || []).length; }, 0);
@@ -220,7 +220,7 @@
       '<button class="btn principal" type="button" data-a="' + (pt ? "pt-reprendre" : "partie-rapide") + '">' +
       icone("drapeau") + t(pt ? " Reprendre ma partie" : " Nouvelle partie") + '</button>' +
       '<button class="btn" type="button" data-a="serie-ouvrir">' + icone("sac") + ' Mesurer mes clubs</button>' +
-      '<button class="btn" type="button" data-a="onglet" data-v="parcours">Mes parties</button>' +
+      '<button class="btn" type="button" data-a="onglet" data-v="journal">Mes parties</button>' +
       '<button class="btn" type="button" data-a="onglet" data-v="sac">Mon sac</button></div>' +
       '<p class="aide">' + t(pluriel(parties.length, "partie") + " conservée" + (parties.length > 1 ? "s" : "") +
       " · " + totalTrous + " trous · " + nbCoups + " coups documentés") + '</p></section>';
@@ -237,9 +237,9 @@
       '<button class="lien" type="button" data-a="an-ouvrir">Toutes les questions</button></div></section>';
     h += '<section class="bloc"><h2>Mes tendances</h2>' + chiffresClesHTML() + '</section>' + qualiteGolfHTML();
     h += '<section class="bloc"><h2>À découvrir dans mes données</h2>' +
-      '<p class="aide">Pour des distances fiables, mesure plusieurs balles par club. Les chiffres détaillés et leur historique sont disponibles dans Mon sac et Statistiques.</p>' +
+      '<p class="aide">Pour des distances fiables, mesure plusieurs balles par club. Les chiffres détaillés et leur historique sont disponibles dans Mon sac et Analyses.</p>' +
       '<div class="acces-rapides"><button class="btn" type="button" data-a="onglet" data-v="bilan">Toutes mes statistiques</button>' +
-      '<button class="btn" type="button" data-a="onglet" data-v="practice">Entraînement (facultatif)</button></div></section>';
+      '<button class="btn" type="button" data-a="onglet" data-v="practice">Coaching (facultatif)</button></div></section>';
     return h;
   };
 

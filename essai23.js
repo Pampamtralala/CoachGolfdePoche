@@ -74,7 +74,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.click('#feuille [data-a="fermer-feuille"]#f-fermer');
     r.statsExclue = await echantillon(page);
     verifie(/^Sur 5 parties/.test(r.statsExclue), nom + ' statistiques sans la partie exclue : ' + r.statsExclue);
-    await page.click('#barre [data-a="onglet"][data-v="parcours"]');
+    await page.click('#barre [data-a="onglet"][data-v="journal"]');
     r.carnet = norm(await page.textContent('.carte-score.parties tbody tr:first-child th'));
     verifie(/exclue des calculs/.test(r.carnet), nom + ' carnet : partie signalée exclue : ' + r.carnet);
     await ouvrirMesDonnees(page);

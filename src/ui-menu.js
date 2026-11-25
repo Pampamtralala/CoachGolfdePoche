@@ -2,14 +2,25 @@
      NAVIGATION : cinq rubriques dans une barre (en bas sur téléphone, à gauche sur grand écran),
      et une recherche qui mène à chaque fonction de l'appli.
      ============================================================ */
+  /* UX03 : cinq entrées orientées données. Jouer, au centre, est l'action principale ;
+     le coaching (programme, exercices, défis) est rangé dans Analyses ; le profil est dans l'en-tête. */
   var RUBRIQUES = [
-    { id: "accueil", nom: "Accueil", ico: "accueil", pages: ["accueil", "profil"] },
-    { id: "parcours", nom: "Jouer", ico: "drapeau", pages: ["parcours"] },
-    { id: "practice", nom: "Progresser", ico: "entrainement", pages: ["practice", "exercices"] },
-    { id: "bilan", nom: "Statistiques", ico: "stats", pages: ["bilan"] },
-    { id: "sac", nom: "Mon sac", ico: "sac", pages: ["sac"] }
+    { id: "accueil", nom: "Mon jeu", ico: "accueil", pages: ["accueil"] },
+    { id: "bilan", nom: "Analyses", ico: "stats", pages: ["bilan", "practice", "exercices"] },
+    { id: "parcours", nom: "Jouer", ico: "drapeau", pages: ["parcours"], principal: true },
+    { id: "sac", nom: "Mon sac", ico: "sac", pages: ["sac"] },
+    { id: "journal", nom: "Journal", ico: "carnet", pages: ["journal"] }
   ];
-  function rubriqueDe(page) { var r = RUBRIQUES.filter(function (x) { return x.pages.indexOf(page) >= 0; })[0]; return r ? r.id : "accueil"; }
+  /* Page sans entrée (le profil, ouvert depuis l'en-tête) : aucune entrée n'est marquée. */
+  function rubriqueDe(page) { var r = RUBRIQUES.filter(function (x) { return x.pages.indexOf(page) >= 0; })[0]; return r ? r.id : null; }
+  /* Sous-navigation commune aux pages d'Analyses : statistiques, questions, coaching. */
+  function sousNavAnalysesHTML(actif) {
+    var l = [{ v: "bilan", lib: "Statistiques" }, { a: "an-ouvrir", lib: "Comprendre mon jeu" }, { v: "practice", lib: "Programme" }, { v: "exercices", lib: "Exercices et défis" }];
+    return '<nav class="filtres sous-nav" aria-label="Analyses">' + l.map(function (x) {
+      var on = x.v === actif;
+      return '<button class="puce neutre" type="button" data-a="' + (x.a || "onglet") + '"' + (x.v ? ' data-v="' + x.v + '"' : '') + (on ? ' aria-pressed="true" aria-current="page"' : '') + '>' + t(x.lib) + '</button>';
+    }).join("") + '</nav>';
+  }
   /* rendre() appelle toujours rendreMenu : c'est désormais la barre de navigation. */
   function rendreMenu(visible) {
     var b = document.getElementById("barre");
@@ -19,7 +30,7 @@
     b.hidden = false;
     var r = rubriqueDe(ui.onglet);
     b.innerHTML = '<span class="barre-marque" aria-hidden="true">Coach de poche</span><ul>' + RUBRIQUES.map(function (x) {
-      return '<li><button class="barre-item" type="button" data-a="onglet" data-v="' + x.id + '"' + (r === x.id ? ' aria-current="page"' : '') + '>' +
+      return '<li><button class="barre-item' + (x.principal ? ' principal' : '') + '" type="button" data-a="onglet" data-v="' + x.id + '"' + (r === x.id ? ' aria-current="page"' : '') + '>' +
         icone(x.ico) + '<span>' + t(x.nom) + '</span></button></li>';
     }).join("") + '</ul>';
   }
@@ -28,39 +39,42 @@
   function fonctions() {
     var pt = etat.partie;
     return [
-      { g: "Jouer", l: [
-        { a: "partie-rapide", t: pt ? "Reprendre la partie au trou " + numeroTrou(pt, pt.i) : "Lancer une partie", k: "nouvelle partie carte score express detaillee" },
-        { p: "parcours", t: "Mes parties", k: "historique cartes scores image partage" },
-        etat.parcours.length ? { p: "parcours", s: "c-parcours", t: "Mes parcours", k: "golf trous meilleurs pires dangers" } : null,
-        { a: "carte-nouveau", t: "Carte GPS : ajouter mon golf", k: "gps green distance entree milieu fond openstreetmap carte parcours" },
-        { a: "cond-ouvrir", t: "Conditions du jour", k: "vent temperature meteo" }] },
-      { g: "Progresser", l: [
-        { p: "practice", t: "Programme et séance du jour", k: "plan cycle semaine entrainement calendrier" },
-        { a: "serie-ouvrir", t: "Série de balles au practice", k: "dispersion ellipse direction practice" },
-        { p: "exercices", t: "Bibliothèque d’exercices", k: "exercices drills" },
-        { p: "exercices", s: "defis", t: "Défis", k: "challenge chrono putting record" },
-        { p: "practice", s: "badges", t: "Badges de progression", k: "recompenses succes" },
-        { a: "fin-cycle", t: "Faire le bilan du cycle", k: "fin cycle nouveau plan" }] },
-      { g: "Statistiques", l: [
-        { p: "bilan", t: "Tableau de bord", k: "stats chiffres cles tendances index" },
+      { g: "Mon jeu", l: [
+        { p: "accueil", t: "Mon jeu : tendances et dernière partie", k: "accueil tableau de bord resume chiffres cles" }] },
+      { g: "Analyses", l: [
+        { p: "bilan", t: "Tableau de bord des statistiques", k: "stats chiffres cles tendances index" },
         { a: "an-ouvrir", t: "Comprendre mon jeu : poser une question", k: "question comprendre analyse pourquoi mieux trois putts driver gauche droite club regulier trou difficile parcours forme" },
-        { a: "j-ouvrir", t: "Bilans, journal et rapports", k: "journal bilan mois trimestre saison rapport export import csv notes forme meteo" },
-        { a: "md-ouvrir", t: "Mes données : vérifier, corriger, sauvegarder", k: "donnees provenance exclure corriger sauvegarde export restaurer" },
+        { a: "md-ouvrir", t: "Mes données : vérifier, corriger, sauvegarder", k: "donnees qualite provenance exclure corriger sauvegarde export restaurer" },
         { p: "bilan", s: "notes", t: "Ton jeu sur 100", k: "notes jauges priorite semaine" },
         { p: "bilan", s: "sg", t: "Objectif d’index et estimation des coups gagnés", k: "strokes gained coups gagnés perdus estimation cible" },
         { p: "bilan", s: "evitables", t: "Erreurs évitables", k: "penalites double approche trois putts" },
         { p: "bilan", s: "releves", t: "Relevés détaillés", k: "constats premier putt" },
         { p: "bilan", s: "defauts", t: "Tes défauts", k: "slice hook diagnostic" },
         { p: "bilan", s: "carte", t: "Ta carte de jeu", k: "domaines palier" }] },
+      { g: "Coaching", l: [
+        { p: "practice", t: "Programme et séance du jour", k: "progresser plan cycle semaine entrainement calendrier" },
+        { p: "exercices", t: "Bibliothèque d’exercices", k: "progresser exercices drills" },
+        { p: "exercices", s: "defis", t: "Défis", k: "challenge chrono putting record" },
+        { p: "practice", s: "badges", t: "Badges de progression", k: "recompenses succes" },
+        { a: "fin-cycle", t: "Faire le bilan du cycle", k: "fin cycle nouveau plan" }] },
+      { g: "Jouer", l: [
+        { a: "partie-rapide", t: pt ? "Reprendre la partie au trou " + numeroTrou(pt, pt.i) : "Lancer une partie", k: "nouvelle partie carte score express detaillee" },
+        etat.parcours.length ? { p: "parcours", s: "c-parcours", t: "Mes parcours", k: "golf trous meilleurs pires dangers" } : null,
+        { a: "carte-nouveau", t: "Carte GPS : ajouter mon golf", k: "gps green distance entree milieu fond openstreetmap carte parcours" },
+        { a: "cond-ouvrir", t: "Conditions du jour", k: "vent temperature meteo" }] },
       { g: "Mon sac", l: [
         { p: "sac", t: "Sac et distances", k: "clubs fourchette dispersion ecarts trous" },
+        { a: "serie-ouvrir", t: "Série de balles au practice", k: "dispersion ellipse direction practice mesurer" },
         { a: "sac-modifier", t: "Composer mon sac", k: "configuration clubs wedges loft" },
         { p: "sac", s: "c-wedges", t: "Matrice de wedges", k: "amplitudes petit jeu" },
         { p: "sac", s: "c-historique", t: "Historique des mesures", k: "series balles" }] },
-      { g: "Moi", l: [
-        { p: "profil", t: "Profil et objectif d’index", k: "index prenom lieux" },
-        { p: "profil", s: "donnees", t: "Sauvegarde et données", k: "export import code synchronisation" },
-        { a: "modifier", t: "Modifier mes réponses", k: "questionnaire profil" }] }
+      { g: "Journal", l: [
+        { p: "journal", t: "Mes parties", k: "historique cartes scores image partage" },
+        { a: "j-ouvrir", t: "Bilans, notes et rapports", k: "journal bilan mois trimestre saison rapport export import csv notes forme meteo" }] },
+      { g: "Profil", l: [
+        { p: "profil", t: "Profil et objectif d’index", k: "moi index prenom lieux" },
+        { p: "profil", s: "donnees", t: "Sauvegarde et données", k: "moi export import code synchronisation" },
+        { a: "modifier", t: "Modifier mes réponses", k: "moi questionnaire profil" }] }
     ].map(function (g) { g.l = g.l.filter(Boolean); return g; });
   }
   function sansAccent(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }

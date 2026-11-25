@@ -183,8 +183,11 @@
   /* ---------- État de l'écran ---------- */
   /* Un accueil à trois portes (le sac, le parcours, le practice) et un menu latéral qui mène à tout.
      Chaque page a son adresse (#sac, #bilan…), sans sous-onglets. Les anciennes adresses restent valides. */
-  var PAGES = ["accueil", "sac", "parcours", "practice", "exercices", "bilan", "profil"];
-  var ALIAS = { jour: "accueil", distances: "sac", parties: "parcours", carnet: "parcours", plan: "practice", entrainement: "practice" };
+  var PAGES = ["accueil", "sac", "parcours", "practice", "exercices", "bilan", "profil", "journal"];
+  /* Anciens noms et noms des entrées de navigation (UX03) : les liens existants mènent toujours quelque part. */
+  var ALIAS = { jour: "accueil", distances: "sac", parties: "journal", carnet: "parcours", plan: "practice", entrainement: "practice",
+    monjeu: "accueil", "mon-jeu": "accueil", analyses: "bilan", statistiques: "bilan", stats: "bilan", jouer: "parcours",
+    progresser: "practice", coaching: "practice", programme: "practice", "mon-sac": "sac", historique: "journal" };
   function pageDe(nom) { if (a(ALIAS, nom)) nom = ALIAS[nom]; return PAGES.indexOf(nom) >= 0 ? nom : "accueil"; }
   var ui = { vue: "auto", onglet: "accueil", semaine: 1, etape: 0, brouillon: null, mode: null, filtre: { d: "tous", monPalier: true }, feuille: null, dialogue: null, anime: false, retourFocus: null,
     club: "f7", partie: null, bilanPartie: null, pile: [], defiEvt: null, depart: null, fenetre: 5, plis: { priorites: true }, feuilleRetour: null, sacApercu: null, sacSel: null, menu: false, partage: false, pvCoup: null, pvLong: false, serie: null, pvPanneau: null, sjc: null, strat: null, ellSel: null };
@@ -698,7 +701,7 @@
   var VUES = {};
   VUES.practice = function () {
     var plan = etat.plan, sem = plan.semaines[ui.semaine - 1], faites = compteFaites(), total = plan.n * 4;
-    var h = '<section class="bloc premier"><p class="surtitre">Progresser</p><h1>Ton programme</h1>' +
+    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("practice") + '<p class="surtitre">Analyses · Coaching</p><h1>Ton programme</h1>' +
       (etat.profil.questionnaire === false ? '<div class="carte-tb programme-option"><p class="surtitre">' + t("Facultatif") + '</p><p>' + t("Ce programme est générique. Réponds au questionnaire (5 minutes) pour l'adapter à ton niveau, à tes défauts et à ton temps.") + '</p><button class="btn principal" type="button" data-a="modifier">Personnaliser mon programme</button></div>' : '') +
       progressionHTML() +
       '<div class="raccourcis"><button class="btn" type="button" data-a="serie-ouvrir">Série de balles</button><button class="btn" type="button" data-a="onglet" data-v="exercices">Exercices</button><button class="btn" type="button" data-a="aller-a" data-v="exercices" data-s="defis">Défis</button></div></section>' +
@@ -795,8 +798,8 @@
   VUES.bilan = function () {
     var p = etat.profil, pal = palierDe(indexNiveau(p)), P = PALIERS[pal - 1];
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
-    var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' +
-      '<div class="ligne-btn"><button class="btn principal" type="button" data-a="an-ouvrir">Comprendre mon jeu</button><button class="btn" type="button" data-a="j-ouvrir">Bilans, journal et rapports</button></div>' + tableauStatsHTML() + '</section>' + erreursStatsHTML() + puttingStatsHTML() + clubsStatsHTML() + qualiteGolfHTML() +
+    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("bilan") + '<p class="surtitre">Analyses</p><h1>Tableau de bord</h1>' +
+      '<div class="ligne-btn"><button class="btn" type="button" data-a="j-ouvrir">Bilans, journal et rapports</button></div>' + tableauStatsHTML() + '</section>' + erreursStatsHTML() + puttingStatsHTML() + clubsStatsHTML() + qualiteGolfHTML() +
       '<section class="bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
 
@@ -847,7 +850,7 @@
   VUES.exercices = function () {
     var pal = palierDe(indexNiveau(etat.profil)), f = ui.filtre;
     var liste = EXERCICES.filter(function (e) { return (f.d === "tous" || e.d === f.d) && (!f.monPalier || (e.niv[0] <= pal && pal <= e.niv[1])); });
-    var h = '<section class="bloc premier"><button class="retour" type="button" data-a="onglet" data-v="practice">' + icone("retour") + 'Progresser</button><p class="surtitre">' + t(pluriel(liste.length, "exercice") + (f.monPalier ? " pour ton palier" : ", tous paliers")) + '</p><h1>Exercices</h1>' +
+    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("exercices") + '<button class="retour" type="button" data-a="onglet" data-v="practice">' + icone("retour") + 'Programme</button><p class="surtitre">' + t(pluriel(liste.length, "exercice") + (f.monPalier ? " pour ton palier" : ", tous paliers")) + '</p><h1>Exercices</h1>' +
       '<div class="filtres" role="group" aria-label="Domaine"><button class="puce neutre" type="button" data-a="filtre" data-v="tous" aria-pressed="' + (f.d === "tous") + '">Tous</button>' +
       DOMAINES.map(function (d) { return '<button class="puce neutre" type="button" data-a="filtre" data-v="' + d.id + '" aria-pressed="' + (f.d === d.id) + '">' + t(d.court) + '</button>'; }).join("") + '</div>' +
       '<button class="lien" type="button" data-a="filtre-palier" aria-pressed="' + f.monPalier + '">' + (f.monPalier ? "Voir aussi les autres paliers" : "Voir seulement mon palier") + '</button></section>';

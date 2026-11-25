@@ -52,8 +52,8 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     r.pave = norm(await page.textContent('#calque-partie .pv-score'));
     verifie(!/coup reçu|coups reçus|points/.test(r.pave), nom + ' pas de coups reçus ni de Stableford sans index : ' + r.pave);
     await page.click('#calque-partie [data-a="pt-fermer"]').catch(() => {});
-    /* Progresser : programme facultatif */
-    await page.click('#barre [data-a="onglet"][data-v="practice"]').catch(async () => { await page.click('button.ident[data-v="profil"]'); });
+    /* Coaching (Analyses, UX03) : programme facultatif */
+    await page.click('#barre [data-a="onglet"][data-v="bilan"]'); await page.click('#vue .sous-nav [data-v="practice"]');
     r.progresser = norm(await page.textContent('.programme-option').catch(() => ''));
     verifie(/Facultatif/.test(r.progresser) && await page.locator('.programme-option [data-a="modifier"]').count() === 1, nom + ' programme proposé en option : ' + r.progresser);
     /* Profil : index « non renseigné », modification sans questionnaire */
