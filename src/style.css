@@ -1662,3 +1662,14 @@ main.entree { animation: entreeVue .22s ease-out; }
 .an-raccourcis { display: grid; gap: 8px; justify-items: stretch; }
 .an-raccourcis .btn { text-align: left; justify-content: flex-start; }
 .an-raccourcis .lien { justify-self: start; }
+
+/* UX05 : cartes d'enseignements (style actuel : mêmes jetons que les cartes du tableau de bord). */
+.carte-ens { margin: 0 0 12px; padding: 16px 18px; border-radius: var(--rayon); background: var(--carte); color: var(--encre); box-shadow: var(--ombre); }
+.carte-ens h3 { margin: 4px 0 6px; }
+.carte-ens p { margin: 0 0 6px; }
+.carte-ens .ens-meta, .carte-ens .ens-fiab, .carte-ens .ens-source { color: var(--encre-2); font-size: .875rem; }
+.carte-ens .ens-source { display: block; flex-basis: 100%; }
+.carte-ens .ens-fiab.solide { color: var(--bon); }
+.carte-ens .ens-fiab.insuffisant { color: var(--alerte); }
+.carte-ens .ligne-btn { margin-top: 8px; align-items: center; }
+.ens-groupe { margin: 20px 0 8px; }

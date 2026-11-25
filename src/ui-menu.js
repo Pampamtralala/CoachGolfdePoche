@@ -15,7 +15,7 @@
   function rubriqueDe(page) { var r = RUBRIQUES.filter(function (x) { return x.pages.indexOf(page) >= 0; })[0]; return r ? r.id : null; }
   /* Sous-navigation commune aux pages d'Analyses : statistiques, questions, coaching. */
   function sousNavAnalysesHTML(actif) {
-    var l = [{ v: "bilan", lib: "Statistiques" }, { a: "an-ouvrir", lib: "Comprendre mon jeu" }, { v: "practice", lib: "Programme" }, { v: "exercices", lib: "Exercices et défis" }];
+    var l = [{ v: "bilan", lib: "Statistiques" }, { a: "ens-ouvrir", lib: "Enseignements" }, { a: "an-ouvrir", lib: "Comprendre mon jeu" }, { v: "practice", lib: "Programme" }, { v: "exercices", lib: "Exercices et défis" }];
     return '<nav class="filtres sous-nav" aria-label="Analyses">' + l.map(function (x) {
       var on = x.v === actif;
       return '<button class="puce neutre" type="button" data-a="' + (x.a || "onglet") + '"' + (x.v ? ' data-v="' + x.v + '"' : '') + (on ? ' aria-pressed="true" aria-current="page"' : '') + '>' + t(x.lib) + '</button>';
@@ -43,6 +43,7 @@
         { p: "accueil", t: "Mon jeu : tendances et dernière partie", k: "accueil tableau de bord resume chiffres cles" }] },
       { g: "Analyses", l: [
         { p: "bilan", t: "Tableau de bord des statistiques", k: "stats chiffres cles tendances index" },
+        { a: "ens-ouvrir", t: "Enseignements : ce que disent mes données", k: "enseignements insights constats points forts vigilance erreurs records progression" },
         { a: "an-ouvrir", t: "Comprendre mon jeu : poser une question", k: "question comprendre analyse pourquoi mieux trois putts driver gauche droite club regulier trou difficile parcours forme" },
         { a: "md-ouvrir", t: "Mes données : vérifier, corriger, sauvegarder", k: "donnees qualite provenance exclure corriger sauvegarde export restaurer" },
         { p: "bilan", s: "notes", t: "Ton jeu sur 100", k: "notes jauges priorite semaine" },

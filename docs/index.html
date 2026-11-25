@@ -1680,6 +1680,17 @@ main.entree { animation: entreeVue .22s ease-out; }
 .an-raccourcis .btn { text-align: left; justify-content: flex-start; }
 .an-raccourcis .lien { justify-self: start; }
 
+/* UX05 : cartes d'enseignements (style actuel : mêmes jetons que les cartes du tableau de bord). */
+.carte-ens { margin: 0 0 12px; padding: 16px 18px; border-radius: var(--rayon); background: var(--carte); color: var(--encre); box-shadow: var(--ombre); }
+.carte-ens h3 { margin: 4px 0 6px; }
+.carte-ens p { margin: 0 0 6px; }
+.carte-ens .ens-meta, .carte-ens .ens-fiab, .carte-ens .ens-source { color: var(--encre-2); font-size: .875rem; }
+.carte-ens .ens-source { display: block; flex-basis: 100%; }
+.carte-ens .ens-fiab.solide { color: var(--bon); }
+.carte-ens .ens-fiab.insuffisant { color: var(--alerte); }
+.carte-ens .ligne-btn { margin-top: 8px; align-items: center; }
+.ens-groupe { margin: 20px 0 8px; }
+
 /* ---------- Sac de golf en perspective (fausse 3D) ----------
    Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
    --s3-bulle, --s3-bulle-texte, --s3-chiffre, --s3-focus. */
@@ -7296,6 +7307,159 @@ function repondre(id, parties, ctx) {
 }
 
 
+/* Coach de golf de poche — enseignements personnalisés (roadmap UX, UX05). Moteur déterministe, sans IA.
+   Il ne calcule rien de nouveau : il lit les réponses de « Comprendre mon jeu », les erreurs récurrentes et le
+   tableau des statistiques, et n'en retient que ce qui franchit leurs seuils. Chaque enseignement porte un titre,
+   un constat chiffré, sa période, son effectif, une fiabilité expliquée, un lien vers le détail et, si possible,
+   une action. Sous le minimum d'observations, rien n'est conclu : au mieux, on dit quoi saisir. */
+
+var CATEGORIES_ENS = [
+  { id: "record", lib: "Record personnel", poids: 5 },
+  { id: "vigilance", lib: "Point de vigilance", poids: 4 },
+  { id: "erreur", lib: "Erreur récurrente", poids: 4 },
+  { id: "opportunite", lib: "Opportunité de progression", poids: 3 },
+  { id: "progression", lib: "Progression", poids: 3 },
+  { id: "fort", lib: "Point fort", poids: 2 },
+  { id: "donnees", lib: "Données à enrichir", poids: 1 }
+];
+/* Effectif minimum de chaque enseignement (au-delà du double : fiabilité « solide »). */
+var MIN_ENS = { partiesEvolution: 4, partiesRecord: 5, ecartTrou: 1, perteSecteur: 0.5 };
+/* Domaine d'exercices associé (passerelle vers le coaching, d'après les données observées). */
+var DOMAINE_ENS = { troisPutts: "putt_long", putts: "putt_court", mej: "drive", penalites: "strategie", cotes: "drive", direction: "fers", gir: "fers", approche: "approche", trous: "strategie" };
+
+function catEns(id) { return CATEGORIES_ENS.filter(function (c) { return c.id === id; })[0]; }
+function nbEns(s) { var m = String(s == null ? "" : s).replace("−", "-").replace(",", ".").match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : null; }
+function effLib(n, mot, pl) { return n + " " + (n > 1 ? (pl || mot + "s") : mot); }
+/* Fiabilité : « solide » à partir du double du minimum, « indicatif » au-dessus du minimum ; une estimation reste indicative. */
+function fiabiliteEns(n, min, unite, pl, estimation) {
+  var solide = !estimation && n >= 2 * min;
+  return { niveau: solide ? "solide" : "indicatif",
+    texte: estimation ? "Indicatif : estimation sur " + effLib(n, unite, pl) + ", pas une mesure." :
+      solide ? "Solide : " + effLib(n, unite, pl) + ", au moins le double du minimum (" + min + ")." :
+      "Indicatif : " + effLib(n, unite, pl) + ", minimum " + min + " ; à confirmer avec plus de données." };
+}
+function ens(cat, o) { var c = catEns(cat); return Object.assign({ cat: cat, catLib: c.lib, poids: c.poids, provenance: "observé", action: null }, o); }
+function domaineAction(dom, lib) { return dom ? { a: "exos-domaine", v: dom, lib: lib || "Exercices liés", source: "données" } : null; }
+
+/* ctx : celui de repondre() + nomDomaine(id) facultatif. Parties : celles qui entrent dans les calculs. */
+function enseignements(parties, ctx) {
+  ctx = ctx || {};
+  var l = (parties || []).filter(function (p) { return p && Array.isArray(p.trous) && p.trous.length; })
+    .slice().sort(function (a, b) { return (a.d || "") < (b.d || "") ? -1 : (a.d || "") > (b.d || "") ? 1 : 0; });
+  var res = [], nomDom = ctx.nomDomaine || function (d) { return d; };
+  if (!l.length) return { liste: [], parties: 0 };
+  var R = {};
+  QUESTIONS_ANALYSTE.forEach(function (q) { R[q.id] = repondre(q.id, l, ctx); });
+  function lien(id) { return { a: "ens-detail", v: id, lib: "Voir le détail" }; }
+
+  /* 1. Évolutions (deux moitiés de la période) : progression ou point de vigilance. */
+  var EVOL = {
+    score: { mieux: "Ton score s'améliore", moins: "Ton score se dégrade", min: 6 },
+    troisPutts: { mieux: "Moins de trois-putts", moins: "Plus de trois-putts" },
+    putts: { mieux: "Ton putting progresse", moins: "Ton putting recule" },
+    mej: { mieux: "Plus de balles en jeu", moins: "Moins de balles en jeu" },
+    penalites: { mieux: "Moins de pénalités", moins: "Plus de pénalités" }
+  };
+  Object.keys(EVOL).forEach(function (id) {
+    var r = R[id], E = EVOL[id];
+    if (!r || r.statut !== "ok" || (r.sens !== "mieux" && r.sens !== "moins")) return;
+    var n = r.effectifs.parties, min = E.min || MIN_ENS.partiesEvolution;
+    res.push(ens(r.sens === "mieux" ? "progression" : "vigilance", { id: id + "-" + r.sens, titre: E[r.sens], constat: r.phrase,
+      periode: r.periode, effectifs: r.effectifs, fiabilite: fiabiliteEns(n, min, "partie"), lien: lien(id),
+      action: r.sens === "moins" && DOMAINE_ENS[id] ? domaineAction(DOMAINE_ENS[id], "Exercices : " + nomDom(DOMAINE_ENS[id]).toLowerCase()) : null }));
+  });
+
+  /* 2. Erreurs récurrentes : côté dominant des ratés, puis l'erreur la plus fréquente. */
+  var ER = erreursRecurrentes(l), periode = { du: (l[0].d || "").slice(0, 10), au: (l[l.length - 1].d || "").slice(0, 10) };
+  ER.erreurs.forEach(function (e) {
+    if (!e.coteDominant) return;
+    var nb = e.cotes[e.coteDominant === "droite" ? "droite" : "gauche"], autre = e.cotes[e.coteDominant === "droite" ? "gauche" : "droite"];
+    res.push(ens("erreur", { id: "cote-" + e.id, titre: (e.id === "mej" ? "Tes départs ratés partent plutôt à " : "Tes coups hors de l'axe partent plutôt à ") + e.coteDominant,
+      constat: nb + " " + (e.id === "mej" ? "mises en jeu ratées" : "coups") + " à " + e.coteDominant + " contre " + autre + " de l'autre côté, sur " + e.base + " " + e.baseLib + ".",
+      periode: periode, effectifs: { parties: ER.parties, trous: ER.trous }, fiabilite: fiabiliteEns(e.cotes.gauche + e.cotes.droite, 8, "raté latéral", "ratés latéraux"),
+      lien: e.id === "mej" ? lien("cotes") : { a: "ens-aller", v: "bilan", s: "st-erreurs", lib: "Voir les erreurs" }, action: domaineAction(DOMAINE_ENS[e.id === "mej" ? "cotes" : "direction"], "Exercices : " + nomDom(DOMAINE_ENS[e.id === "mej" ? "cotes" : "direction"]).toLowerCase()) }));
+  });
+  var top = ER.top.length ? ER.erreurs.filter(function (e) { return e.id === ER.top[0]; })[0] : null;
+  if (top) res.push(ens("erreur", { id: "top-" + top.id, titre: top.lib + " : ton erreur la plus fréquente",
+    constat: top.n + " sur " + top.base + " " + top.baseLib + " (" + top.part + " %), soit " + String(top.par18).replace(".", ",") + " par 18 trous" + (top.deduit ? ", déduit du score et des putts" : "") + ".",
+    periode: periode, effectifs: { parties: ER.parties, trous: ER.trous }, provenance: top.deduit ? "déduit" : "observé",
+    fiabilite: fiabiliteEns(top.base, top.seuil, top.unite), lien: { a: "ens-aller", v: "bilan", s: "st-erreurs", lib: "Voir les erreurs" },
+    action: domaineAction(DOMAINE_ENS[top.id], DOMAINE_ENS[top.id] ? "Exercices : " + nomDom(DOMAINE_ENS[top.id]).toLowerCase() : null) }));
+
+  /* 3. Points forts : club nettement plus régulier, parcours où tu joues nettement mieux. */
+  var rc = R.club;
+  if (rc && rc.statut === "ok" && /^Le /.test(rc.phrase)) {
+    var c0 = rc.chiffres[0];
+    res.push(ens("fort", { id: "club", titre: "Ton club le plus régulier : " + c0.lib.toLowerCase(), constat: rc.phrase, periode: rc.periode, effectifs: rc.effectifs,
+      fiabilite: fiabiliteEns(nbEns(c0.base), MIN_ANALYSTE.coupsClub, "coup"), lien: lien("club") }));
+  }
+  var rp = R.parcours;
+  if (rp && rp.statut === "ok" && /^À /.test(rp.phrase)) {
+    var p0 = rp.chiffres[0];
+    res.push(ens("fort", { id: "parcours", titre: "Tu joues mieux à " + p0.lib, constat: rp.phrase, periode: rp.periode, effectifs: rp.effectifs,
+      fiabilite: fiabiliteEns(nbEns(p0.base), MIN_ANALYSTE.partiesParcours, "partie complète", "parties complètes"), lien: lien("parcours") }));
+  }
+
+  /* 4. Opportunités : trou qui coûte le plus (au moins un coup au-dessus du par en moyenne), secteur estimé le plus coûteux. */
+  var rt = R.trous;
+  if (rt && rt.statut === "ok" && rt.chiffres.length && nbEns(rt.chiffres[0].val) >= MIN_ENS.ecartTrou) {
+    var t0 = rt.chiffres[0];
+    res.push(ens("opportunite", { id: "trou", titre: t0.lib.split(" · ")[0] + " : celui qui te coûte le plus", constat: rt.phrase, periode: rt.periode, effectifs: rt.effectifs,
+      fiabilite: fiabiliteEns(nbEns(t0.base), MIN_ANALYSTE.passages, "passage"), lien: lien("trous"), action: domaineAction(DOMAINE_ENS.trous, "Exercices : stratégie") }));
+  }
+  var rs = R.secteur;
+  if (rs && rs.statut === "ok") {
+    var pire = rs.chiffres.map(function (c) { return { lib: c.lib, v: c.val === "non mesuré" ? null : nbEns(c.val) }; }).filter(function (c) { return c.v != null; })
+      .sort(function (a, b) { return a.v - b.v; })[0];
+    var sect = pire ? SG_SECTEURS.filter(function (s) { return pire.lib.indexOf(s.nom) === 0; })[0] : null;
+    if (pire && pire.v <= -MIN_ENS.perteSecteur) res.push(ens("opportunite", { id: "secteur", titre: pire.lib + " : là où tu perds le plus (estimation)", constat: rs.phrase,
+      periode: rs.periode, effectifs: rs.effectifs, provenance: "estimé", fiabilite: fiabiliteEns(rs.effectifs.trous, 9, "trou", null, true), lien: lien("secteur"),
+      action: sect ? domaineAction(sect.d, "Exercices : " + nomDom(sect.d).toLowerCase()) : null }));
+  }
+
+  /* 5. Record : la partie la plus récente est la meilleure (écart au par ramené à 18 trous) sur au moins 5 parties complètes. */
+  var S = tableauStats(l).parPartie;
+  if (S.length >= MIN_ENS.partiesRecord) {
+    var der = S[S.length - 1], avant = S.slice(0, -1);
+    if (avant.every(function (x) { return der.ecart18 < x.ecart18; }) && der.d === (l[l.length - 1].d || "").slice(0, 10)) {
+      res.push(ens("record", { id: "record-" + der.d, titre: "Record : ta meilleure partie", constat: "Ta dernière partie, le " + der.d.split("-").reverse().join("/") + ", est ta meilleure : " +
+        fr1(der.ecart18, true) + " ramené à 18 trous, contre " + fr1(Math.min.apply(null, avant.map(function (x) { return x.ecart18; })), true) + " au mieux avant.",
+        periode: { du: S[0].d, au: der.d }, effectifs: { parties: S.length, trous: S.reduce(function (t, x) { return t + x.trous; }, 0) }, provenance: "déclaré",
+        fiabilite: { niveau: "solide", texte: "Solide : score saisi trou par trou, comparé à tes " + effLib(avant.length, "partie complète", "parties complètes") + " précédentes." }, lien: lien("score") }));
+    }
+  }
+
+  /* 6. Données à enrichir : ce qui bloque une réponse utile (deux au plus). */
+  var enrichir = [];
+  if (R.score.statut === "insuffisant") enrichir.push({ id: "score", titre: "Encore quelques parties complètes pour voir ta tendance", action: { a: "partie-rapide", lib: "Nouvelle partie" } });
+  if (R.mej.statut === "insuffisant" && l.length >= 3) enrichir.push({ id: "mej", titre: "Renseigne tes mises en jeu", action: null });
+  if (R.distance.statut === "insuffisant") enrichir.push({ id: "distance", titre: "Mesure les distances de tes clubs", action: { a: "serie-ouvrir", lib: "Mesurer une série" } });
+  if (R.trous.statut === "insuffisant" && /aucun parcours/.test(R.trous.phrase)) enrichir.push({ id: "trous", titre: "Rattache tes parties à un parcours", action: null });
+  enrichir.slice(0, 2).forEach(function (x) {
+    var r = R[x.id];
+    res.push(ens("donnees", { id: "donnees-" + x.id, titre: x.titre, constat: [r.phrase, r.manque].filter(Boolean).join(" ").replace(/\s+/g, " ").trim(), periode: r.periode, effectifs: r.effectifs,
+      fiabilite: { niveau: "insuffisant", texte: "Insuffisant : en dessous du minimum, rien n'est conclu." }, lien: lien(x.id), action: x.action }));
+  });
+  return { liste: res, parties: l.length };
+}
+
+/* Choix pour l'accueil : les plus importants d'abord, une seule fois chaque catégorie, puis rotation entre
+   enseignements de même poids selon la graine (par exemple le jour), pour ne pas toujours montrer les mêmes. */
+function choisirEnseignements(liste, n, graine) {
+  var g = Math.abs(Math.floor(graine || 0)), groupes = {};
+  liste.forEach(function (e) { (groupes[e.poids] = groupes[e.poids] || []).push(e); });
+  var ordre = [];
+  Object.keys(groupes).map(Number).sort(function (a, b) { return b - a; }).forEach(function (p) {
+    var G = groupes[p], k = G.length ? g % G.length : 0;
+    ordre = ordre.concat(G.slice(k), G.slice(0, k));
+  });
+  var pris = [], cats = {};
+  ordre.forEach(function (e) { if (pris.length < n && !cats[e.cat]) { pris.push(e); cats[e.cat] = 1; } });
+  ordre.forEach(function (e) { if (pris.length < n && pris.indexOf(e) < 0) pris.push(e); });
+  return pris;
+}
+
+
 /* ============================================================
    INTERFACE : accueil, questionnaire, plan, bilan, exercices, profil.
    Les données du joueur sont gardées sur l'appareil et, quand c'est possible,
@@ -7307,7 +7471,7 @@ function repondre(id, parties, ctx) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-25T09:51:56.771Z";
+  var VERSION_APPLI = "2026-11-25T15:58:48.912Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -8245,6 +8409,7 @@ function repondre(id, parties, ctx) {
     if (f && f.donnees && etat.profil) { c.innerHTML = mesDonneesHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.journal && etat.profil) { c.innerHTML = journalHTML(); entreeFeuille(); majFige(); monterGraphes(); return; }
     if (f && f.analyste && etat.profil) { c.innerHTML = analysteHTML(); entreeFeuille(); majFige(); return; }
+    if (f && f.enseignements && etat.profil) { c.innerHTML = ensHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.sac && (f.sac === "putter" || CLUB[f.sac]) && etat.profil) { c.innerHTML = sacFeuilleHTML(f.sac); entreeFeuille(); majFige(); return; }
     if (f && f.sacComposer && etat.profil) { c.innerHTML = sacComposerHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.serie && ui.serie && etat.profil) { c.innerHTML = serieHTML(); entreeFeuille(); majFige(); return; }
@@ -8297,7 +8462,7 @@ function repondre(id, parties, ctx) {
     var serie = ui.feuille && ui.feuille.serie ? enregistrerSerie() : null;
     if (ui.feuille && ui.feuille.serie) ui.serie = null;
     /* Le sac a pu être redessiné en aperçu pendant la saisie : il est remis à l'état enregistré. */
-    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.serie || ui.feuille.carte || ui.feuille.donnees || ui.feuille.journal || ui.feuille.analyste);
+    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.serie || ui.feuille.carte || ui.feuille.donnees || ui.feuille.journal || ui.feuille.analyste || ui.feuille.enseignements);
     var carteF = ui.feuille && ui.feuille.carte;
     if (serie) messageEnregistre("Série enregistrée. " + annonceSerie(serie));
     ui.sacApercu = null;
@@ -9761,7 +9926,7 @@ function repondre(id, parties, ctx) {
   function rubriqueDe(page) { var r = RUBRIQUES.filter(function (x) { return x.pages.indexOf(page) >= 0; })[0]; return r ? r.id : null; }
   /* Sous-navigation commune aux pages d'Analyses : statistiques, questions, coaching. */
   function sousNavAnalysesHTML(actif) {
-    var l = [{ v: "bilan", lib: "Statistiques" }, { a: "an-ouvrir", lib: "Comprendre mon jeu" }, { v: "practice", lib: "Programme" }, { v: "exercices", lib: "Exercices et défis" }];
+    var l = [{ v: "bilan", lib: "Statistiques" }, { a: "ens-ouvrir", lib: "Enseignements" }, { a: "an-ouvrir", lib: "Comprendre mon jeu" }, { v: "practice", lib: "Programme" }, { v: "exercices", lib: "Exercices et défis" }];
     return '<nav class="filtres sous-nav" aria-label="Analyses">' + l.map(function (x) {
       var on = x.v === actif;
       return '<button class="puce neutre" type="button" data-a="' + (x.a || "onglet") + '"' + (x.v ? ' data-v="' + x.v + '"' : '') + (on ? ' aria-pressed="true" aria-current="page"' : '') + '>' + t(x.lib) + '</button>';
@@ -9789,6 +9954,7 @@ function repondre(id, parties, ctx) {
         { p: "accueil", t: "Mon jeu : tendances et dernière partie", k: "accueil tableau de bord resume chiffres cles" }] },
       { g: "Analyses", l: [
         { p: "bilan", t: "Tableau de bord des statistiques", k: "stats chiffres cles tendances index" },
+        { a: "ens-ouvrir", t: "Enseignements : ce que disent mes données", k: "enseignements insights constats points forts vigilance erreurs records progression" },
         { a: "an-ouvrir", t: "Comprendre mon jeu : poser une question", k: "question comprendre analyse pourquoi mieux trois putts driver gauche droite club regulier trou difficile parcours forme" },
         { a: "md-ouvrir", t: "Mes données : vérifier, corriger, sauvegarder", k: "donnees qualite provenance exclure corriger sauvegarde export restaurer" },
         { p: "bilan", s: "notes", t: "Ton jeu sur 100", k: "notes jauges priorite semaine" },
@@ -12969,6 +13135,64 @@ function repondre(id, parties, ctx) {
   };
 
   /* ============================================================
+     ENSEIGNEMENTS PERSONNALISÉS (roadmap UX, UX05)
+     Calculés par le moteur déterministe à partir des autres moteurs ; trois au plus sur Mon jeu,
+     tous dans la fiche. Chaque carte : constat chiffré, période, effectif, fiabilité, lien, action éventuelle.
+     ============================================================ */
+  var cacheEns = {};
+  function ctxEns() { var c = ctxAnalyste(); c.nomDomaine = function (d) { var x = DOMAINES.filter(function (y) { return y.id === d; })[0]; return x ? x.nom : d; }; return c; }
+  function calculEns() {
+    var l = partiesAnalyse(), cible = indexVise();
+    if (cacheEns.l !== l || cacheEns.cible !== cible || cacheEns.pc !== etat.parcours) cacheEns = { l: l, cible: cible, pc: etat.parcours, v: enseignements(l, ctxEns()) };
+    return cacheEns.v;
+  }
+  /* Graine de rotation : change chaque jour et à chaque nouvelle partie. */
+  function graineEns() { return Math.floor(Date.now() / 864e5) + etat.parties.length; }
+  var PROVENANCE_ENS = { "observé": "Observé", "estimé": "Estimé", "déduit": "Déduit", "déclaré": "Déclaré" };
+  function carteEnsHTML(e) {
+    var E = e.effectifs || {}, eff = [E.parties ? pluriel(E.parties, "partie") : "", E.trous ? E.trous + " trous" : "", E.coups ? E.coups + " coups" : ""].filter(Boolean).join(" · ");
+    var per = e.periode && e.periode.du ? periodeLib(e.periode.du, e.periode.au).replace(/^du/, "Du") : "";
+    var lien = e.lien ? '<button class="lien" type="button" data-a="' + e.lien.a + '"' + (e.lien.v ? ' data-v="' + at(e.lien.v) + '"' : '') + (e.lien.s ? ' data-s="' + at(e.lien.s) + '"' : '') + '>' + t(e.lien.lib) + '</button>' : '';
+    var act = e.action ? '<button class="btn" type="button" data-a="' + e.action.a + '"' + (e.action.v ? ' data-v="' + at(e.action.v) + '"' : '') + '>' + t(e.action.lib) + '</button>' +
+      (e.action.source === "données" ? '<small class="ens-source">' + t("Proposé d'après tes données, pas d'après le questionnaire.") + '</small>' : '') : '';
+    return '<article class="carte-ens cat-' + e.cat + '" data-ens="' + at(e.id) + '"><p class="surtitre">' + t(e.catLib) + ' · <span class="ens-prov">' + t(PROVENANCE_ENS[e.provenance] || e.provenance) + '</span></p>' +
+      '<h3>' + t(e.titre) + '</h3><p>' + t(e.constat) + '</p>' +
+      '<p class="ens-meta">' + t([per, eff].filter(Boolean).join(" · ")) + '</p><p class="ens-fiab ' + e.fiabilite.niveau + '">' + t(e.fiabilite.texte) + '</p>' +
+      (lien || act ? '<div class="ligne-btn">' + act + lien + '</div>' : '') + '</article>';
+  }
+  /* Bloc de Mon jeu : trois enseignements au plus, catégories distinctes, rotation quotidienne. */
+  function enseignementsAccueilHTML() {
+    if (!etat.parties.length) return '';
+    var R = calculEns(), choix = choisirEnseignements(R.liste, 3, graineEns());
+    var h = '<section class="bloc enseignements" id="c-enseignements"><h2>Ce que disent tes données</h2>';
+    if (!choix.length) return h + '<p class="aide">' + t("Rien de net pour l'instant : les enseignements apparaissent quand un écart dépasse les seuils prévus, sur assez de parties.") + '</p></section>';
+    return h + choix.map(carteEnsHTML).join("") + (R.liste.length > choix.length ? '<button class="lien" type="button" data-a="ens-ouvrir">' + t("Tous les enseignements (" + R.liste.length + ")") + '</button>' : '') + '</section>';
+  }
+  function ensHTML() {
+    var R = calculEns();
+    var corps = R.liste.length ? CATEGORIES_ENS.map(function (c) {
+      var l = R.liste.filter(function (e) { return e.cat === c.id; });
+      return l.length ? '<h3 class="ens-groupe">' + t(c.lib) + '</h3>' + l.map(carteEnsHTML).join("") : '';
+    }).join("") : '<p class="aide">' + t(R.parties ? "Rien de net pour l'instant : aucun écart ne dépasse les seuils sur tes " + pluriel(R.parties, "partie") + "." : "Enregistre une première partie : les enseignements se construisent à partir de ton carnet.") + '</p>';
+    return '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer" tabindex="-1"></button>' +
+      '<section class="feuille enseignements" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
+      '<header><p class="surtitre">' + t("Toutes tes parties prises en compte") + '</p><h2 id="f-titre">Enseignements</h2><button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>' +
+      '<p class="aide">' + t("Tirés de ton carnet par des règles fixes, sans IA : un enseignement n'apparaît que si l'écart dépasse un seuil, sur un nombre minimum d'observations. Une association n'est pas une cause.") + '</p>' + corps + '</section>';
+  }
+  ACTIONS["ens-ouvrir"] = function (el) { ui.retourFocus = el; ui.feuille = { enseignements: true }; rendreFeuille(); var b = document.getElementById("f-fermer"); if (b) b.focus(); };
+  /* Détail : la question correspondante de « Comprendre mon jeu », sur toutes les parties (comme l'enseignement). */
+  ACTIONS["ens-detail"] = function (el) {
+    etatAnalyste(); ui.analyste.periode = "toutes"; ui.analyste.q = el.getAttribute("data-v"); ui.analyste.recherche = "";
+    ui.retourFocus = ui.retourFocus || el; ui.feuille = { analyste: true }; rendreFeuille();
+    var r = document.getElementById("an-rep-" + ui.analyste.q); if (r && r.scrollIntoView) r.scrollIntoView({ block: "start" });
+    var b = document.getElementById("f-fermer"); if (b) b.focus({ preventScroll: true });
+  };
+  function fermerFeuilleEns() { if (ui.feuille) { ui.feuille = null; ui.pile = []; ui.retourFocus = null; rendreFeuille(); } }
+  ACTIONS["ens-aller"] = function (el) { fermerFeuilleEns(); allerOnglet(el.getAttribute("data-v"), true); var s = el.getAttribute("data-s"); if (s) allerSection(s); };
+  /* Passerelle vers le coaching : la bibliothèque filtrée sur le domaine concerné. */
+  ACTIONS["exos-domaine"] = function (el) { fermerFeuilleEns(); ui.filtre.d = el.getAttribute("data-v"); allerOnglet("exercices", true); };
+
+  /* ============================================================
      APRÈS LA PARTIE : bilan express au club-house, carte de score en image,
      meilleurs et pires trous de chaque parcours.
      ============================================================ */
@@ -14001,6 +14225,8 @@ function repondre(id, parties, ctx) {
         t(sc.complet ? sc.coups + " coups · " + ecartLib(sc.ecart) : st.T + " trous saisis") +
         '</p><p class="tb-meta">' + t(st.G + " GIR · " + st.P + " putts · " + st.X + " pénalités") + '</p></button></section>';
     }
+    /* UX05 : trois enseignements au plus, tirés des données. */
+    h += enseignementsAccueilHTML();
     /* P12 : poser une question à son carnet. */
     h += '<section class="bloc comprendre"><h2>Comprendre mon jeu</h2><p class="aide">' + t("Des réponses chiffrées, tirées de ton carnet.") + '</p><div class="an-raccourcis">' +
       ["score", "troisPutts", "cotes", "trous"].map(function (id) { var q = QUESTIONS_ANALYSTE.filter(function (x) { return x.id === id; })[0]; return '<button class="btn" type="button" data-a="an-ouvrir" data-v="' + id + '">' + t(q.q) + '</button>'; }).join("") +
