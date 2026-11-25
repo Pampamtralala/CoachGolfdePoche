@@ -145,7 +145,7 @@ p { margin: 0 0 10px; }
 .champ { border: 0; padding: 0; margin: 0 0 22px; min-width: 0; }
 .champ > label, .champ > legend { display: block; padding: 0; margin-bottom: 8px; font-weight: 700; }
 .champ legend small { font-weight: 400; color: var(--encre-2); font-size: 15px; }
-.champ input[type="text"], textarea, .champ select {
+.champ input[type="text"], .champ input[type="search"], .champ input[type="date"], textarea, .champ select {
   width: 100%; min-height: 50px; padding: 10px 12px;
   border: 1.5px solid var(--filet-fort); border-radius: var(--rayon-s); background: var(--carte);
 }
@@ -1638,3 +1638,24 @@ main.entree { animation: entreeVue .22s ease-out; }
 .note-partie-ligne span { font-size: 14px; color: var(--encre-2); }
 .journal .fenetres { display: flex; flex-wrap: wrap; overflow: visible; gap: 6px; }
 .journal .fenetres .opt { flex: 1 1 auto; }
+
+/* ---------- Comprendre mon jeu (P12) ---------- */
+.analyste .fenetres { display: flex; flex-wrap: wrap; overflow: visible; }
+.analyste .fenetres .opt { flex: 1 1 auto; }
+.an-questions { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.an-q { width: 100%; text-align: left; min-height: 48px; padding: 12px 14px; border-radius: var(--rayon-s); border: 1px solid var(--filet); background: var(--carte); color: var(--encre); font: inherit; font-weight: 600; }
+.feuille .an-q { background: var(--papier); }
+.an-q[aria-expanded="true"] { border-color: var(--encre-2); }
+.an-reponse { padding: 10px 4px 4px; }
+.an-phrase { margin: 0 0 8px; font-size: 16.5px; line-height: 1.45; font-weight: 600; }
+.an-reponse.insuffisant .an-phrase, .an-reponse.vide .an-phrase { font-weight: 400; }
+.an-chiffres th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
+.an-chiffres th small { display: block; font-size: 12px; font-weight: 400; color: var(--encre-2); }
+.an-chiffres td.num { width: auto; padding-right: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.an-source { margin: 6px 0; font-size: 13.5px; color: var(--encre-2); }
+.an-manque { margin: 8px 0; padding: 10px 12px; border-radius: var(--rayon-s); background: rgba(46, 148, 96, .12); font-size: 15px; }
+.an-manque b { display: block; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--encre-2); }
+.an-methode { margin-top: 6px; font-size: 14px; }
+.an-raccourcis { display: grid; gap: 8px; justify-items: stretch; }
+.an-raccourcis .btn { text-align: left; justify-content: flex-start; }
+.an-raccourcis .lien { justify-self: start; }

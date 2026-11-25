@@ -43,6 +43,7 @@
         { a: "fin-cycle", t: "Faire le bilan du cycle", k: "fin cycle nouveau plan" }] },
       { g: "Statistiques", l: [
         { p: "bilan", t: "Tableau de bord", k: "stats chiffres cles tendances index" },
+        { a: "an-ouvrir", t: "Comprendre mon jeu : poser une question", k: "question comprendre analyse pourquoi mieux trois putts driver gauche droite club regulier trou difficile parcours forme" },
         { a: "j-ouvrir", t: "Bilans, journal et rapports", k: "journal bilan mois trimestre saison rapport export import csv notes forme meteo" },
         { a: "md-ouvrir", t: "Mes données : vérifier, corriger, sauvegarder", k: "donnees provenance exclure corriger sauvegarde export restaurer" },
         { p: "bilan", s: "notes", t: "Ton jeu sur 100", k: "notes jauges priorite semaine" },
