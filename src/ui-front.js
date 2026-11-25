@@ -206,42 +206,87 @@
      ACCUEIL : trois portes (le sac, le parcours, le practice), puis l'essentiel du jour
      ============================================================ */
   /* Accueil centré sur les données du joueur : le coaching est rangé dans Analyses. */
+  /* ============================================================
+     MON JEU (roadmap UX, UX04) : tableau de bord en cinq blocs, résultats d'abord.
+     1 performance générale (index déclaré, estimé, objectif, évolution) · 2 indicateurs clés cliquables
+     (filtre commun, évolution, périmètre) · 3 enseignements · 4 dernière partie · 5 actions rapides.
+     Aucune valeur affichée sans donnée réelle ; un carnet vide montre ce qu'il faut faire, pas des chiffres.
+     ============================================================ */
+  function performanceHTML() {
+    var p = etat.profil, idx = indexDeclare(p), obj = indexVise(), ev = evolutionIndex(), courbe = courbeIndexHTML(null, 160, 44);
+    var est = etat.parties.length ? indexEstime(partiesAnalyse(), function (pt) { return parcoursDe(pt.pc); }, idx) : null;
+    var h = '<section class="bloc mj-perf" id="mj-perf"><h2>Performance générale</h2><div class="mj-perf-grille">' +
+      '<div class="mj-index"><p class="surtitre">Index déclaré</p><p class="mj-val main">' + t(idx == null ? "–" : indexLib(idx)) + '</p>' +
+      '<p class="aide">' + t(idx == null ? "Non renseigné." : ev ? (ev.ecart < 0 ? "▼ " + indexLib(-ev.ecart) + " depuis le " + dateCourte(ev.depuis) : ev.ecart > 0 ? "▲ " + indexLib(ev.ecart) + " depuis le " + dateCourte(ev.depuis) : "Stable depuis le " + dateCourte(ev.depuis)) : "Ton index officiel, tel que tu l'as saisi.") + '</p>' +
+      (idx == null ? '<button class="lien" type="button" data-a="aller-a" data-v="profil" data-s="objectif-index">Renseigner mon index</button>' : '') + '</div>' +
+      '<div class="mj-index"><p class="surtitre">Index estimé</p>';
+    if (est && est.v != null) h += '<p class="mj-val main">' + t(indexLib(est.v)) + '</p><p class="aide">' + t(pluriel(est.n, "partie") + ", barème WHS. Pas ton index officiel.") + '</p>';
+    else h += '<p class="mj-val main">–</p><p class="aide">' + t(est && est.n ? "Inconnu : encore " + pluriel(Math.max(1, 3 - est.n), "partie") + " avec un score à chaque trou." : "Inconnu : il faut au moins 3 parties avec un score à chaque trou.") + '</p>';
+    h += '</div><button class="mj-index mj-obj" type="button" data-a="aller-a" data-v="profil" data-s="objectif-index"><p class="surtitre">Objectif</p><p class="mj-val main">' + t(idx == null && p.indexVise == null ? "–" : obj === 0 ? "Scratch" : String(obj).replace(".", ",")) + '</p>' +
+      '<p class="aide">' + t(idx == null && p.indexVise == null ? "À définir dans ton profil." : idx != null && idx > obj ? "Encore " + indexLib(Math.round((idx - obj) * 10) / 10) + " à gagner." : "Ton index visé.") + '</p></button></div>' +
+      (courbe ? '<div class="mj-courbe">' + courbe + '<p class="aide">' + t("Évolution de ton index déclaré (12 dernières mises à jour).") + '</p></div>' : '') + '</section>';
+    return h;
+  }
+  /* Indicateurs clés : filtre commun, évolution par rapport à la période comparable, périmètre, accès à l'analyse. */
+  function indicateursClesHTML() {
+    var F = filtresStats(), l = partiesFiltrees(), A = tableauStats(l);
+    var h = '<section class="bloc mj-kpi" id="mj-kpi"><h2>Indicateurs clés</h2>' + pastillesPeriodeHTML();
+    if (!A.parties) return h + etatVideHTML("stats", etat.parties.length ? "Aucune partie dans cette période" : "Pas encore d'indicateurs", etat.parties.length ? "Élargis la période : « Toutes » reprend tout ton carnet." : "Note une partie : score, putts et pénalités suffisent pour voir tes premiers indicateurs.", etat.parties.length ? "" : "partie-rapide", "Lancer une partie") + '</section>';
+    var PP = !F.derniers ? periodePrecedente(F.debut, F.fin || (F.debut ? auj() : "")) : null;
+    var B = F.derniers || PP ? tableauStats(selectionStats(F, true)) : null, C = B && B.parties ? comparerStats(A, B) : null;
+    h += '<p class="aide mj-perimetre">' + t(perimetreTexte(l) + (C ? " Évolution : par rapport " + (F.derniers ? "aux " + pluriel(B.parties, "partie") + " précédentes." : "à la période de même durée juste avant.") : " Pas de période précédente à comparer.")) + '</p>';
+    var cartes = [
+      { t: "Score", v: nbStat(A.ecart18, true), u: "écart au par, ramené à 18 trous", tend: C && tendanceStat(C.ecart18), n: A.trousScore + " trous avec score", s: "", prov: "Déclaré" },
+      { t: "Mises en jeu", v: A.mej.part == null ? "–" : A.mej.part + " %", u: "jouables, par 4 et 5", tend: C && tendanceStat(C.mej), n: A.mej.n ? A.mej.n + " départs renseignés" : "aucun départ renseigné", s: "st-erreurs", prov: "Observé" },
+      { t: "Greens en régulation", v: nbStat(A.gir18), u: "par 18 trous", tend: C && tendanceStat(C.gir18), n: A.trous + " trous", s: "", prov: "Déduit" },
+      { t: "Putts", v: nbStat(A.putts18), u: "par 18 trous", tend: C && tendanceStat(C.putts18), n: A.trous + " trous", s: "st-putting", prov: "Observé" },
+      { t: "Trois-putts", v: nbStat(A.troisPutts18), u: "par 18 trous", tend: C && tendanceStat(C.troisPutts18), n: A.trous + " trous", s: "st-putting", prov: "Observé" },
+      { t: "Pénalités", v: nbStat(A.penalites18), u: "coups par 18 trous", tend: C && tendanceStat(C.penalites18), n: A.trous + " trous", s: "st-erreurs", prov: "Observé" }];
+    h += '<div class="kpi-grille mj-kpis">' + cartes.map(function (x) {
+      return '<button class="kpi kpi-lien" type="button" data-a="aller-a" data-v="bilan"' + (x.s ? ' data-s="' + x.s + '"' : '') + ' aria-label="' + at(x.t + " : " + x.v + " " + x.u + ". Voir l'analyse") + '">' +
+        '<span class="kpi-t">' + t(x.t) + ' <span class="ens-prov">' + t(x.prov) + '</span></span><span class="kpi-v"><span class="main">' + t(x.v) + '</span>' + (x.tend || "") + '</span>' +
+        '<span class="kpi-u">' + t(x.u) + '</span><span class="kpi-n">' + t(x.n) + '</span>' + icone("chevron") + '</button>';
+    }).join("") + '</div><button class="lien" type="button" data-a="aller-a" data-v="bilan" data-s="qualite-donnees">' + t("Qualité de mes données") + '</button></section>';
+    return h;
+  }
+  /* Dernière partie : score, parcours, indicateurs, faits marquants (meilleur et pire trou, écart à la moyenne). */
+  function dernierePartieHTML() {
+    var parties = etat.parties, der = parties.length ? parties[parties.length - 1] : null;
+    if (!der) return '';
+    var sc = scorePartie(der), st = statsTrous(der.trous), pc = parcoursDe(der.pc), faits = [];
+    var ecarts = []; der.trous.forEach(function (tr, i) { if (tr && tr[4] > 0 && tr[5] > 0) ecarts.push({ n: numeroTrou(der, i), e: tr[4] - tr[5] }); });
+    if (ecarts.length >= 3) {
+      var meil = ecarts.slice().sort(function (a, b) { return a.e - b.e || a.n - b.n; })[0], pire = ecarts.slice().sort(function (a, b) { return b.e - a.e || a.n - b.n; })[0];
+      if (meil.e < pire.e) faits.push("Meilleur trou : le " + meil.n + " (" + ecartLib(meil.e) + ")", "plus coûteux : le " + pire.n + " (" + ecartLib(pire.e) + ")");
+    }
+    if (sc.complet && st.T) {
+      var A = tableauStats(partiesAnalyse()), e18 = (sc.ecart * 18) / st.T;
+      if (A.ecart18 != null && A.parPartie.length >= 3) { var d = Math.round((e18 - A.ecart18) * 10) / 10; faits.push(Math.abs(d) < 0.5 ? "dans ta moyenne" : (d < 0 ? nb1(-d) + " coups de mieux" : nb1(d) + " coups de plus") + " que ta moyenne (ramené à 18 trous)"); }
+    }
+    return '<section class="bloc"><h2>Dernière partie</h2><button type="button" class="carte-tb lien-tb derniere" data-a="pt-carte" data-id="' + (parties.length - 1) + '">' +
+      '<p class="surtitre">' + t(dateCourte(der.d) + (pc ? " · " + pc.nom : "")) + '</p><p class="tb-titre">' +
+      t(sc.complet ? sc.coups + " coups · " + ecartLib(sc.ecart) : st.T + " trous saisis") +
+      '</p><p class="tb-meta">' + t(st.G + " GIR · " + st.P + " putts · " + st.X + " pénalités") + '</p>' +
+      (faits.length ? '<p class="tb-meta mj-faits">' + t(faits.join(" · ").replace(/^./, function (c) { return c.toUpperCase(); }) + ".") + '</p>' : '') + icone("chevron") + '</button></section>';
+  }
   VUES.accueil = function () {
     var p = etat.profil, pt = etat.partie, parties = etat.parties;
     var totalTrous = parties.reduce(function (n, x) { return n + (x.trous || []).length; }, 0);
-    var nbCoups = parties.reduce(function (n, x) {
-      return n + (x.coups || []).reduce(function (a, l) { return a + (l || []).length; }, 0);
-    }, 0);
-    var derniere = parties.length ? parties[parties.length - 1] : null;
-    var h = '<section class="bloc premier mon-jeu"><p class="surtitre">Carnet golfique personnel</p><h1>' +
-      t(p.prenom ? "Mon jeu · " + p.prenom : "Mon jeu") + '</h1>' +
-      '<p class="chapo">Mieux connaître ton jeu pour mieux jouer. Chaque partie enrichit tes statistiques et tes distances.</p>' +
-      '<div class="acces-rapides">' +
-      '<button class="btn principal" type="button" data-a="' + (pt ? "pt-reprendre" : "partie-rapide") + '">' +
-      icone("drapeau") + t(pt ? " Reprendre ma partie" : " Nouvelle partie") + '</button>' +
-      '<button class="btn" type="button" data-a="serie-ouvrir">' + icone("sac") + ' Mesurer mes clubs</button>' +
-      '<button class="btn" type="button" data-a="onglet" data-v="journal">Mes parties</button>' +
-      '<button class="btn" type="button" data-a="onglet" data-v="sac">Mon sac</button></div>' +
-      '<p class="aide">' + t(pluriel(parties.length, "partie") + " conservée" + (parties.length > 1 ? "s" : "") +
-      " · " + totalTrous + " trous · " + nbCoups + " coups documentés") + '</p></section>';
-    if (derniere) {
-      var sc = scorePartie(derniere), st = statsTrous(derniere.trous);
-      h += '<section class="bloc"><h2>Dernière partie</h2><button type="button" class="carte-tb lien-tb derniere" data-a="pt-carte" data-id="' + (parties.length - 1) + '">' +
-        '<p class="surtitre">' + t(dateCourte(derniere.d)) + '</p><p class="tb-titre">' +
-        t(sc.complet ? sc.coups + " coups · " + ecartLib(sc.ecart) : st.T + " trous saisis") +
-        '</p><p class="tb-meta">' + t(st.G + " GIR · " + st.P + " putts · " + st.X + " pénalités") + '</p></button></section>';
-    }
-    /* UX05 : trois enseignements au plus, tirés des données. */
-    h += enseignementsAccueilHTML();
-    /* P12 : poser une question à son carnet. */
-    h += '<section class="bloc comprendre"><h2>Comprendre mon jeu</h2><p class="aide">' + t("Des réponses chiffrées, tirées de ton carnet.") + '</p><div class="an-raccourcis">' +
+    var h = '<section class="bloc premier mon-jeu"><p class="surtitre">Carnet golfique personnel</p><h1>' + t(p.prenom ? "Mon jeu · " + p.prenom : "Mon jeu") + '</h1>' +
+      '<p class="aide">' + t(parties.length ? pluriel(parties.length, "partie") + " conservée" + (parties.length > 1 ? "s" : "") + " · " + totalTrous + " trous" : "Ton carnet est vide : ta première partie fera apparaître tes indicateurs.") + '</p>' +
+      (pt ? '<button class="btn principal" type="button" data-a="pt-reprendre">' + icone("drapeau") + t(" Reprendre ma partie au trou " + numeroTrou(pt, pt.i)) + '</button>' : '') + '</section>';
+    h += performanceHTML() + indicateursClesHTML() + enseignementsAccueilHTML() + dernierePartieHTML();
+    /* Bloc 5 : actions rapides. */
+    h += '<section class="bloc"><h2>Actions rapides</h2><div class="acces-rapides">' +
+      '<button class="btn principal" type="button" data-a="' + (pt ? "pt-reprendre" : "partie-rapide") + '">' + icone("drapeau") + t(pt ? " Reprendre ma partie" : " Nouvelle partie") + '</button>' +
+      '<button class="btn" type="button" data-a="serie-ouvrir">' + icone("sac") + ' Mesurer une série au practice</button>' +
+      '<button class="btn" type="button" data-a="onglet" data-v="bilan">' + icone("stats") + ' Explorer mes statistiques</button>' +
+      '<button class="btn" type="button" data-a="onglet" data-v="journal">Mes parties</button></div>' +
+      '<button class="lien" type="button" data-a="onglet" data-v="practice">' + t("Coaching (facultatif) : programme et exercices") + '</button></section>';
+    /* P12 : poser une question à son carnet (raccourcis). */
+    h += '<section class="bloc comprendre"><h2>Comprendre mon jeu</h2><div class="an-raccourcis">' +
       ["score", "troisPutts", "cotes", "trous"].map(function (id) { var q = QUESTIONS_ANALYSTE.filter(function (x) { return x.id === id; })[0]; return '<button class="btn" type="button" data-a="an-ouvrir" data-v="' + id + '">' + t(q.q) + '</button>'; }).join("") +
       '<button class="lien" type="button" data-a="an-ouvrir">Toutes les questions</button></div></section>';
-    h += '<section class="bloc"><h2>Mes tendances</h2>' + chiffresClesHTML() + '</section>' + qualiteGolfHTML();
-    h += '<section class="bloc"><h2>À découvrir dans mes données</h2>' +
-      '<p class="aide">Pour des distances fiables, mesure plusieurs balles par club. Les chiffres détaillés et leur historique sont disponibles dans Mon sac et Analyses.</p>' +
-      '<div class="acces-rapides"><button class="btn" type="button" data-a="onglet" data-v="bilan">Toutes mes statistiques</button>' +
-      '<button class="btn" type="button" data-a="onglet" data-v="practice">Coaching (facultatif)</button></div></section>';
     return h;
   };
 

@@ -843,7 +843,9 @@
     var sPal = pliHTML("palier", "À ton palier", P.nom.toLowerCase(), c, 6);
 
     /* Deux colonnes sur grand écran : le déclaré à gauche, le mesuré en partie à droite. */
-    return h + '<div class="colonnes"><div class="col">' + sPrios + sCarte + sDef + sPal + '</div><div class="col">' + sNotes + sSG + sEvit + sRel + '</div></div>';
+    /* UX04 : les repères face à l'objectif d'index (anciennes « Mes tendances » de l'accueil) sont rangés ici. */
+    var sRep = etat.parties.length ? pliHTML("reperes", "Repères face à ton objectif", "petit jeu, coups gagnés estimés, conseils", chiffresClesHTML(), 3) : "";
+    return h + '<div class="colonnes"><div class="col">' + sPrios + sCarte + sDef + sPal + '</div><div class="col">' + sNotes + sRep + sSG + sEvit + sRel + '</div></div>';
   };
 
   /* ---------- Exercices ---------- */
