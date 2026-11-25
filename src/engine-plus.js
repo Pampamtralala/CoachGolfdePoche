@@ -255,20 +255,43 @@ function cibleAuto(index) {
    exactement l'écart entre le score du joueur et celui de la cible.
    Quand la longueur du premier putt est notée, la distance laissée est portée au crédit
    du coup qui précède (attaque ou petit jeu) et le putting est jugé à distance égale. */
+/* Mises en jeu sur la même fenêtre que cumulParties (P10) : seules celles renseignées comptent.
+   Un par 3 n'a pas de mise en jeu à rater : il compte comme connu. Une saisie express ne note pas la mise en jeu. */
+function couvertureMej(parties, maxTrous) {
+  var r = { T: 0, departs: 0, connus: 0, inconnus: 0, rates: 0, u: null };
+  for (var i = (parties || []).length - 1; i >= 0; i--) {
+    var p = parties[i];
+    if (r.T && r.T + p.trous.length > maxTrous) break;
+    p.trous.forEach(function (t, k) {
+      if (!t) return;
+      r.T++;
+      if (t[5] === 3) return;
+      r.departs++;
+      if (renseigneTrou(p.renseigne, k, RENS_MEJ)) { r.connus++; if (!t[0] && !t[1]) r.rates++; }
+      else r.inconnus++;
+    });
+  }
+  /* Taux sur les départs renseignés, ramené à la part de départs (par 4 et 5) dans les trous joués, puis à 18 trous. */
+  if (r.connus >= 6) r.u = r.rates / r.connus * r.departs / r.T * 18;
+  return r;
+}
 function coupsGagnes(parties, cible) {
   var c = cumulParties(parties, 90);
   if (c.T < 9) return null;
   var R = repereSG(cible), k = 18 / c.T;
   var mT = 18 - R.gir, v = 1 + R.pm - R.pg;
-  var u = c.U * k, m = c.M * k, x = c.X * k;
+  /* Mises en jeu ratées qui font manquer le green, sur les seuls trous où la mise en jeu est connue.
+     Moins de 9 trous connus : le départ n'est pas estimé, il reste compris dans les attaques de green. */
+  var cm = couvertureMej(parties, 90), departConnu = cm.u != null;
+  var u = cm.u, m = c.M * k, x = c.X * k;
   var pm = c.M ? c.PM / c.M : null, pg = c.G ? c.PG / c.G : null;
   var note = c.N >= 9, e = note ? c.E * 18 / c.N : null;
   var eg = 0, em = 0;
   for (var b = 1; b <= 4; b++) { var att = puttsAttendus(cible, b); eg += c["g" + b] * att; em += c["m" + b] * att; }
   for (b = 1; b <= 5; b++) { var atb = puttsAttendusB(cible, b); eg += c["gb" + b] * atb; em += c["mb" + b] * atb; }
   var brut = {
-    depart: -(u - R.u) * (v + (note ? 0 : SG_RECENTRAGE)),
-    attaque: -((m - u) - (mT - R.u)) * v + (c.Gb * R.pg - eg) * k,
+    depart: departConnu ? -(u - R.u) * (v + (note ? 0 : SG_RECENTRAGE)) : null,
+    attaque: (departConnu ? -((m - u) - (mT - R.u)) * v : -(m - mT) * v) + (c.Gb * R.pg - eg) * k,
     petit: c.M ? ((c.Mb * R.pm - em) + ((c.M - c.Mb) * R.pm - (c.PM - c.PMb))) * k : null,
     putting: (c.G || c.Mb) ? ((eg + em - c.PGb - c.PMb) + ((c.G - c.Gb) * R.pg - (c.PG - c.PGb))) * k : null,
     penal: -(x - R.x),
@@ -279,12 +302,12 @@ function coupsGagnes(parties, cible) {
     var val = brut[s.id] == null ? null : arrondi1(brut[s.id]);
     if (val === 0) val = 0;
     if (val != null) total += val;
-    return { id: s.id, nom: s.nom, d: s.d, sg: val };
+    return { id: s.id, nom: s.id === "attaque" && !departConnu ? "Attaques de green (départ compris)" : s.nom, d: s.d, sg: val };
   });
   return {
     T: c.T, n: c.n, N: c.N, cible: cible, secteurs: secteurs, total: arrondi1(total),
-    detail: c.Gb + c.Mb, corriges: c.K,
-    joueur: { u: arrondi1(u), m: arrondi1(m), pg: pg == null ? null : arrondi2(pg), pm: pm == null ? null : arrondi2(pm), x: arrondi1(x),
+    detail: c.Gb + c.Mb, corriges: c.K, mej: cm, departConnu: departConnu,
+    joueur: { u: u == null ? null : arrondi1(u), m: arrondi1(m), pg: pg == null ? null : arrondi2(pg), pm: pm == null ? null : arrondi2(pm), x: arrondi1(x),
       e: note ? arrondi1(e) : null, s: note ? arrondi1((c.S - c.PAR) * 18 / c.N) : null },
     ref: { u: arrondi1(R.u), m: arrondi1(mT), pg: arrondi2(R.pg), pm: arrondi2(R.pm), x: arrondi1(R.x), e: arrondi1(R.e), s: arrondi1(R.s) }
   };
@@ -729,5 +752,5 @@ function scoreJoueur(scores, pars) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { RENS_MEJ, RENS_CLUB, RENS_PUTT1, renseigneTrou, misesEnJeu, statutDistance, distanceCoup, observationsGolf, qualiteObservations, coupPlein, bilanLies, COUPS_MAX, AMPLITUDES_COUP, mesuresParcours, fusionMesures, fusionWedges, distanceGPS, quantile, dispersion, pointsCles, topFlopTrous, scoreJoueur, DEFI, CLUB, CLUBS, WEDGES, WEDGES_BASE, LOFT_MIN, LOFT_MAX, definirWedges, wedgeAuLoft, estNombre, statsClub, SAC_ECART, analyseCarnet, analyseWedges, trouNote, scoreSuggere, scoreMini, statsTrous, cumulParties, indicateursParties, scorePartie, repereSG, puttsAttendus, cibleAuto, coupsGagnes, valeursStats, objectifs, statsFenetre, etatObjectif, differentiel, indexEstime, analyseParcours, causesTrou, coteDominant, releveDetail, defiNeuf, niveauVise, cibleDefi, defiCoup, defiFinSeance };
+  module.exports = { couvertureMej, ajouterStats, RENS_MEJ, RENS_CLUB, RENS_PUTT1, renseigneTrou, misesEnJeu, statutDistance, distanceCoup, observationsGolf, qualiteObservations, coupPlein, bilanLies, COUPS_MAX, AMPLITUDES_COUP, mesuresParcours, fusionMesures, fusionWedges, distanceGPS, quantile, dispersion, pointsCles, topFlopTrous, scoreJoueur, DEFI, CLUB, CLUBS, WEDGES, WEDGES_BASE, LOFT_MIN, LOFT_MAX, definirWedges, wedgeAuLoft, estNombre, statsClub, SAC_ECART, analyseCarnet, analyseWedges, trouNote, scoreSuggere, scoreMini, statsTrous, cumulParties, indicateursParties, scorePartie, repereSG, puttsAttendus, cibleAuto, coupsGagnes, valeursStats, objectifs, statsFenetre, etatObjectif, differentiel, indexEstime, analyseParcours, causesTrou, coteDominant, releveDetail, defiNeuf, niveauVise, cibleDefi, defiCoup, defiFinSeance };
 }

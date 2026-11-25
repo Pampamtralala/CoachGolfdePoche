@@ -1620,3 +1620,10 @@ main.entree { animation: entreeVue .22s ease-out; }
 .carnet-apercu b { display: block; color: var(--encre); font-size: 15.5px; }
 .programme-option { margin: 8px 0 14px; }
 .programme-option p:not(.surtitre) { margin: 0 0 10px; }
+
+/* ---------- Estimation des coups (P10) ---------- */
+.estimation-avertissement { margin: -4px 0 8px; }
+.methode-estimation .constats li.limite { color: var(--encre); font-weight: 600; }
+.habituel th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
+.habituel td { padding: 8px 6px; }
+.habituel td.num { width: 56px; font-variant-numeric: tabular-nums; }

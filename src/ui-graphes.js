@@ -183,7 +183,7 @@
   /* ---------- Coups gagnés ou perdus par secteur ---------- */
   function grapheSG(r, details) {
     var S = r.secteurs, mx = Math.max(1.5, Math.ceil(Math.max.apply(null, S.map(function (s) { return Math.abs(s.sg || 0); })) * 2) / 2);
-    var resume = "Coups gagnés ou perdus sur 18 trous face à un joueur d'index " + r.cible + " : " +
+    var resume = "Estimation des coups gagnés ou perdus sur 18 trous face à un joueur d'index " + r.cible + " (pas du Strokes Gained) : " +
       S.map(function (s) { return s.nom + " " + (s.sg == null ? "non mesuré" : signe(s.sg)); }).join(" ; ") + ".";
     return grapheHTML("sg", 30 + S.length * 40, resume, function (C) {
       return {

@@ -314,7 +314,7 @@
   /* Texte de l'infobulle de chaque secteur : le résultat, puis les chiffres qui le fondent. */
   function detailsSG(r) {
     var J = r.joueur, C = r.ref, d = {
-      depart: "Mises en jeu ratées qui font manquer le green : toi " + nb1(J.u) + ", cible " + nb1(C.u) + " par partie.",
+      depart: J.u == null ? "Pas assez de mises en jeu renseignées pour estimer le départ : il reste compris dans les attaques de green." : "Mises en jeu ratées qui font manquer le green : toi " + nb1(J.u) + ", cible " + nb1(C.u) + " par partie.",
       attaque: "Greens manqués : toi " + nb1(J.m) + ", cible " + nb1(C.m) + " par partie.",
       petit: J.pm == null ? "" : "Putts par green manqué : toi " + nb2(J.pm) + ", cible " + nb2(C.pm) + ".",
       putting: J.pg == null ? "" : "Putts par green touché : toi " + nb2(J.pg) + ", cible " + nb2(C.pg) + ".",
@@ -334,6 +334,34 @@
     if (i >= 0) return i;
     return OBJ_INDEX.reduce(function (b, x, k) { return Math.abs(x - v) < Math.abs(OBJ_INDEX[b] - v) ? k : b; }, 0);
   }
+  /* P10 : méthode, fiabilité et données manquantes, consultables. */
+  function methodeEstimationHTML(r) {
+    var L = limitesEstimation(r); if (!L) return "";
+    return '<details class="calcul methode-estimation"><summary>' + t("Méthode, fiabilité et limites") + '</summary>' +
+      '<p>' + t("Fiabilité : " + L.fiabilite + " (" + r.T + " trous, " + pluriel(r.n, "partie") + " ; « tendance » sous 36 trous, « indicative » jusqu'à 72, « établie » au-delà).") + '</p>' +
+      '<ul class="constats">' +
+        '<li>' + t("Données utilisées : score de chaque trou, greens en régulation déduits du score et des putts, mises en jeu renseignées, putts, longueur du premier putt quand elle est notée, pénalités. Aucune distance.") + '</li>' +
+        '<li>' + t("Référence : les chiffres moyens d'un joueur de l'index visé, interpolés entre des repères internes (ordres de grandeur, pas une base de données officielle).") + '</li>' +
+        '<li>' + t("Un green manqué coûte, d'après ces repères, la différence entre putts après un green manqué et putts après un green touché, plus un coup pour le rejoindre.") + '</li>' +
+        '<li>' + t("Ce n'est pas du Strokes Gained : il faudrait la distance et la position de la balle à chaque coup.") + '</li>' +
+        L.limites.map(function (x) { return '<li class="limite">' + t(x.txt) + '</li>'; }).join("") +
+      '</ul></details>';
+  }
+  /* P10 : écart des dernières parties au jeu habituel, sans index cible ni distance. */
+  function habituelHTML() {
+    var H = ecartsHabituels(partiesAnalyse());
+    var h = '<h3 class="titre-bloc">Par rapport à ton jeu habituel</h3>';
+    if (!H.ok) return h + '<p class="aide">' + t(H.raison === "parties" ? "Il faut au moins deux parties pour comparer les dernières à ton jeu habituel." :
+      "Il faut au moins " + HABITUEL_MIN_RECENT + " trous récents et " + HABITUEL_MIN_BASE + " trous de référence" + (H.manqueBase ? " (encore " + H.manqueBase + " trous de référence)" : "") + " pour une comparaison qui ait du sens.") + '</p>';
+    var R = H.recent, B = H.base;
+    h += '<p class="aide">' + t((R.parties > 1 ? "Tes " + R.parties + " dernières parties" : "Ta dernière partie") + " (" + R.trous + " trous, " + periodeLib(R.du, R.au) + ") comparée" + (R.parties > 1 ? "s" : "") + " aux " + pluriel(B.parties, "partie") + " d'avant (" + B.trous + " trous). Estimation par secteur, en coups pour 18 trous : positif, mieux que d'habitude.") + '</p>' +
+      '<div class="defile"><table class="carte-score habituel"><tbody>' + H.secteurs.map(function (s) {
+        return '<tr><th scope="row">' + t(s.nom) + '</th><td class="num">' + (s.ecart == null ? '<span class="marque inconnu">–</span>' : t(s.ecart === 0 ? "=" : signe(s.ecart))) + '</td><td>' + t(s.ecart == null ? "non estimé" : Math.abs(s.ecart) < 0.3 ? "comme d'habitude" : s.ecart > 0 ? "mieux" : "moins bien") + '</td></tr>';
+      }).join("") + '</tbody></table></div>' +
+      (H.scoreEcart != null ? '<p>' + t("Score : " + (Math.abs(H.scoreEcart) < 0.5 ? "comme d'habitude." : coupsLib(H.scoreEcart, H.scoreEcart > 0 ? "gagné" : "perdu") + " pour 18 trous par rapport à d'habitude.")) + '</p>' : '') +
+      '<p class="aide">' + t("Un écart sur quelques parties peut venir du parcours ou de la météo : c'est un constat, pas une cause.") + '</p>';
+    return h;
+  }
   function coupsGagnesHTML() {
     var p = etat.profil, cible = indexVise();
     var r = coupsGagnes(partiesAnalyse(), cible);
@@ -347,7 +375,9 @@
       '<p aria-live="polite">Face à ton objectif : index <b class="main">' + cible + '</b><small>sur 18 trous</small></p>' +
       '<button class="pm" type="button" data-a="sg-cible" data-d="1" aria-label="Objectif moins ambitieux"' + (i >= OBJ_INDEX.length - 1 ? " disabled" : "") + '>+</button></div>' +
       deuxSecteursHTML(cible) + objectifsHTML(cible) + reperesPlusHTML(cible) +
-      '<h3 class="titre-bloc">Coups gagnés ou perdus par secteur</h3>' + grapheSG(r, detailsSG(r));
+      '<h3 class="titre-bloc">Estimation des coups gagnés ou perdus par secteur</h3>' +
+      '<p class="aide estimation-avertissement">' + t("Estimation à partir de ton score, de tes greens en régulation (déduits), de tes mises en jeu renseignées, de tes putts et de tes pénalités. Ce n'est pas du Strokes Gained, qui compare chaque coup selon sa distance et la position de la balle.") + '</p>' +
+      grapheSG(r, detailsSG(r));
     h += '<p class="sg-total">' + t(r.total < 0 ? "Au total : environ " + coupsLib(r.total, "perdu") + " par partie."
       : r.total > 0 ? "Au total : environ " + coupsLib(r.total, "gagné") + " par partie." : "Au total : tu es au niveau de cette cible.") + '</p>';
     var mesures = r.secteurs.filter(function (s) { return s.sg != null; });
@@ -370,7 +400,7 @@
     }
     h += '<details class="calcul"><summary>Les chiffres du calcul</summary><div class="defile"><table class="carte-score calcul"><thead><tr><th scope="col">Sur 18 trous</th><th scope="col" class="num">Toi</th><th scope="col" class="num">Cible</th></tr></thead><tbody>' +
       ligne("Score au-dessus du par", r.joueur.s == null ? null : signe(r.joueur.s), signe(r.ref.s)) +
-      ligne("Mises en jeu ratées qui font manquer le green", nb1(r.joueur.u), nb1(r.ref.u)) +
+      ligne("Mises en jeu ratées qui font manquer le green", r.joueur.u == null ? null : nb1(r.joueur.u), nb1(r.ref.u)) +
       ligne("Greens manqués", nb1(r.joueur.m), nb1(r.ref.m)) +
       ligne("Putts par green touché en régulation", r.joueur.pg == null ? null : nb2(r.joueur.pg), nb2(r.ref.pg)) +
       ligne("Putts par green manqué", r.joueur.pm == null ? null : nb2(r.joueur.pm), nb2(r.ref.pm)) +
@@ -379,7 +409,7 @@
       '</tbody></table></div>' +
       '<p class="aide" style="margin-top:10px">Méthode : un green manqué coûte un coup pour le rejoindre, et les coups joués en plus (recentrages, coups grattés, approches en deux fois) sont comptés au rattrapage. Tes putts sont comparés à ceux de la cible : sur les greens touchés pour le putting, sur les greens manqués pour le petit jeu, où le nombre de putts dépend surtout de l’approche. Quand tu notes la longueur du premier putt, la distance laissée revient au coup d’avant et ton putting est jugé à distance égale. ' +
       (r.joueur.s != null && r.N === r.T ? "Avec un score à chaque trou, le total est exactement l’écart entre ton score moyen et celui de la cible. " : "Sans score à chaque trou, une mise en jeu ratée qui fait manquer le green est comptée un demi-coup de plus. ") +
-      'Les repères de la cible sont des ordres de grandeur.</p></details>';
+      'Les repères de la cible sont des ordres de grandeur.</p></details>' + methodeEstimationHTML(r) + habituelHTML();
     return { resume: (r.total < 0 ? coupsLib(r.total, "perdu") : r.total > 0 ? coupsLib(r.total, "gagné") : "à égalité") + " face à un index " + cible, corps: h };
   }
 

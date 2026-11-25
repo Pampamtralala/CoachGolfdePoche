@@ -94,7 +94,7 @@
     } else if (ui.depart) {
       h += departHTML();
     } else {
-      h += comment('<p>Sur le parcours, note chaque trou en marchant vers le départ suivant : mise en jeu, green, putts, pénalités et score. Les réponses les plus courantes sont déjà cochées. Tes chiffres mettent à jour ton bilan, tes objectifs et tes coups gagnés.</p>');
+      h += comment('<p>Sur le parcours, note chaque trou en marchant vers le départ suivant : mise en jeu, green, putts, pénalités et score. Les réponses les plus courantes sont déjà cochées. Tes chiffres mettent à jour ton bilan, tes objectifs et l’estimation de tes coups gagnés.</p>');
     }
     if (l.length) {
       h += '<h3>Tes dernières parties</h3><div class="defile"><table class="carte-score parties"><thead><tr><th scope="col">Partie</th>' +
@@ -110,7 +110,7 @@
       h += '</tbody></table></div><p class="aide" style="margin-top:8px">' +
         t("Touche une partie pour voir sa carte.") + '</p>' +
         indexEstimeHTML() +
-        '<button class="btn large" type="button" data-a="pt-voir-sg">Voir mes objectifs et mes coups gagnés</button>';
+        '<button class="btn large" type="button" data-a="pt-voir-sg">Voir mes objectifs et l’estimation de mes coups gagnés</button>';
     }
     return h + '</section>';
   }
