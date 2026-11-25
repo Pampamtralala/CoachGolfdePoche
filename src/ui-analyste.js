@@ -3,12 +3,9 @@
      Questions fixes, réponses calculées par le moteur déterministe : chiffres, période, effectif, méthode ;
      si les données manquent, ce qu'il faut saisir. Aucune IA : rien n'est inventé.
      ============================================================ */
-  var PERIODES_ANALYSTE = [{ id: "toutes", lib: "Toutes mes parties" }, { id: "trimestre", lib: "Trois mois" }, { id: "saison", lib: "Saison" }];
-  function etatAnalyste() { return ui.analyste || (ui.analyste = { periode: "toutes", q: null, recherche: "" }); }
-  function partiesAnalyste() {
-    var A = etatAnalyste(), l = partiesAnalyse();
-    return A.periode === "toutes" ? l : partiesPeriode(l, bornesPeriode(A.periode, auj()));
-  }
+  /* UX07 : la période est celle du filtre commun des analyses (nombre de parties, saison, format, parcours…). */
+  function etatAnalyste() { return ui.analyste || (ui.analyste = { q: null, recherche: "" }); }
+  function partiesAnalyste() { return partiesFiltrees(); }
   function ctxAnalyste() {
     return { parcours: etat.parcours, cible: indexVise(), nomClub: nomClub, ordreClubs: ordreClubs(),
       nomParcours: function (id) { var pc = parcoursDe(id); return pc ? pc.nom : "un parcours supprimé"; } };
@@ -39,9 +36,7 @@
       '<section class="feuille analyste" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
       '<header><p class="surtitre">Tes questions, tes chiffres</p><h2 id="f-titre">Comprendre mon jeu</h2><button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>' +
       '<p class="aide">' + t("Les réponses sont calculées à partir de ton carnet seulement : chaque chiffre est cité avec sa période et le nombre de parties, de trous ou de coups étudiés. Pas d'IA : rien n'est inventé.") + '</p>' +
-      '<div class="fenetres" role="group" aria-label="Période">' + PERIODES_ANALYSTE.map(function (p) {
-        return '<button class="opt" type="button" data-a="an-periode" data-v="' + p.id + '" aria-pressed="' + (A.periode === p.id) + '">' + t(p.lib) + '</button>';
-      }).join("") + '</div>' +
+      pastillesPeriodeHTML("an-periode") + '<p class="aide an-perimetre">' + t(perimetreTexte(partiesAnalyste()) + " Même période que les autres analyses.") + '</p>' +
       '<div class="champ"><label for="an-recherche">Cherche une question</label><input id="an-recherche" type="search" autocomplete="off" placeholder="putts, driver, trou, forme…" value="' + at(A.recherche) + '" data-i="an-recherche"></div>' +
       '<div id="an-liste" aria-live="polite">' + listeAnalysteHTML() + '</div></section>';
   }
@@ -54,7 +49,7 @@
     ui.retourFocus = el; etatAnalyste(); var v = el.getAttribute("data-v"); if (v) ui.analyste.q = v;
     ui.feuille = { analyste: true }; rendreFeuille(); var b = document.getElementById("f-fermer"); if (b) b.focus();
   };
-  ACTIONS["an-periode"] = function (el) { etatAnalyste().periode = el.getAttribute("data-v"); rendreAnalyste('[data-a="an-periode"][data-v="' + etatAnalyste().periode + '"]'); };
+  ACTIONS["an-periode"] = function (el) { var v = el.getAttribute("data-v"); appliquerPeriode(v); rendre(); rendreAnalyste('[data-a="an-periode"][data-v="' + v + '"]'); };
   ACTIONS["an-question"] = function (el) {
     var A = etatAnalyste(), id = el.getAttribute("data-v"); A.q = A.q === id ? null : id;
     rendreAnalyste('[data-a="an-question"][data-v="' + id + '"]');

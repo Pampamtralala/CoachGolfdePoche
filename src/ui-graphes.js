@@ -29,7 +29,9 @@
   function grapheHTML(cle, hauteur, resume, fabrique, sig) {
     var id = "gr-" + (++numGraphe);
     graphesAttente.push({ id: id, cle: cle, fabrique: fabrique, sig: sig, resume: resume });
-    return '<div class="graphe-cj" style="height:' + hauteur + 'px"><canvas id="' + id + '" role="img" aria-label="' + at(resume) + '"></canvas></div>';
+    /* UX07 : chaque graphique a sa version texte, lisible sans le dessin. */
+    return '<div class="graphe-cj" style="height:' + hauteur + 'px"><canvas id="' + id + '" role="img" aria-label="' + at(resume) + '"></canvas></div>' +
+      '<details class="graphe-texte"><summary>Voir en texte</summary><p>' + t(resume) + '</p></details>';
   }
   function monterGraphes() {
     graphesActifs = graphesActifs.filter(function (g) {

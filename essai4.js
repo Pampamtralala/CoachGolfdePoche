@@ -236,13 +236,15 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   await allerVue(page, 'bilan', 'sg'); if (!(await page.$eval('#releves', x => x.classList.contains('ouvert')))) await page.click('[data-a="pli"][data-v="releves"]');
   e = await lire();
   const cible = E.cibleAuto(18), O = E.objectifs(cible), f5 = E.statsFenetre(e.parties, 5);
+  /* UX07 : les objectifs suivent le filtre commun (10 parties par défaut) ; on choisit 5 parties. */
+  await page.click('#sg [data-a="st-derniers"][data-v="5"]');
   res.objectifsLignes = await page.$$eval('.objectifs tbody tr', l => l.map(r => Array.from(r.cells).map(c => c.textContent.trim()).join(' ; ')));
   res.objectifsMarques = await page.$$eval('.objectifs tbody .marque', l => l.map(x => x.className.replace('marque', '').trim() || 'repere').join(' '));
   verifie(res.objectifsLignes[0].includes(fmt(f5.vals.score)) && res.objectifsLignes[2].includes(f5.vals.gir.toFixed(1).replace('.', ',')) && res.objectifsLignes[2].includes(O.gir.toFixed(1).replace('.', ',')), 'objectifs affichés = calculés');
   res.objectifsTexte = await page.$$eval('#pli-sg > p', l => l.map(x => x.textContent));
-  await page.click('#sg [data-a="fenetre"][data-v="20"]');
-  res.fenetre20 = (await page.$eval('#sg [data-a="fenetre"][aria-pressed="true"]', b => b.textContent)) + ' · ' + await page.$eval('.objectifs tbody tr', r => r.cells[1].textContent);
-  await page.click('#sg [data-a="fenetre"][data-v="5"]');
+  await page.click('#sg [data-a="st-derniers"][data-v="20"]');
+  res.fenetre20 = (await page.$eval('#sg [data-a="st-derniers"][aria-pressed="true"]', b => b.textContent)) + ' · ' + await page.$eval('.objectifs tbody tr', r => r.cells[1].textContent);
+  await page.click('#sg [data-a="st-derniers"][data-v="5"]');
   const sg = E.coupsGagnes(e.parties, cible);
   res.sgAffiche = await valeursGraphe(page, '#sg canvas');
   res.sgAttendu = sg.secteurs.map(s => fmt(s.sg)).join(' ');
