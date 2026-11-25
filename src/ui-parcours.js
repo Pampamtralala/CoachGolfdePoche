@@ -24,11 +24,11 @@
 
   /* Plan de jeu d'un trou noir : ce que disent les chiffres, quoi faire, et une mission liée. */
   function exoPour(ids) {
-    var pal = palierDe(etat.profil.index);
+    var pal = palierDe(indexNiveau(etat.profil));
     return ids.filter(function (id) { var e = a(EX, id) ? EX[id] : null; return e && e.niv[0] <= pal && pal <= e.niv[1]; })[0] || null;
   }
   function planTrou(x) {
-    var pal = palierDe(etat.profil.index), constats = [], conseils = [], exo = null;
+    var pal = palierDe(indexNiveau(etat.profil)), constats = [], conseils = [], exo = null;
     var cote = coteDominant(x.cotes, 2), bord = cote === 1 ? "droit" : "gauche";
     /* Les conseils suivent l'ordre du jeu : le départ, puis le chemin vers le green, puis le green. */
     var ordre = { penal: 0, depart: 0, par3: 0, long: 1, autour: 2, putts: 3, general: 4 };

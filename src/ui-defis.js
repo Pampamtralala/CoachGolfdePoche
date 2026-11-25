@@ -30,7 +30,7 @@
 
   /* Écran d'un défi, dans le calque des fiches. */
   function defiHTML(id) {
-    var df = DEFI[id], D = etatDefi(id), pal = palierDe(etat.profil.index), n = df.niveaux.length;
+    var df = DEFI[id], D = etatDefi(id), pal = palierDe(indexNiveau(etat.profil)), n = df.niveaux.length;
     var nv = niveauVise(df, D), cible = df.niveaux[nv - 1].cible, boucle = D.niv >= n, c = D.cours, evt = ui.defiEvt;
     var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer le défi" tabindex="-1"></button>' +
       '<section class="feuille defi" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +

@@ -54,7 +54,7 @@
   /* ---------- Relevés de la saisie détaillée ---------- */
   function relevesHTML() {
     if (!etat.parties.length) return null;
-    var r = releveDetail(partiesAnalyse(), 90), p = etat.profil, pal = palierDe(p.index), l = [];
+    var r = releveDetail(partiesAnalyse(), 90), p = etat.profil, pal = palierDe(indexNiveau(p)), l = [];
     var h = "";
     /* Côté des mises en jeu ratées, relié au défaut correspondant. */
     var cote = coteDominant(r.cotes, 5);
@@ -110,7 +110,7 @@
   }
   /* Ajoute au profil un défaut repéré en partie. Le plan en tient compte au cycle suivant. */
   ACTIONS["sym-ajouter"] = function (el) {
-    var id = el.getAttribute("data-v"), p = etat.profil, pal = palierDe(p.index);
+    var id = el.getAttribute("data-v"), p = etat.profil, pal = palierDe(indexNiveau(p));
     if (!a(SYM, id) || p.symptomes[id] || Object.keys(p.symptomes).length >= 3) return;
     if (SYM[id].niv[0] > pal || pal > SYM[id].niv[1]) return;
     p.symptomes[id] = { reponses: {} };

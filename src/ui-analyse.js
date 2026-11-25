@@ -96,7 +96,7 @@
   /* ---------- Objectif d'index, dans le profil ---------- */
   function indexViseHTML() {
     var p = etat.profil, v = p.indexVise;
-    return '<section class="bloc" id="objectif-index"><h2>Objectif d’index</h2><p>' + t("Tes statistiques et tes coups gagnés se comparent à un joueur de cet index, pas aux pros." + (v == null ? " Sans choix, l'appli prend l'index " + cibleAuto(p.index) + ", trois points sous le tien." : "")) + '</p>' +
+    return '<section class="bloc" id="objectif-index"><h2>Objectif d’index</h2><p>' + t("Tes statistiques et tes coups gagnés se comparent à un joueur de cet index, pas aux pros." + (v == null ? (indexDeclare(p) != null ? " Sans choix, l'appli prend l'index " + cibleAuto(p.index) + ", trois points sous le tien." : " Sans index déclaré, choisis-en un : sinon l'appli prend un repère de débutant (" + cibleAuto(indexNiveau(p)) + ").") : "")) + '</p>' +
       '<div class="choix-ligne index-vise" role="group" aria-label="Objectif d’index">' + OBJ_INDEX.slice().reverse().map(function (x) {
         return '<button class="opt" type="button" data-a="index-vise" data-v="' + x + '" aria-pressed="' + (indexVise() === x) + '">' + (x === 0 ? "Scratch" : "Index " + x) + '</button>';
       }).join("") + '</div></section>';

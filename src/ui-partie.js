@@ -72,12 +72,12 @@
   }
 
   function indexEstimeHTML() {
-    var p = etat.profil, r = indexEstime(partiesAnalyse(), function (pt) { return parcoursDe(pt.pc); }, p.index);
+    var p = etat.profil, idx = indexDeclare(p), r = indexEstime(partiesAnalyse(), function (pt) { return parcoursDe(pt.pc); }, idx);
     if (!r.n) return "";
     if (r.v == null) return '<p class="aide">' + t("Index estimé : encore " + pluriel(3 - r.n, "partie") + " avec un score à chaque trou, et l'appli pourra l'estimer.") + '</p>';
-    var ecart = Math.round((r.v - p.index) * 10) / 10;
+    var ecart = idx == null ? 0 : Math.round((r.v - idx) * 10) / 10;
     return '<div class="index-estime"><p><span class="surtitre">Index estimé</span><b class="main">' + indexLib(r.v) + '</b></p>' +
-      (p.sansIndex ? '' : '<p class="aide">' + t("Index déclaré : " + indexLib(p.index) + "." + (Math.abs(ecart) >= 2 ? " L'écart est net : mets ton profil à jour si ton index officiel a bougé." : "")) + '</p>') +
+      (idx == null ? '' : '<p class="aide">' + t("Index déclaré : " + indexLib(idx) + "." + (Math.abs(ecart) >= 2 ? " L'écart est net : mets ton profil à jour si ton index officiel a bougé." : "")) + '</p>') +
       comment('<p>' + t("D'après " + (r.n >= 20 ? "tes 20 dernières parties" : "tes " + r.n + " parties") + " notées, en gardant " + (r.k > 1 ? "les " + r.k + " meilleures" : "la meilleure") +
         ", selon le barème du World Handicap System. Ce n'est pas ton index officiel : seule ta fédération le calcule." +
         (etat.parcours.some(function (x) { return !x.sss || !x.slope; }) ? " Ajoute le SSS et le slope de tes parcours, dans leur fiche, pour l'affiner." : "")) + '</p>', "Comment il est calculé") + '</div>';

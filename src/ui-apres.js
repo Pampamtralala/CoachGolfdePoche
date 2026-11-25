@@ -5,7 +5,7 @@
 
   /* ---------- Bilan express : trois points clés, tout de suite après le dernier trou ---------- */
   function exosDuDomaine(d, n) {
-    var pal = palierDe(etat.profil.index);
+    var pal = palierDe(indexNiveau(etat.profil));
     return EXERCICES.filter(function (e) { return e.d === d && e.niv[0] <= pal && pal <= e.niv[1]; }).slice(0, n || 1);
   }
   function expressHTML() {
