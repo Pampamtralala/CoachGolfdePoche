@@ -173,7 +173,7 @@
     return l;
   }
   function conditionsHTML() {
-    var c = conditionsDuJour() || { vent: 0, temp: 0 }, pal = palierDe(etat.profil.index), l = conseilsConditions(c, pal);
+    var c = conditionsDuJour() || { vent: 0, temp: 0 }, pal = palierDe(indexNiveau(etat.profil)), l = conseilsConditions(c, pal);
     function choix(k, liste) {
       return '<div class="choix-ligne">' + [1, 2, 3].map(function (v) {
         return '<button class="opt" type="button" data-a="cond" data-k="' + k + '" data-v="' + v + '" aria-pressed="' + (c[k] === v) + '">' + t(liste[v].nom) + '<small>' + t(liste[v].aide) + '</small></button>';

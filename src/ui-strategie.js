@@ -26,7 +26,7 @@
   /* Ellipse du club ; sans aucune mesure, une ellipse estimée autour de la distance déduite des clubs voisins. */
   function ellipseDe(id) {
     if (!CLUB[id]) return null;
-    var idx = etat.profil.index, e = ellipseClub(mesuresTout()[id] || [], lateralTout(id), idx);
+    var idx = indexNiveau(etat.profil), e = ellipseClub(mesuresTout()[id] || [], lateralTout(id), idx);
     if (!e) { var est = sacEstimation(id); if (est) { e = ellipseClub([est], [], idx); if (e) e.estimation = true; } }
     return e;
   }

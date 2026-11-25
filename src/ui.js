@@ -262,12 +262,15 @@
   function lieuConnu(l) { return LIEUX.some(function (x) { return x.id === l; }); }
 
   function assainirProfil(p) {
-    if (!p || typeof p !== "object" || !nombre(p.index)) return null;
-    var index = Math.max(0, Math.min(54, Math.round(p.index * 10) / 10)), pal = palierDe(index);
+    /* P02 : un joueur sans index n'a pas d'index enregistré (null). Les anciens profils « sans index » gardent leur valeur, lue comme inconnue. */
+    if (!p || typeof p !== "object" || (!nombre(p.index) && p.sansIndex !== true)) return null;
+    var index = nombre(p.index) ? Math.max(0, Math.min(54, Math.round(p.index * 10) / 10)) : null, pal = palierDe(index == null ? INDEX_NIVEAU_INCONNU : index);
     var o = {
       prenom: (typeof p.prenom === "string" ? p.prenom : "").slice(0, 30).trim(),
       lateralite: p.lateralite === "G" ? "G" : "D",
-      index: index, indexTexte: "", sansIndex: p.sansIndex === true,
+      index: index, indexTexte: "", sansIndex: p.sansIndex === true || index == null,
+      /* Questionnaire de coaching fait ? Absent dans les anciens profils : fait. */
+      questionnaire: p.questionnaire !== false,
       objectif: OBJECTIFS.some(function (x) { return x.id === p.objectif; }) ? p.objectif : "score",
       envies: unique(liste(p.envies).filter(function (d) { return a(DOM, d) && !DOM[d].transversal; })).slice(0, 2),
       seances: entier(p.seances, 1, 4, 2),
@@ -383,32 +386,34 @@
      ACCUEIL
      ============================================================ */
   function rendreAccueil() {
+    /* P02 : le premier lancement ouvre un carnet de golf. Trois réponses, toutes facultatives sauf la main de jeu ;
+       le questionnaire de coaching reste proposé, en option. */
+    var b = ui.carnetNeuf || (ui.carnetNeuf = { prenom: "", lateralite: "D", indexTexte: "", sansIndex: false });
     app.innerHTML =
-      '<section class="accueil">' +
-        '<p class="surtitre">Coach de golf de poche · prototype</p>' +
-        '<h1>Un coach qui part de <span class="plume">ton jeu</span></h1>' +
-        '<p class="chapo">Tu décris ton niveau et tes défauts. Tu repars avec un bilan et quatre semaines de séances adaptées à ton index.</p>' +
-        '<button class="btn principal large" data-a="commencer">Commencer le questionnaire</button>' +
-        '<p class="aide" style="margin:8px 0 0">Environ cinq minutes. Tes réponses ne sont visibles que par toi.</p>' +
-        '<button class="lien" type="button" data-a="importer">J’ai déjà une sauvegarde à restaurer</button>' +
-        '<figure class="exemple">' +
-          '<figcaption><span class="surtitre">Ce que tu obtiens · index 28</span><span class="tampon">exemple</span></figcaption>' +
-          '<table class="carte-score"><thead><tr><th scope="col">Indicateur</th><th scope="col" class="num">Toi</th><th scope="col" class="num">Repère</th></tr></thead><tbody>' +
-            '<tr><td>Mises en jeu jouables <small>sur 10</small></td><td class="num"><span class="marque dessous">3</span></td><td class="num rep">6</td></tr>' +
-            '<tr><td>Contacts propres au fer 7 <small>sur 10</small></td><td class="num"><span class="marque">6</span></td><td class="num rep">6</td></tr>' +
-            '<tr><td>Putts d’1,5 m rentrés <small>sur 10</small></td><td class="num"><span class="marque dessus">7</span></td><td class="num rep">5</td></tr>' +
-            '<tr><td>Greens à 3 putts ou plus <small>sur 18</small></td><td class="num"><span class="marque dessous">7</span></td><td class="num rep">4</td></tr>' +
-          '</tbody></table>' +
-          '<p class="legende"><span><span class="marque dessus">7</span> au-dessus du repère</span><span><span class="marque dessous">3</span> en dessous</span></p>' +
-        '</figure>' +
-        '<ol class="marche">' +
-          '<li><div><b>Le questionnaire</b><span>Ton index, ton objectif, tes lieux d’entraînement, une dizaine de chiffres sur ton jeu et tes défauts du moment.</span></div></li>' +
-          '<li><div><b>Le bilan</b><span>Tes trois priorités selon ton palier, et pour chaque défaut ses causes probables, une vérification à faire et la correction.</span></div></li>' +
-          '<li><div><b>Le plan</b><span>Quatre semaines de séances tirées de ' + EXERCICES.length + ' exercices, avec des tests notés au début et à la fin.</span></div></li>' +
-          '<li><div><b>Le carnet</b><span>Ta carte de score trou par trou, tes trous noirs sur ton parcours, tes distances par club et des défis à niveaux. Ils affinent ton bilan au fil des semaines.</span></div></li>' +
-        '</ol>' +
+      '<section class="accueil carnet-neuf">' +
+        '<p class="surtitre">Coach de golf de poche</p>' +
+        '<h1>Ton carnet de golf, <span class="plume">dans la poche</span></h1>' +
+        '<p class="chapo">Note tes parties trou par trou et retrouve tes statistiques, tes clubs et tes parcours. Le programme d’entraînement est en option.</p>' +
+        '<form class="carnet-form" data-f="carnet-creer" novalidate>' +
+          '<div class="champ"><label for="ac-prenom">Ton prénom <small>(facultatif)</small></label><input id="ac-prenom" type="text" autocomplete="given-name" maxlength="30" value="' + at(b.prenom) + '" data-i="ac-prenom"></div>' +
+          '<fieldset class="champ"><legend>Tu joues</legend><div class="choix-ligne">' +
+            '<button class="opt" type="button" data-a="ac-lat" data-v="D" aria-pressed="' + (b.lateralite === "D") + '">En droitier</button>' +
+            '<button class="opt" type="button" data-a="ac-lat" data-v="G" aria-pressed="' + (b.lateralite === "G") + '">En gaucher</button>' +
+          '</div></fieldset>' +
+          '<div class="champ"><label for="ac-index">Ton index <small>(facultatif)</small></label>' +
+            '<div class="ligne-index"><input id="ac-index" type="text" inputmode="decimal" autocomplete="off" maxlength="4" value="' + at(b.sansIndex ? "" : b.indexTexte) + '" data-i="ac-index"' + (b.sansIndex ? " disabled" : "") + ' aria-describedby="ac-index-aide">' +
+            '<button class="opt" type="button" data-a="ac-sans-index" aria-pressed="' + b.sansIndex + '">Je ne connais pas mon index</button></div>' +
+            '<p class="aide" id="ac-index-aide">' + t(b.sansIndex ? "Aucun index ne sera inventé : les coups reçus et les comparaisons à ton index attendront que tu en indiques un." : "Entre 0 et 54. Tu pourras le modifier dans ton profil.") + '</p></div>' +
+          '<p class="erreur" id="ac-erreur" role="alert" hidden></p>' +
+          '<button class="btn principal large" type="submit">Ouvrir mon carnet</button>' +
+        '</form>' +
+        '<p class="aide">Tes données restent sur cet appareil. Tu pourras les sauvegarder à tout moment.</p>' +
+        '<div class="ligne-liens"><button class="lien" type="button" data-a="importer">J’ai déjà une sauvegarde à restaurer</button>' +
+        '<button class="lien" type="button" data-a="commencer">Je veux aussi un programme d’entraînement (questionnaire, 5 min)</button></div>' +
+        '<ul class="carnet-apercu"><li><b>Tes parties</b> score, putts, mises en jeu, en trois niveaux de saisie</li><li><b>Tes statistiques</b> tendances, erreurs récurrentes, putting</li><li><b>Tes clubs et tes parcours</b> distances, directions, trou par trou</li></ul>' +
       '</section>';
   }
+
 
   /* ============================================================
      QUESTIONNAIRE
@@ -477,7 +482,7 @@
         '</div></fieldset>' +
         '<div class="champ"><label for="q-index">Ton index</label>' +
           '<div class="ligne-index"><input id="q-index" type="text" inputmode="decimal" autocomplete="off" maxlength="4" value="' + at(b.sansIndex ? "" : b.indexTexte) + '" data-i="index"' + (b.sansIndex ? " disabled" : "") + '>' +
-          '<button class="opt" type="button" data-a="sans-index" aria-pressed="' + b.sansIndex + '">Je n’ai pas encore d’index</button></div>' +
+          '<button class="opt" type="button" data-a="sans-index" aria-pressed="' + b.sansIndex + '">Pas d’index, ou je ne le connais pas</button></div>' +
           '<p class="aide" id="q-palier" aria-live="polite">' + (p ? t("Palier " + p.n + " · " + p.nom + " (" + p.plage.toLowerCase() + ")") : "Entre 0 et 54.") + '</p>' +
         '</div>';
     },
@@ -553,7 +558,7 @@
     var etapes = etapesActives();
     if (ui.etape > etapes.length - 1) ui.etape = etapes.length - 1;
     var i = ui.etape, e = etapes[i], b = ui.brouillon;
-    var sur = ui.mode === "cycle" ? "Bilan du cycle " + etat.cycle + " · " : (ui.mode === "modif" ? "Modifier mes réponses · " : "");
+    var sur = ui.mode === "cycle" ? "Bilan du cycle " + etat.cycle + " · " : (ui.mode === "modif" ? (b.questionnaire === false ? "Ton programme · " : "Modifier mes réponses · ") : "");
     app.innerHTML =
       '<section class="quest">' +
         '<header class="q-tete"><p class="surtitre">' + t(sur + "Étape " + (i + 1) + " sur " + etapes.length) + '</p>' +
@@ -575,7 +580,10 @@
 
   function terminerQuestionnaire() {
     var b = ui.brouillon, maintenant = auj();
-    b.index = indexBrouillon(); if (b.index == null) b.index = 54;
+    /* Sans index : rien d'enregistré (P02), le niveau des exercices se déduit à part. */
+    b.index = b.sansIndex ? null : indexBrouillon();
+    if (b.index == null) b.sansIndex = true;
+    b.questionnaire = true;
     elaguerSymptomes(b);
     INDICATEURS.forEach(function (ind) {
       var r = b.indicateurs[ind.id];
@@ -602,7 +610,7 @@
      ============================================================ */
   function rendreApp() {
     var p = etat.profil;
-    var ident = (p.prenom ? p.prenom + " · " : "") + "index " + indexLib(p.index);
+    var ident = indexDeclare(p) != null ? (p.prenom ? p.prenom + " · " : "") + "index " + indexLib(p.index) : (p.prenom || "Mon carnet");
     app.className = "vue-" + ui.onglet + (estLarge() ? " large" : "");
     /* Partie en cours : le trou en cours reste en haut de chaque page. */
     app.innerHTML =
@@ -690,7 +698,9 @@
   var VUES = {};
   VUES.practice = function () {
     var plan = etat.plan, sem = plan.semaines[ui.semaine - 1], faites = compteFaites(), total = plan.n * 4;
-    var h = '<section class="bloc premier"><p class="surtitre">Progresser</p><h1>Ton programme</h1>' + progressionHTML() +
+    var h = '<section class="bloc premier"><p class="surtitre">Progresser</p><h1>Ton programme</h1>' +
+      (etat.profil.questionnaire === false ? '<div class="carte-tb programme-option"><p class="surtitre">' + t("Facultatif") + '</p><p>' + t("Ce programme est générique. Réponds au questionnaire (5 minutes) pour l'adapter à ton niveau, à tes défauts et à ton temps.") + '</p><button class="btn principal" type="button" data-a="modifier">Personnaliser mon programme</button></div>' : '') +
+      progressionHTML() +
       '<div class="raccourcis"><button class="btn" type="button" data-a="serie-ouvrir">Série de balles</button><button class="btn" type="button" data-a="onglet" data-v="exercices">Exercices</button><button class="btn" type="button" data-a="aller-a" data-v="exercices" data-s="defis">Défis</button></div></section>' +
       '<section class="bloc" id="semaine"><h2 class="h2-semaine">Semaine ' + ui.semaine + '<span>' + t(sem.theme) + '</span></h2>' + carteCycle() + avancementHTML(ui.semaine) + '</section>';
     h += '<section class="bloc" style="border-top:0;padding-top:0">';
@@ -740,7 +750,7 @@
   /* Défaut : la carte du bilan va à l'action (cause probable, exercices correctifs) ;
      le diagnostic complet s'ouvre dans une fiche plein écran. */
   function diagnosticDefaut(id) {
-    var p = etat.profil, pal = palierDe(p.index), causes = diagnostiquer(id, (p.symptomes[id] || {}).reponses, pal);
+    var p = etat.profil, pal = palierDe(indexNiveau(p)), causes = diagnostiquer(id, (p.symptomes[id] || {}).reponses, pal);
     var corr = (etat.plan.correctifs || []).filter(function (c) { return c.sym === id; })[0];
     function exosDe(c) { return c.cause.exos.map(function (x) { return EX[x]; }).filter(function (e) { return e && e.niv[0] <= pal && pal <= e.niv[1]; }); }
     return { pal: pal, causes: causes, ordre: ordreCorrection(causes), exosDe: exosDe,
@@ -783,7 +793,7 @@
   }
 
   VUES.bilan = function () {
-    var p = etat.profil, pal = palierDe(p.index), P = PALIERS[pal - 1];
+    var p = etat.profil, pal = palierDe(indexNiveau(p)), P = PALIERS[pal - 1];
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
     var h = '<section class="bloc premier"><p class="surtitre">Statistiques</p><h1>Tableau de bord</h1>' + tableauStatsHTML() + '</section>' + erreursStatsHTML() + puttingStatsHTML() + clubsStatsHTML() + qualiteGolfHTML() +
       '<section class="bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
@@ -834,7 +844,7 @@
 
   /* ---------- Exercices ---------- */
   VUES.exercices = function () {
-    var pal = palierDe(etat.profil.index), f = ui.filtre;
+    var pal = palierDe(indexNiveau(etat.profil)), f = ui.filtre;
     var liste = EXERCICES.filter(function (e) { return (f.d === "tous" || e.d === f.d) && (!f.monPalier || (e.niv[0] <= pal && pal <= e.niv[1])); });
     var h = '<section class="bloc premier"><button class="retour" type="button" data-a="onglet" data-v="practice">' + icone("retour") + 'Progresser</button><p class="surtitre">' + t(pluriel(liste.length, "exercice") + (f.monPalier ? " pour ton palier" : ", tous paliers")) + '</p><h1>Exercices</h1>' +
       '<div class="filtres" role="group" aria-label="Domaine"><button class="puce neutre" type="button" data-a="filtre" data-v="tous" aria-pressed="' + (f.d === "tous") + '">Tous</button>' +
@@ -857,13 +867,34 @@
   }
 
   /* ---------- Profil ---------- */
+  function donneesProfilHTML() {
+    var h = '';
+    h += '<section class="bloc" id="donnees"><h2>Tes données</h2><p id="statut-donnees">' + t(texteStatut()) + '</p>' +
+      '<p><button class="btn principal" type="button" data-a="md-ouvrir">Voir et corriger mes données</button></p><div class="ligne-btn">' +
+      '<button class="btn" type="button" data-a="exporter-fichier">Télécharger mes données (.json)</button><label class="btn" for="importer-fichier">Restaurer un fichier<input id="importer-fichier" type="file" accept=".json,application/json" data-c="importer-fichier" class="vh"></label><button class="btn" type="button" data-a="exporter">Copier une sauvegarde</button><button class="btn" type="button" data-a="importer">Restaurer un texte</button></div>' +
+      '<p style="margin-top:14px"><button class="btn danger large" type="button" data-a="effacer">Tout effacer</button></p></section>';
+
+    return h;
+  }
+  function aProposHTML() {
+    var h = '';
+    h += '<section class="bloc"><h2>À propos</h2><p>Prototype. Les repères par palier sont des ordres de grandeur, à affiner avec les résultats des joueurs. Si un exercice provoque une douleur, arrête-le. Les coups gagnés sont une estimation à partir de quelques chiffres par trou. L’index estimé suit la méthode du World Handicap System sans la reproduire entièrement : il ne remplace pas ton index officiel. Les causes proposées pour un défaut sont les plus fréquentes : elles ne remplacent pas le regard d’un enseignant de golf sur ton swing. Graphiques : Chart.js, sous licence MIT.</p>' +
+      '<p class="aide">Vocabulaire : le pied avant est le plus proche de la cible, la main du haut est celle qui tient le haut du grip.</p></section>';
+    return h;
+  }
   VUES.profil = function () {
-    var p = etat.profil, pal = PALIERS[palierDe(p.index) - 1], obj = OBJECTIFS.filter(function (o) { return o.id === p.objectif; })[0];
+    var p = etat.profil, pal = PALIERS[palierDe(indexNiveau(p)) - 1], obj = OBJECTIFS.filter(function (o) { return o.id === p.objectif; })[0];
     var syms = symptomesOrdonnes(p).map(function (id) { return lat(SYM[id].t, p.lateralite); });
     var h = '<section class="bloc premier"><p class="surtitre">Profil</p><h1>' + t(p.prenom || "Ton profil") + '</h1><dl class="fiche">' +
-      '<dt>Index</dt><dd>' + t(indexLib(p.index) + (p.sansIndex ? " (pas encore d'index)" : "")) + '</dd>' +
-      '<dt>Palier</dt><dd>' + t(pal.n + " · " + pal.nom) + '</dd>' +
-      '<dt>Jeu</dt><dd>' + (p.lateralite === "G" ? "Gaucher" : "Droitier") + '</dd>' +
+      '<dt>Index</dt><dd>' + t(indexDeclare(p) != null ? indexLib(p.index) : "non renseigné") + '</dd>' +
+      '<dt>Jeu</dt><dd>' + (p.lateralite === "G" ? "Gaucher" : "Droitier") + '</dd>';
+    /* Sans questionnaire (P02) : le profil se limite au carnet ; le programme est proposé, pas imposé. */
+    if (p.questionnaire === false) {
+      h += '</dl><p class="aide">' + t("Pas encore de programme d'entraînement : il est facultatif. Le questionnaire (5 minutes) le règle sur ton niveau, tes défauts et ton temps.") + '</p>' +
+        '<div class="ligne-btn"><button class="btn large" type="button" data-a="ac-profil">Modifier mon prénom, ma main ou mon index</button><button class="btn" type="button" data-a="modifier">Créer mon programme</button></div></section>';
+      return h + indexViseHTML() + donneesProfilHTML() + aProposHTML() + versionHTML();
+    }
+    h += '<dt>Palier</dt><dd>' + t(pal.n + " · " + pal.nom) + '</dd>' +
       '<dt>Objectif</dt><dd>' + t(obj ? obj.t : "") + '</dd>' +
       '<dt>Rythme</dt><dd>' + t(pluriel(p.seances, "séance") + " de " + dureeLib(p.duree) + " par semaine") + '</dd>' +
       '<dt>Lieux</dt><dd>' + t(nomsLieux(p.lieux)) + '</dd>' +
@@ -877,13 +908,7 @@
     }
     h += '<button class="btn large" type="button" data-a="fin-cycle">Faire le bilan du cycle</button></section>';
 
-    h += '<section class="bloc" id="donnees"><h2>Tes données</h2><p id="statut-donnees">' + t(texteStatut()) + '</p>' +
-      '<p><button class="btn principal" type="button" data-a="md-ouvrir">Voir et corriger mes données</button></p><div class="ligne-btn">' +
-      '<button class="btn" type="button" data-a="exporter-fichier">Télécharger mes données (.json)</button><label class="btn" for="importer-fichier">Restaurer un fichier<input id="importer-fichier" type="file" accept=".json,application/json" data-c="importer-fichier" class="vh"></label><button class="btn" type="button" data-a="exporter">Copier une sauvegarde</button><button class="btn" type="button" data-a="importer">Restaurer un texte</button></div>' +
-      '<p style="margin-top:14px"><button class="btn danger large" type="button" data-a="effacer">Tout effacer</button></p></section>';
-
-    h += '<section class="bloc"><h2>À propos</h2><p>Prototype. Les repères par palier sont des ordres de grandeur, à affiner avec les résultats des joueurs. Si un exercice provoque une douleur, arrête-le. Les coups gagnés sont une estimation à partir de quelques chiffres par trou. L’index estimé suit la méthode du World Handicap System sans la reproduire entièrement : il ne remplace pas ton index officiel. Les causes proposées pour un défaut sont les plus fréquentes : elles ne remplacent pas le regard d’un enseignant de golf sur ton swing. Graphiques : Chart.js, sous licence MIT.</p>' +
-      '<p class="aide">Vocabulaire : le pied avant est le plus proche de la cible, la main du haut est celle qui tient le haut du grip.</p></section>';
+    h += donneesProfilHTML() + aProposHTML();
     return h + versionHTML();
   };
 
@@ -922,7 +947,7 @@
     if (f && f.recherche && etat.profil) { c.innerHTML = rechercheHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.carte && (f.carte === "nouveau" || parcoursDe(f.carte)) && etat.profil) { c.innerHTML = carteFeuilleHTML(f.carte); entreeFeuille(); majFige(); return; }
     if (!f || !EX[f.id] || !etat.profil) { ui.feuille = null; ui.feuilleVue = false; c.innerHTML = ""; majFige(); return; }
-    var e = EX[f.id], p = etat.profil, pal = palierDe(p.index);
+    var e = EX[f.id], p = etat.profil, pal = palierDe(indexNiveau(p));
     var meta = [DOM[e.d].nom, TYPES[e.type]]; if (e.min) meta.push(dureeLib(e.min));
     var dans = e.niv[0] <= pal && pal <= e.niv[1];
     var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer la fiche" tabindex="-1"></button>' +
@@ -1066,6 +1091,32 @@
 
   var ACTIONS = {
     commencer: function () { ouvrirQuestionnaire(null); },
+    "ac-profil": function () {
+      var p = etat.profil, idx = indexDeclare(p);
+      dialogue({ titre: "Prénom, main et index", corps:
+        '<div class="champ"><label for="d-prenom">Prénom <small>(facultatif)</small></label><input id="d-prenom" type="text" autocomplete="given-name" maxlength="30" value="' + at(p.prenom) + '"></div>' +
+        '<div class="champ"><label for="d-lat">Tu joues</label><select id="d-lat"><option value="D"' + (p.lateralite !== "G" ? " selected" : "") + '>En droitier</option><option value="G"' + (p.lateralite === "G" ? " selected" : "") + '>En gaucher</option></select></div>' +
+        '<div class="champ"><label for="d-index">Index <small>(laisse vide si tu ne le connais pas)</small></label><input id="d-index" type="text" inputmode="decimal" maxlength="4" value="' + at(idx == null ? "" : indexLib(idx)) + '"></div>' +
+        '<p class="erreur" id="d-err" role="alert" hidden></p>',
+        boutons: [{ l: "Annuler", a: "fermer-dialogue" }, { l: "Enregistrer", a: "ac-profil-ok", c: "principal" }] });
+    },
+    "ac-profil-ok": function () {
+      var p = etat.profil, err = document.getElementById("d-err"), brut = (document.getElementById("d-index").value || "").trim().replace(",", "."), index = null;
+      if (brut) {
+        index = /^\d{1,2}([.]\d)?$/.test(brut) ? parseFloat(brut) : NaN;
+        if (!(index >= 0 && index <= 54)) { err.textContent = "L'index va de 0 à 54, ou laisse vide."; err.hidden = false; return; }
+        index = Math.round(index * 10) / 10;
+      }
+      p.prenom = (document.getElementById("d-prenom").value || "").trim().slice(0, 30);
+      p.lateralite = document.getElementById("d-lat").value === "G" ? "G" : "D";
+      var avant = indexDeclare(p);
+      p.index = index; p.sansIndex = index == null; p.maj = auj();
+      if (index != null && index !== avant) noterIndex(index);
+      ui.dialogue = null; rendreDialogue(); rendre();
+      sauverPuis("Profil mis à jour.");
+    },
+    "ac-lat": function (el) { var b = ui.carnetNeuf; if (!b) return; b.lateralite = el.getAttribute("data-v") === "G" ? "G" : "D"; rendreEtFocus(el); },
+    "ac-sans-index": function (el) { var b = ui.carnetNeuf; if (!b) return; b.sansIndex = !b.sansIndex; if (b.sansIndex) b.indexTexte = ""; rendreEtFocus(el); },
     "q-retour": function () {
       if (ui.etape === 0) {
         ui.vue = "app"; ui.brouillon = null; ui.mode = null; rendre(); window.scrollTo(0, 0); return;
@@ -1074,7 +1125,7 @@
     },
     "q-suite": function () {
       var etapes = etapesActives(), e = etapes[ui.etape], b = ui.brouillon, err = "";
-      if (e.id === "toi" && indexBrouillon() == null) err = "Indique ton index, entre 0 et 54, ou choisis « Je n'ai pas encore d'index ».";
+      if (e.id === "toi" && indexBrouillon() == null) err = "Indique ton index, entre 0 et 54, ou choisis « Pas d'index, ou je ne le connais pas ».";
       if (e.id === "objectif" && !b.objectif) err = "Choisis ton objectif principal.";
       if (e.id === "entrainement" && !b.lieux.some(function (l) { return l !== "parcours"; })) err = "Choisis au moins un lieu d'entraînement en plus du parcours. « Maison ou jardin » suffit.";
       if (err) { erreurQ(err); return; }
@@ -1150,6 +1201,8 @@
     "filtre-palier": function (el) { ui.filtre.monPalier = !ui.filtre.monPalier; rendreEtFocus(el); },
 
     modifier: function () {
+      /* Carnet sans programme (P02) : rien à remettre à zéro, le questionnaire s'ouvre directement. */
+      if (etat.profil && etat.profil.questionnaire === false) { ouvrirQuestionnaire("modif"); return; }
       dialogue({ titre: "Modifier tes réponses", corps: '<p>Ton plan sera recalculé à partir de tes nouvelles réponses, et les séances cochées de ce cycle seront remises à zéro. Tes scores d’exercices sont conservés.</p>',
         boutons: [{ l: "Annuler", a: "fermer-dialogue" }, { l: "Modifier", a: "ok-modifier", c: "principal" }] });
     },
@@ -1225,7 +1278,9 @@
       if (out) out.textContent = p ? "Palier " + p.n + " · " + p.nom + " (" + p.plage.toLowerCase() + ")" : "Entre 0 et 54.";
       erreurQ("");
     },
-    ind: function (el) { setInd(el.id.replace("ind-", ""), parseInt(el.value, 10)); }
+    ind: function (el) { setInd(el.id.replace("ind-", ""), parseInt(el.value, 10)); },
+    "ac-prenom": function (el) { if (ui.carnetNeuf) ui.carnetNeuf.prenom = el.value; },
+    "ac-index": function (el) { if (ui.carnetNeuf) ui.carnetNeuf.indexTexte = el.value; var e = document.getElementById("ac-erreur"); if (e) e.hidden = true; }
   };
 
   /* Note un score d'exercice et, s'il mesure un indicateur, met le bilan à jour. */
@@ -1240,6 +1295,28 @@
   }
 
   var FORMULAIRES = {
+    /* P02 : création du carnet sans questionnaire. Index facultatif, jamais inventé. */
+    "carnet-creer": function () {
+      var b = ui.carnetNeuf || { prenom: "", lateralite: "D", indexTexte: "", sansIndex: false }, err = document.getElementById("ac-erreur");
+      var brut = String(b.indexTexte || "").trim().replace(",", "."), index = null;
+      if (!b.sansIndex && brut) {
+        index = /^\d{1,2}([.]\d)?$/.test(brut) ? parseFloat(brut) : NaN;
+        if (!(index >= 0 && index <= 54)) { if (err) { err.textContent = "L'index va de 0 à 54. Laisse vide ou choisis « Je ne connais pas mon index »."; err.hidden = false; } var i = document.getElementById("ac-index"); if (i) i.focus(); return; }
+        index = Math.round(index * 10) / 10;
+      }
+      var p = brouillonNeuf();
+      p.prenom = String(b.prenom || "").trim().slice(0, 30); p.lateralite = b.lateralite === "G" ? "G" : "D";
+      p.index = index; p.sansIndex = index == null; p.objectif = "score"; p.lieux = ["practice", "putting", "parcours"];
+      p.questionnaire = false; p.maj = auj();
+      INDICATEURS.forEach(function (ind) { p.indicateurs[ind.id] = { val: null, src: "declare", date: p.maj }; });
+      etat.profil = p;
+      if (index != null) noterIndex(index);
+      etat.plan = genererPlan(p, etat.cycle);
+      ui.carnetNeuf = null; ui.vue = "app"; ui.anime = true;
+      sauverPuis("Ton carnet est prêt. Note ta première partie quand tu veux.", MSG_NON_ENREGISTRE);
+      allerOnglet("accueil", true);
+      var c = document.querySelector('[data-a="partie-rapide"]'); if (c) c.focus({ preventScroll: true });
+    },
     score: function (form) {
       var e = EX[form.getAttribute("data-id")], inp = form.querySelector("input"), err = document.getElementById("sc-err");
       var brut = inp.value.trim(), v = /^\d+$/.test(brut) ? parseInt(brut, 10) : NaN;

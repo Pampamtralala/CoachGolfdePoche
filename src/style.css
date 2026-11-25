@@ -1608,3 +1608,15 @@ main.entree { animation: entreeVue .22s ease-out; }
 .md-liste li small { display: block; font-weight: 400; font-size: 13px; color: var(--encre-2); }
 .md-liste li.exclue { opacity: .75; }
 .md-liste .ligne-btn { margin: 0; }
+
+/* ---------- Premier lancement : carnet (P02) ---------- */
+.carnet-form { margin: 18px 0 10px; display: grid; gap: 4px; }
+.carnet-form .champ { margin-bottom: 10px; }
+.carnet-form label small, .carnet-form legend small { font-weight: 400; color: var(--encre-2); }
+.carnet-form .btn.principal { margin-top: 6px; }
+.carnet-neuf .ligne-liens { display: grid; gap: 4px; justify-items: start; margin: 6px 0 14px; }
+.carnet-apercu { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.carnet-apercu li { padding: 10px 12px; border-radius: var(--rayon-s); background: var(--carte); font-size: 14.5px; color: var(--encre-2); }
+.carnet-apercu b { display: block; color: var(--encre); font-size: 15.5px; }
+.programme-option { margin: 8px 0 14px; }
+.programme-option p:not(.surtitre) { margin: 0 0 10px; }

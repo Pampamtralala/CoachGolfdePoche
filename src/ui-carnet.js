@@ -328,7 +328,7 @@
   }
 
   /* Objectif d'index du joueur ; sans objectif choisi, un index repère trois points sous le sien. */
-  function indexVise() { var p = etat.profil; return p && p.indexVise != null ? p.indexVise : cibleAuto(p ? p.index : 36); }
+  function indexVise() { var p = etat.profil; return p && p.indexVise != null ? p.indexVise : cibleAuto(indexNiveau(p)); }
   function rangIndexVise() {
     var v = indexVise(), i = OBJ_INDEX.indexOf(v);
     if (i >= 0) return i;

@@ -25,6 +25,13 @@ function palierDe(index) {
   return 4;
 }
 
+/* Index déclaré par le joueur, ou null s'il ne le connaît pas (P02) : jamais de faux index. */
+function indexDeclare(profil) { return profil && !profil.sansIndex && typeof profil.index === "number" && isFinite(profil.index) ? profil.index : null; }
+/* Niveau servant seulement à choisir les exercices et les repères d'entraînement : l'index déclaré, sinon celui
+   d'un joueur qui débute (palier 1). Il n'est jamais affiché ni utilisé dans une statistique. */
+var INDEX_NIVEAU_INCONNU = 54;
+function indexNiveau(profil) { var i = indexDeclare(profil); return i == null ? INDEX_NIVEAU_INCONNU : i; }
+
 /* Latéralité : remplace les jetons {gf} {gm} {df} {dm}. */
 function lat(txt, lateralite) {
   var G = lateralite === "G";
@@ -57,7 +64,7 @@ function valeurInd(profil, id) {
 }
 
 function scoresDomaines(profil) {
-  var p = palierDe(profil.index), res = {};
+  var p = palierDe(indexNiveau(profil)), res = {};
   DOMAINES.forEach(function (d) {
     if (d.transversal) return;
     var vals = INDICATEURS.filter(function (i) { return i.d === d.id; }).map(function (i) {
@@ -73,7 +80,7 @@ function scoresDomaines(profil) {
 }
 
 function priorites(profil) {
-  var p = palierDe(profil.index), sc = scoresDomaines(profil);
+  var p = palierDe(indexNiveau(profil)), sc = scoresDomaines(profil);
   var syms = Object.keys(profil.symptomes || {}).filter(function (id) { return SYM[id]; });
   return DOMAINES.filter(function (d) { return !d.transversal; }).map(function (d) {
     var s = sc[d.id];
@@ -126,7 +133,7 @@ function exoEligible(ex, palier, lieux) {
    Génération du plan : 4 semaines, n séances par semaine.
    ------------------------------------------------------------ */
 function genererPlan(profil, cycle) {
-  var palier = palierDe(profil.index);
+  var palier = palierDe(indexNiveau(profil));
   var prios = priorites(profil);
   var lieux = profil.lieux || [];
   var lieuxGolf = LIEUX_GOLF.filter(function (l) { return lieux.indexOf(l) >= 0; });
@@ -337,5 +344,5 @@ function genererPlan(profil, cycle) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { EXERCICES, EX, SYM, DOM, IND, palierDe, lat, scoreIndicateur, etatValeur, scoresDomaines, priorites, diagnostiquer, ordreCorrection, symptomesOrdonnes, exoEligible, genererPlan };
+  module.exports = { EXERCICES, EX, SYM, DOM, IND, palierDe, indexDeclare, indexNiveau, lat, scoreIndicateur, etatValeur, scoresDomaines, priorites, diagnostiquer, ordreCorrection, symptomesOrdonnes, exoEligible, genererPlan };
 }

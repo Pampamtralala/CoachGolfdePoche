@@ -277,3 +277,27 @@ TESTS EXÉCUTÉS ET RÉSULTATS : npm test (mes données : 17 vérifications) : 0
 BRANCHE / COMMIT / LIEN PR : data/p04-mes-donnees · PR #13 (brouillon)
 PROCHAINE TÂCHE : P02 (premier lancement), demandée dans le même message.
 ```
+
+```text
+DATE : 25/11/2026 (matin, suite)
+TÂCHE ACTUELLE : P02 — premier lancement centré sur le carnet (même demande que P04)
+FONCTIONNALITÉS LIVRÉES (branche data/p02-premier-lancement, partie de data/p04-mes-donnees) :
+  - premier écran « Ton carnet de golf, dans la poche » : prénom facultatif, droitier / gaucher,
+    index facultatif ou « Je ne connais pas mon index » ; « Ouvrir mon carnet » mène à l'accueil
+    « Mon jeu » (nouvelle partie tout de suite) ; restauration d'une sauvegarde et questionnaire
+    de programme proposés en liens ;
+  - index : indexDeclare() (index réellement déclaré, sinon null) pour tout affichage et calcul ;
+    indexNiveau() (déclaré, sinon niveau débutant) seulement pour choisir les exercices ; un nouveau
+    profil sans index enregistre index: null ; l'assainissement l'accepte ;
+  - programme facultatif : carte « Personnaliser mon programme » dans Progresser, « Créer mon
+    programme » dans le Profil (questionnaire ouvert directement, sans avertissement de remise à
+    zéro) ; « Modifier mon prénom, ma main ou mon index » sans questionnaire ;
+  - anciens profils : lus sans réécriture ; champ questionnaire absent = fait ; un ancien « sans
+    index » à 54 est affiché « non renseigné » et n'entre dans aucun calcul d'index.
+TESTS EXÉCUTÉS ET RÉSULTATS : essai24 (premier écran, index invalide refusé, profil sans faux
+  index ni historique, en-tête, nouvelle partie sans coups reçus ni Stableford, programme en
+  option, index ajouté plus tard, questionnaire prérempli puis fait, ancien profil intact) : OK ;
+  npm test, test-startup et essais 3 à 23 : OK.
+BRANCHE / COMMIT / LIEN PR : data/p02-premier-lancement · PR #14 (brouillon, à fusionner après #13)
+PROCHAINE TÂCHE AUTORISÉE : aucune sans accord ; candidats P10 (coups perdus estimés), P11, P12.
+```
