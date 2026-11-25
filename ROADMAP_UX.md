@@ -18,7 +18,7 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 | 8 | UX09 Saisie sur le parcours | P1 | **En revue** | `ux/ux09-saisie` |
 | 9 | UX10 Journal chronologique | P1 | **En revue** | `ux/ux10-chronologie` (après #25) |
 | 10 | UX11 Après partie | P1 | **En revue** | `ux/ux11-apres-partie` (après #26) |
-| 11 | UX12 Premier lancement et états vides | P1 | À faire | — |
+| 11 | UX12 Premier lancement et états vides | P1 | **En revue** | `ux/ux12-premiers-pas` (après #27) |
 | 12 | UX13 Repositionnement du coaching | P2 | À faire | — |
 | 13 | UX14 Accessibilité (partie fonctionnelle : clavier, lecteur d'écran, zones tactiles) | P2 | À faire | — |
 | — | UX15 Tests et non-régression | P0 | Après chaque chantier | — |
@@ -416,3 +416,19 @@ Encore utiles pour les chantiers UX : 4, 5, 7 et 8 — appliquées telles que pr
 - Tests : `npm test`, `test-doublons` (941 noms), essais liés à la partie verts, nouvel `essai36.js` (express et chiffres,
   comparaison, synthèse, évolution, trous, carte de score, accès à Putting, sans historique).
 - Difficultés : comparer une partie de 9 trous à des parties de 18 demande de tout ramener à 18 trous, comme partout ailleurs.
+
+### UX12 — Premier lancement et états vides (25/11/2026)
+
+- Objectif : un carnet vide reste compréhensible et donne envie, sans rien de fictif.
+- Modifications :
+  - Premier lancement (`ui.js`) : les quatre bénéfices (enregistrer tes parties, connaître tes clubs, comprendre tes
+    erreurs, mesurer ta progression), sans exemple chiffré ni graphique ; le formulaire court et le questionnaire
+    facultatif sont inchangés.
+  - Mon jeu (`ui-front.js`) : carte « Premiers pas » en tête — noter une partie, mesurer un club, trois parties complètes
+    pour les tendances (compteur 1/3), indiquer son index (facultatif). Chaque étape a son bouton ; une étape cochée dit ce
+    qu'elle débloque ; la carte s'efface dès trois parties complètes (mesures et index restent proposés dans Mon sac et
+    le profil).
+  - États vides vérifiés : Mon jeu (indicateurs : quoi faire), Mon sac (« À mesurer », série), Journal, rubriques
+    d'Analyses (« Pas encore de partie »), aucune courbe ni chiffre d'exemple.
+- Tests : `test-doublons` (942 noms), essais liés verts (essai 31 adapté : « Premiers pas » en tête d'un carnet vide),
+  nouvel `essai37.js`.

@@ -413,7 +413,9 @@
         '<p class="aide">Tes données restent sur cet appareil. Tu pourras les sauvegarder à tout moment.</p>' +
         '<div class="ligne-liens"><button class="lien" type="button" data-a="importer">J’ai déjà une sauvegarde à restaurer</button>' +
         '<button class="lien" type="button" data-a="commencer">Je veux aussi un programme d’entraînement (questionnaire, 5 min)</button></div>' +
-        '<ul class="carnet-apercu"><li><b>Tes parties</b> score, putts, mises en jeu, en trois niveaux de saisie</li><li><b>Tes statistiques</b> tendances, erreurs récurrentes, putting</li><li><b>Tes clubs et tes parcours</b> distances, directions, trou par trou</li></ul>' +
+        /* UX12 : les quatre bénéfices, sans chiffre ni graphique d'exemple. */
+        '<ul class="carnet-apercu"><li><b>Enregistrer tes parties</b> score, putts, mises en jeu, en trois niveaux de saisie</li><li><b>Connaître tes clubs</b> distances et dispersion, au practice comme sur le parcours</li>' +
+        '<li><b>Comprendre tes erreurs</b> celles qui reviennent, et ce qu\'elles te coûtent</li><li><b>Mesurer ta progression</b> tendances et enseignements, dès quelques parties</li></ul>' +
       '</section>';
   }
 

@@ -269,13 +269,32 @@
       '</p><p class="tb-meta">' + t(st.G + " GIR · " + st.P + " putts · " + st.X + " pénalités") + '</p>' +
       (faits.length ? '<p class="tb-meta mj-faits">' + t(faits.join(" · ").replace(/^./, function (c) { return c.toUpperCase(); }) + ".") + '</p>' : '') + icone("chevron") + '</button></section>';
   }
+  /* UX12 : premiers pas, tant que le carnet n'a pas de quoi montrer des tendances. Chaque étape cochée dit ce qu'elle
+     débloque ; la carte disparaît dès trois parties complètes (mesures et index restent proposés ailleurs). */
+  function premiersPasHTML() {
+    var parties = etat.parties, completes = tableauStats(partiesAnalyse()).parPartie.length;
+    var mesure = (etat.carnet.series || []).length > 0 || Object.keys(etat.carnet.clubs || {}).some(function (k) { return (etat.carnet.clubs[k] || []).length; });
+    var idx = indexDeclare(etat.profil) != null;
+    var E = [
+      { ok: parties.length > 0, t: "Noter une première partie", fait: "Ta première partie est notée : tes indicateurs sont calculés.", a: "partie-rapide", b: "Nouvelle partie" },
+      { ok: mesure, t: "Mesurer un club au practice", fait: "Tes premières distances sont dans Mon sac.", a: "serie-ouvrir", b: "Mesurer une série" },
+      { ok: completes >= 3, t: "Trois parties complètes pour voir tes tendances", fait: "Tendances et enseignements sont disponibles.", av: Math.min(completes, 3) + "/3", a: parties.length ? "partie-rapide" : "", b: "Nouvelle partie" },
+      { ok: idx, t: "Indiquer ton index (facultatif)", fait: "Ton index sert aux coups reçus et aux comparaisons.", a: "aller-a", v: "profil", s: "objectif-index", b: "Indiquer mon index" }];
+    /* La carte s'efface dès trois parties complètes : mesures et index restent proposés ailleurs (Mon sac, profil). */
+    if (E[0].ok && E[2].ok) return '';
+    return '<section class="bloc premiers-pas" id="premiers-pas"><h2>Premiers pas</h2><ol class="pp-etapes">' + E.map(function (x) {
+      return '<li class="' + (x.ok ? "fait" : "") + '"><span class="pp-coche" aria-hidden="true">' + (x.ok ? "✓" : "") + '</span><span class="pp-quoi"><b>' + t(x.t) + (x.av && !x.ok ? " · " + x.av : "") + '</b>' +
+        (x.ok ? '<small>' + t(x.fait) + '</small>' : '') + '</span>' + (!x.ok && x.a ? '<button class="btn" type="button" data-a="' + x.a + '"' + (x.v ? ' data-v="' + x.v + '"' : '') + (x.s ? ' data-s="' + x.s + '"' : '') + '>' + t(x.b) + '</button>' : '') +
+        '<span class="vh">' + (x.ok ? "fait" : "à faire") + '</span></li>';
+    }).join("") + '</ol></section>';
+  }
   VUES.accueil = function () {
     var p = etat.profil, pt = etat.partie, parties = etat.parties;
     var totalTrous = parties.reduce(function (n, x) { return n + (x.trous || []).length; }, 0);
     var h = '<section class="bloc premier mon-jeu"><p class="surtitre">Carnet golfique personnel</p><h1>' + t(p.prenom ? "Mon jeu · " + p.prenom : "Mon jeu") + '</h1>' +
       '<p class="aide">' + t(parties.length ? pluriel(parties.length, "partie") + " conservée" + (parties.length > 1 ? "s" : "") + " · " + totalTrous + " trous" : "Ton carnet est vide : ta première partie fera apparaître tes indicateurs.") + '</p>' +
       (pt ? '<button class="btn principal" type="button" data-a="pt-reprendre">' + icone("drapeau") + t(" Reprendre ma partie au trou " + numeroTrou(pt, pt.i)) + '</button>' : '') + '</section>';
-    h += performanceHTML() + indicateursClesHTML() + enseignementsAccueilHTML() + dernierePartieHTML();
+    h += premiersPasHTML() + performanceHTML() + indicateursClesHTML() + enseignementsAccueilHTML() + dernierePartieHTML();
     /* Bloc 5 : actions rapides. */
     h += '<section class="bloc"><h2>Actions rapides</h2><div class="acces-rapides">' +
       '<button class="btn principal" type="button" data-a="' + (pt ? "pt-reprendre" : "partie-rapide") + '">' + icone("drapeau") + t(pt ? " Reprendre ma partie" : " Nouvelle partie") + '</button>' +
