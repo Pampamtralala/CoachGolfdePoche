@@ -170,6 +170,7 @@
       var r = { d: dateOk(p.d), trous: tr, pc: pc, o: decalage(p, pc, tr.length) }, cp = liste(p.coups);
       if (idValide(p.id, "p")) r.id = p.id;
       if (p.exclue === 1) r.exclue = 1;
+      var nt = noteValide(p.note); if (nt) r.note = nt;
       if (Array.isArray(p.renseigne)) r.renseigne = idx.map(function (i) { return entier(p.renseigne[i], 0, 7, 0); });
       if (pc && entier(p.rep, 0, 7, null) != null) r.rep = p.rep;
       r.validation = idx.map(function (i) { return liste(p.validation)[i] === "confirme" ? "confirme" : "inconnu"; });

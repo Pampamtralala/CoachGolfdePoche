@@ -43,6 +43,8 @@
         { a: "fin-cycle", t: "Faire le bilan du cycle", k: "fin cycle nouveau plan" }] },
       { g: "Statistiques", l: [
         { p: "bilan", t: "Tableau de bord", k: "stats chiffres cles tendances index" },
+        { a: "j-ouvrir", t: "Bilans, journal et rapports", k: "journal bilan mois trimestre saison rapport export import csv notes forme meteo" },
+        { a: "md-ouvrir", t: "Mes données : vérifier, corriger, sauvegarder", k: "donnees provenance exclure corriger sauvegarde export restaurer" },
         { p: "bilan", s: "notes", t: "Ton jeu sur 100", k: "notes jauges priorite semaine" },
         { p: "bilan", s: "sg", t: "Objectif d’index et estimation des coups gagnés", k: "strokes gained coups gagnés perdus estimation cible" },
         { p: "bilan", s: "evitables", t: "Erreurs évitables", k: "penalites double approche trois putts" },

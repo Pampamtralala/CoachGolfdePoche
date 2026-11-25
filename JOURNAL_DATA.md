@@ -325,3 +325,22 @@ TESTS EXÉCUTÉS ET RÉSULTATS : npm test (estimation : 17 vérifications) : 0 �
 BRANCHE / COMMIT / LIEN PR : data/p10-coups-perdus · PR #15 (brouillon)
 PROCHAINE TÂCHE : P11 (journal et rapports), demandée dans le même message.
 ```
+
+```text
+DATE : 25/11/2026 (matin, suite)
+TÂCHE ACTUELLE : P11 — journal de progression et rapports (même demande que P10)
+FONCTIONNALITÉS LIVRÉES (branche data/p11-journal, partie de data/p10-coups-perdus) :
+  - engine-journal.js (fonctions pures) : notes (noteValide), périodes (bornesPeriode), associations
+    note / score (3 parties complètes minimum de chaque côté), rapport (rapportPeriode, empreinte FNV
+    des parties et de la période), lecture CSV (une ligne par trou, dd/mm/aaaa accepté, retour 10-18,
+    mise en jeu o / n / vide), lecture JSON, anti-doublons (identifiant, ou jour + scores) ;
+  - fiche « Bilans et rapports » : périodes, six chiffres avec effectifs, graphique, erreurs, notes et
+    associations, journal avec note par partie, rapport HTML téléchargeable, import avec aperçu ;
+  - note facultative depuis le bilan de fin de partie, la carte d'une partie ou le journal ;
+  - bilan de fin de partie : « Mises en jeu jouables » ne compte plus les mises en jeu non renseignées.
+TESTS EXÉCUTÉS ET RÉSULTATS : npm test (journal : 21 vérifications) : 0 échec ; test-startup : OK ;
+  essai26 (périodes, association forme / score, note, rapport daté et empreinte stable, import CSV avec
+  doublon et ligne refusée, ajout à la date, réimport tout en doublon, import JSON) : OK ; essais 3 à 26 : OK.
+BRANCHE / COMMIT / LIEN PR : data/p11-journal · PR #16 (brouillon, à fusionner après #15)
+PROCHAINE TÂCHE : P12 — à détailler au propriétaire avant de coder (demande explicite).
+```
