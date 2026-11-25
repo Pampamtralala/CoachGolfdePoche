@@ -32,6 +32,7 @@ const { allerVue, menuAction } = require('./nav-essai');
   await page.waitForSelector('.tete .ident');
   /* Fiche défaut plein écran, puis un exercice ouvert depuis elle, puis retour */
   await allerVue(page, 'bilan', 'defauts'); await vue('64-defauts');
+  await allerVue(page, 'bilan', 'defauts'); /* UX06 : défauts dans la rubrique Erreurs */
   res.carteDefaut = await page.$eval('.defaut', x => x.textContent.replace(/\s+/g, ' ').slice(0, 200));
   await page.click('.defaut [data-a="defaut-fiche"]');
   res.fichePlein = await page.$eval('#feuille', f => f.classList.contains('plein') + ' · ' + Math.round(f.getBoundingClientRect().top) + ' px · ' + f.querySelectorAll('.cause').length + ' causes');

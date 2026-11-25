@@ -149,7 +149,9 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     r.chargement = Date.now() - t0;
     const t1 = Date.now();
     r.echantillon = await echantillon(page);
-    await page.waitForSelector('#st-putting'); await page.waitForSelector('#st-erreurs');
+    /* UX06 : putting et erreurs sont deux rubriques d'Analyses */
+    await page.click('[data-a="rubrique"][data-v="putting"]'); await page.waitForSelector('#st-putting');
+    await page.click('[data-a="rubrique"][data-v="erreurs"]'); await page.waitForSelector('#st-erreurs');
     r.statistiques = Date.now() - t1;
     const t2 = Date.now();
     await ouvrirMesDonnees(page);

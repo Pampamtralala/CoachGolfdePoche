@@ -233,7 +233,7 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
 
   /* ---- Bilan : objectifs, coups gagnés, relevés ---- */
   await onglet('bilan');
-  await allerVue(page, 'bilan', 'sg'); if (!(await page.$eval('#releves', x => x.classList.contains('ouvert')))) await page.click('[data-a="pli"][data-v="releves"]');
+  await allerVue(page, 'bilan', 'sg'); /* UX06 : sg et relevés sont dans deux rubriques */
   e = await lire();
   const cible = E.cibleAuto(18), O = E.objectifs(cible), f5 = E.statsFenetre(e.parties, 5);
   /* UX07 : les objectifs suivent le filtre commun (10 parties par défaut) ; on choisit 5 parties. */
@@ -252,12 +252,13 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   verifie(Math.abs(sg.total - (sg.ref.s - sg.joueur.s)) <= 0.35, 'total des secteurs = écart de score réel : ' + sg.total + ' / ' + (sg.ref.s - sg.joueur.s).toFixed(2));
   await page.click('#sg details.calcul summary');
   res.tableSG = await page.$$eval('#sg details.calcul tbody tr', l => l.map(r => Array.from(r.cells).map(c => c.textContent).join(' ; ')));
+  await allerVue(page, 'bilan', 'releves'); if (!(await page.$eval('#releves', x => x.classList.contains('ouvert')))) await page.click('[data-a="pli"][data-v="releves"]');
   res.releves = await page.$$eval('#releves .constats li', l => l.map(x => x.textContent));
   res.largeurBilan = await largeur();
-  await page.evaluate(() => document.getElementById('sg').scrollIntoView());
+  await allerVue(page, 'bilan', 'sg'); await page.evaluate(() => document.getElementById('sg').scrollIntoView());
   await vue('28-objectifs');
   await page.evaluate(() => window.scrollBy(0, 700)); await vue('29-coups-gagnes');
-  await page.evaluate(() => document.getElementById('releves').scrollIntoView()); await vue('30-releves');
+  await allerVue(page, 'bilan', 'releves'); await page.evaluate(() => document.getElementById('releves').scrollIntoView()); await vue('30-releves');
   await page.click('#releves [data-a="sym-ajouter"]');
   e = await lire();
   res.defautAjoute = Object.keys(e.profil.symptomes).join('+') + ' · carte : ' + await page.locator('#defaut-slice').count() + ' · bouton restant : ' + await page.locator('#releves [data-a="sym-ajouter"]').count();
@@ -279,6 +280,7 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   res.vieilleCarte = (await page.textContent('#f-titre')) + ' · ' + await page.textContent('#feuille .aide');
   await page.keyboard.press('Escape');
   await onglet('bilan');
+  await allerVue(page, 'bilan', 'sg');
   res.vieuxSG = await valeursGraphe(page, '#sg canvas');
   res.vieuxObjectifs = await page.$$eval('.objectifs tbody tr', l => l.map(r => r.cells[1].textContent.trim()).join(' '));
   const sgVieux = E.coupsGagnes(vieux.parties, cible);
@@ -334,7 +336,7 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   await recharger();
   const l360 = {};
   for (const o of ['carnet', 'parties', 'bilan']) { await onglet(o); l360[o] = await largeur(); }
-  await page.evaluate(() => document.getElementById('sg').scrollIntoView()); await vue('31-objectifs-360');
+  await allerVue(page, 'bilan', 'sg'); await page.evaluate(() => document.getElementById('sg').scrollIntoView()); await vue('31-objectifs-360');
   await onglet('carnet');
   await page.click('[data-a="pc-ouvrir"]');
   l360.parcours = await page.$eval('#feuille', f => f.scrollWidth + '/' + f.clientWidth);

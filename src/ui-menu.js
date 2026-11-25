@@ -110,6 +110,8 @@
   /* Va à une page, et à une de ses sections (ouverte si elle se replie). */
   function allerA(page, sec) {
     if (sec) ui.plis[sec] = true;
+    /* UX06 : une section d'Analyses vit dans une rubrique ; on ouvre la bonne. */
+    if (page === "bilan" && sec && rubriqueDeSection(sec) && ui.rubrique !== rubriqueDeSection(sec)) { ui.rubrique = rubriqueDeSection(sec); if (ui.onglet === "bilan") rendre(); }
     allerOnglet(page, !sec);
     if (sec) allerSection(sec);
     var cible = sec && document.getElementById(sec);

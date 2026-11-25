@@ -62,7 +62,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     e.maj = Date.now();
     await page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [CLE, e]);
     await page.reload(); await page.waitForSelector('.tete');
-    await page.click('#barre [data-a="onglet"][data-v="bilan"]');
+    await page.click('#barre [data-a="onglet"][data-v="bilan"]'); await page.click('[data-a="rubrique"][data-v="putting"]'); /* UX06 */
     await page.click('[data-a="st-derniers"][data-v="0"]');
     r.echantillon = norm(await page.textContent('#st-putting .putt-echantillon'));
     verifie(r.echantillon === 'Sur 72 trous joués (8 parties), 144 putts.', nom + ' échantillon : ' + r.echantillon);

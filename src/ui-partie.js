@@ -494,5 +494,5 @@
   };
   ACTIONS["pt-voir-sg"] = function () {
     ui.partie = null; ui.bilanPartie = null; rendrePartie();
-    allerOnglet("bilan", false); allerSection("sg");
+    ui.rubrique = "sg"; allerOnglet("bilan", false); allerSection("sg");
   };

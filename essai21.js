@@ -26,7 +26,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
       e.parties = parties; e.maj = Date.now();
       await page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [CLE, e]);
       await page.reload(); await page.waitForSelector('.tete');
-      await page.click('#barre [data-a="onglet"][data-v="bilan"]');
+      await page.click('#barre [data-a="onglet"][data-v="bilan"]'); await page.click('[data-a="rubrique"][data-v="erreurs"]'); /* UX06 */
       await page.click('[data-a="st-derniers"][data-v="0"]');
     };
     e.parcours = [{ id: 'p1', nom: 'La Jonchère', pars: PARS }, { id: 'p2', nom: 'Bonnat', pars: PARS }];

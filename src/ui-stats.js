@@ -45,6 +45,8 @@
     return "Sur " + pluriel(l.length, "partie") + " (" + T + " trous), " + periodeLib(l[0].d.slice(0, 10), l[l.length - 1].d.slice(0, 10)).replace(/\.$/, "") +
       (F.format ? ", " + F.format + " trous seulement" : "") + (pc ? ", à " + pc.nom : "") + ".";
   }
+  /* L'ouverture de « Plus de filtres » est gardée d'un rendu à l'autre. */
+  document.addEventListener("toggle", function (ev) { var d = ev.target; if (d && d.classList && d.classList.contains("plus-filtres")) ui.plusFiltres = d.open; }, true);
   function partiesFiltrees() { return selectionStats(filtresStats()); }
   /* Nombre de parties pour les écrans qui raisonnent en « N dernières parties » (objectifs, tendances). */
   function fenetreCommune() { var F = filtresStats(); return F.derniers || partiesFiltrees().length || 5; }
@@ -82,12 +84,28 @@
       (note ? '<p class="aide">' + t(note) + '</p>' : '') + '</div>';
   }
 
-  function tableauStatsHTML() {
+  /* Répartitions gauche / centre / droite : mises en jeu renseignées et direction des coups notés (UX06 : réutilisées par la rubrique Mises en jeu). */
+  function repartitionsStatsHTML(l, A) {
+    var h = '';
+    /* Gauche / droite : mises en jeu ratées (renseignées) et direction des coups notés en expert. */
+    var M = A.mej;
+    h += barreRepartitionHTML("Mises en jeu", [{ lib: "Ratées à gauche", v: M.gauche, c: "g" }, { lib: "Jouables", v: M.jouables, c: "c" }, { lib: "Courtes", v: M.courtes, c: "k" }, { lib: "Ratées à droite", v: M.droite, c: "d" }],
+      pluriel(M.n, "départ") + " renseigné" + (M.n > 1 ? "s" : ""), M.ratees > M.gauche + M.droite + M.courtes ? (M.ratees - M.gauche - M.droite - M.courtes) + " ratées sans côté noté." : "");
+    var obs = observationsGolf(l, null, etat.parcours), dirs = croiserObservations(obs, "type", { type: "coup" })[0];
+    if (dirs && dirs.direction.n) h += barreRepartitionHTML("Direction des coups notés", [{ lib: "Gauche", v: dirs.direction.gauche, c: "g" }, { lib: "Dans l'axe", v: dirs.direction.centre, c: "c" }, { lib: "Droite", v: dirs.direction.droite, c: "d" }],
+      pluriel(dirs.direction.n, "coup") + " avec direction", "À plus de 5 m de la ligne de visée : gauche ou droite. " + (dirs.n - dirs.direction.n) + " coups sans direction notée.");
+    return h;
+  }
+  /* UX06 : mode « filtres » → le filtre commun et la ligne d'échantillon (en tête de chaque rubrique d'Analyses) ;
+     mode « contenu » → le reste (chiffres, graphique, répartitions, index). */
+  function tableauStatsHTML(mode) {
     var F = filtresStats(), l = selectionStats(F), A = tableauStats(l);
     var PP = !F.derniers ? periodePrecedente(F.debut, F.fin || (F.debut ? auj() : "")) : null, comparable = F.derniers || PP;
     var B = F.comparer && comparable ? tableauStats(selectionStats(F, true)) : null, C = B && B.parties ? comparerStats(A, B) : null;
     var h = '<div class="filtres-stats">' +
       pastillesPeriodeHTML() +
+      /* UX06 : format, parcours, période libre et comparaison repliés ; ouverts dès qu'un réglage n'est pas celui par défaut. */
+      '<details class="plus-filtres"' + (F.format || F.parcours || F.debut && F.debut !== debutSaison() || F.fin || F.comparer === false || ui.plusFiltres ? " open" : "") + '><summary>' + t("Plus de filtres") + '</summary>' +
       '<div class="fenetres" role="group" aria-label="Format">' + [["", "9 et 18 trous"], ["9", "9 trous"], ["18", "18 trous"]].map(function (x) { return puceStat("st-format", x[0], x[1], F.format === x[0]); }).join("") + '</div>' +
       (etat.parcours.length ? '<div class="champ"><label for="st-parcours">Parcours</label><select id="st-parcours" data-c="st-parcours"><option value="">Tous les parcours</option>' +
         etat.parcours.map(function (pc) { return '<option value="' + at(pc.id) + '"' + (pc.id === F.parcours ? " selected" : "") + '>' + t(pc.nom) + '</option>'; }).join("") + '</select></div>' : '') +
@@ -95,12 +113,14 @@
         '<div class="champ"><label for="st-debut">Du</label><input id="st-debut" type="date" data-c="st-debut" value="' + at(F.debut || "") + '"></div>' +
         '<div class="champ"><label for="st-fin">Au</label><input id="st-fin" type="date" data-c="st-fin" value="' + at(F.fin || "") + '"></div></div>' +
         (F.debut || F.fin ? '<button class="lien" type="button" data-a="st-periode-effacer">Effacer la période</button>' : '') + '</details>' +
-      (comparable ? '<label class="case"><input type="checkbox" data-c="st-comparer"' + (F.comparer ? " checked" : "") + '> ' + t(F.derniers ? "Comparer avec les " + F.derniers + " parties précédentes" : "Comparer avec les " + PP.jours + " jours précédents, du " + dateCourte(PP.debut) + " au " + dateCourte(PP.fin)) + '</label>' : '') + '</div>';
+      (comparable ? '<label class="case"><input type="checkbox" data-c="st-comparer"' + (F.comparer ? " checked" : "") + '> ' + t(F.derniers ? "Comparer avec les " + F.derniers + " parties précédentes" : "Comparer avec les " + PP.jours + " jours précédents, du " + dateCourte(PP.debut) + " au " + dateCourte(PP.fin)) + '</label>' : '') + '</details></div>';
     if (!A.parties) return h + etatVideHTML("stats", "Aucune partie pour ces filtres", etat.parties.length ? "Élargis la période, le format ou le parcours." : "Note une partie : score, putts et pénalités suffisent pour démarrer.", etat.parties.length ? "" : "partie-rapide", "Lancer une partie");
     var mixte = A.parties9 && A.parties18;
     h += '<p class="aide stats-echantillon">' + t("Sur " + pluriel(A.parties, "partie") + " (" + A.trous + " trous), " + periodeLib(A.premiere, A.derniere) + (/\.$/.test(periodeLib(A.premiere, A.derniere)) ? "" : ".") +
       (C ? (F.derniers ? " Comparé aux " + pluriel(B.parties, "partie") + " précédentes (" + B.trous + " trous)." : " Comparé à la période précédente : " + pluriel(B.parties, "partie") + " (" + B.trous + " trous).") : F.comparer && comparable ? (F.derniers ? " Pas de parties précédentes à comparer." : " Aucune partie sur la période précédente.") : "") +
       (mixte ? " Parties de 9 et de 18 trous : les chiffres sont ramenés à 18 trous." : "")) + '</p>';
+    if (mode === "filtres") return h;
+    var debutContenu = h.length;
     var cartes = [
       { t: "Score", v: nbStat(A.ecart18, true), u: "écart au par, ramené à 18 trous", tend: C && tendanceStat(C.ecart18),
         x: (A.scoreBrut18 != null ? "18 trous : " + nbStat(A.scoreBrut18) + " coups en moyenne (" + A.parties18 + "). " : "") + (A.scoreBrut9 != null ? "9 trous : " + nbStat(A.scoreBrut9) + " (" + A.parties9 + ")." : ""), n: A.trousScore + " trous avec score" },
@@ -115,17 +135,11 @@
         '<p class="kpi-x">' + t(x.x) + '</p><p class="kpi-n">' + t(x.n) + '</p></article>';
     }).join("") + '</div>';
     h += grapheScoresHTML(A.parPartie);
-    /* Gauche / droite : mises en jeu ratées (renseignées) et direction des coups notés en expert. */
-    var M = A.mej;
-    h += barreRepartitionHTML("Mises en jeu", [{ lib: "Ratées à gauche", v: M.gauche, c: "g" }, { lib: "Jouables", v: M.jouables, c: "c" }, { lib: "Courtes", v: M.courtes, c: "k" }, { lib: "Ratées à droite", v: M.droite, c: "d" }],
-      pluriel(M.n, "départ") + " renseigné" + (M.n > 1 ? "s" : ""), M.ratees > M.gauche + M.droite + M.courtes ? (M.ratees - M.gauche - M.droite - M.courtes) + " ratées sans côté noté." : "");
-    var obs = observationsGolf(l, null, etat.parcours), dirs = croiserObservations(obs, "type", { type: "coup" })[0];
-    if (dirs && dirs.direction.n) h += barreRepartitionHTML("Direction des coups notés", [{ lib: "Gauche", v: dirs.direction.gauche, c: "g" }, { lib: "Dans l'axe", v: dirs.direction.centre, c: "c" }, { lib: "Droite", v: dirs.direction.droite, c: "d" }],
-      pluriel(dirs.direction.n, "coup") + " avec direction", "À plus de 5 m de la ligne de visée : gauche ou droite. " + (dirs.n - dirs.direction.n) + " coups sans direction notée.");
+    h += repartitionsStatsHTML(l, A);
     /* Évolution de l'index : toute l'histoire, quels que soient les filtres. */
     var ci = courbeIndexHTML(null, 300, 70);
     if (ci) h += '<div class="carte-tb evol-index"><p class="surtitre">Évolution de ton index</p>' + ci + '<p class="aide">Toutes les parties, quels que soient les filtres.</p></div>';
-    return h;
+    return mode === "contenu" ? h.slice(debutContenu) : h;
   }
   ACTIONS["st-derniers"] = function (el) { appliquerPeriode(el.getAttribute("data-v")); rendreEtFocus(el); };
   ACTIONS["st-format"] = function (el) { filtresStats().format = el.getAttribute("data-v") || ""; rendreEtFocus(el); };

@@ -1694,3 +1694,13 @@ main.entree { animation: entreeVue .22s ease-out; }
 .kpi-lien > .ico { position: absolute; right: 10px; top: 14px; width: 16px; height: 16px; color: var(--encre-2); }
 .kpi-lien .kpi-t { padding-right: 18px; }
 @media (max-width: 520px) { .mj-perf-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mj-obj { grid-column: span 2; } }
+/* UX06 : rubriques d'Analyses (pastilles défilantes). */
+.rubriques { display: flex; gap: 6px; overflow-x: auto; margin: 8px -4px 10px; padding: 2px 4px 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.rubriques::-webkit-scrollbar { display: none; }
+.rubriques .puce { flex: 0 0 auto; white-space: nowrap; }
+.rb-resume { margin-top: 2px; }
+.rb-ens, .rb-reponse { margin-top: 12px; }
+.rb-actions { margin-top: 12px; }
+.rb-secteur { margin-top: 8px; }
+.plus-filtres { margin: 2px 0 6px; }
+.plus-filtres > summary { cursor: pointer; color: var(--imprime); font-weight: 600; padding: 6px 0; }
