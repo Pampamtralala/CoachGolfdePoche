@@ -89,7 +89,7 @@
 
   /* ---------- Statistiques : chiffres clés ---------- */
   function chiffresClesHTML() {
-    var n = ui.fenetre || 5, l = partiesAnalyse(), c = cumulParties(l, n * 18), avant = cumulParties(l.slice(0, Math.max(0, l.length - c.n)), n * 18);
+    var n = fenetreCommune(), l = partiesAnalyse(), c = cumulParties(l, n * 18), avant = cumulParties(l.slice(0, Math.max(0, l.length - c.n)), n * 18);
     if (!c.T) return etatVideHTML("stats", "Pas encore de statistiques", "Note une partie avec le pavé : score, putts et pénalités suffisent pour démarrer.", "partie-rapide", "Lancer une partie");
     var k = 18 / c.T, ka = avant.T ? 18 / avant.T : 0, obj = indexVise(), ref = repereSG(obj);
     var tend = function (v, va, mieuxHaut) {
@@ -121,9 +121,7 @@
     var cg = coupsGagnes(l, obj);
     if (cg) cartes.push({ t: "Coups gagnés (estimation)", v: (cg.total > 0 ? "+" : "") + nb1(cg.total), u: "face à l’index " + obj, tend: "",
       x: "Estimation des coups gagnés ou perdus par partie face à un joueur de ton objectif, à partir du score, des greens, des putts et des pénalités (pas du Strokes Gained).", r: cg.total >= 0 ? "Tu joues déjà au niveau de ton objectif." : "Voir les deux secteurs qui coûtent le plus ci-dessous." });
-    var h = '<div class="fenetres" role="group" aria-label="Période">' + [5, 10, 20].map(function (x) {
-      return '<button class="opt" type="button" data-a="fenetre" data-v="' + x + '" aria-pressed="' + (n === x) + '">' + x + ' parties</button>';
-    }).join("") + '</div>' +
+    var h = pastillesPeriodeHTML() +
       '<p class="aide">' + t("Sur " + pluriel(c.n, "partie") + " (" + c.T + " trous)" + (avant.T ? ", comparé aux " + avant.n + " précédentes." : ".")) + '</p>' +
       '<div class="kpi-grille">' + cartes.map(function (x) {
         return '<article class="kpi"><p class="kpi-t">' + t(x.t) + '</p><p class="kpi-v"><span class="main">' + t(x.v) + '</span>' + x.tend + '</p><p class="kpi-u">' + t(x.u) + '</p>' +

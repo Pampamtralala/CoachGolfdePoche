@@ -12,13 +12,42 @@
     var f = { parcours: F.parcours || null, format: F.format || null, debut: F.debut || null, fin: F.fin || null };
     if (F.derniers) { f.derniers = F.derniers; if (avant) f.avant = F.derniers; }
     else if (avant) {
-      /* Toutes les parties d'une période libre : comparées à la période de même durée juste avant. */
-      var pp = periodePrecedente(F.debut, F.fin);
+      /* Toutes les parties d'une période libre : comparées à la période de même durée juste avant
+         (sans date de fin, la période court jusqu'à aujourd'hui, comme la saison en cours). */
+      var pp = periodePrecedente(F.debut, F.fin || (F.debut ? auj() : ""));
       if (!pp) return [];
       f.debut = pp.debut; f.fin = pp.fin;
     }
     return selectionParties(partiesAnalyse(), f);
   }
+  /* ---------- UX07 : filtre commun à toutes les analyses ----------
+     Un seul état (ui.stats) : nombre de parties, saison (année civile en cours), toutes, format, parcours, période libre.
+     Il est conservé d'un écran à l'autre ; chaque écran qui l'utilise affiche son périmètre. */
+  function debutSaison() { return auj().slice(0, 4) + "-01-01"; }
+  function choixPeriode(F) { F = F || filtresStats(); return F.derniers ? String(F.derniers) : F.debut === debutSaison() && !F.fin ? "saison" : !F.debut && !F.fin ? "0" : "libre"; }
+  var CHOIX_PERIODE = [["5", "5 parties"], ["10", "10 parties"], ["20", "20 parties"], ["saison", "Saison"], ["0", "Toutes"]];
+  /* Pastilles de période (même état partout) ; action : st-derniers par défaut, ou une action propre à une fiche. */
+  function pastillesPeriodeHTML(action) {
+    var c = choixPeriode();
+    return '<div class="fenetres periode" role="group" aria-label="Période">' + CHOIX_PERIODE.map(function (x) { return puceStat(action || "st-derniers", x[0], x[1], c === x[0]); }).join("") + '</div>';
+  }
+  function appliquerPeriode(v) {
+    var F = filtresStats();
+    if (v === "saison") { F.derniers = 0; F.debut = debutSaison(); F.fin = ""; }
+    else { var n = parseInt(v, 10) || 0; F.derniers = n; if (!n || F.debut === debutSaison()) { F.debut = ""; F.fin = ""; } }
+    return F;
+  }
+  /* Périmètre en clair : effectif, dates, format, parcours. */
+  function perimetreTexte(l) {
+    var F = filtresStats(), T = l.reduce(function (n, p) { return n + p.trous.length; }, 0);
+    if (!l.length) return "Aucune partie dans ce périmètre.";
+    var pc = F.parcours && parcoursDe(F.parcours);
+    return "Sur " + pluriel(l.length, "partie") + " (" + T + " trous), " + periodeLib(l[0].d.slice(0, 10), l[l.length - 1].d.slice(0, 10)).replace(/\.$/, "") +
+      (F.format ? ", " + F.format + " trous seulement" : "") + (pc ? ", à " + pc.nom : "") + ".";
+  }
+  function partiesFiltrees() { return selectionStats(filtresStats()); }
+  /* Nombre de parties pour les écrans qui raisonnent en « N dernières parties » (objectifs, tendances). */
+  function fenetreCommune() { var F = filtresStats(); return F.derniers || partiesFiltrees().length || 5; }
   function nbStat(v, signe) { return v == null ? "–" : (signe && v > 0 ? "+" : "") + String(v).replace(".", ",").replace("-", "−"); }
   function tendanceStat(c) {
     if (!c) return "";
@@ -55,10 +84,10 @@
 
   function tableauStatsHTML() {
     var F = filtresStats(), l = selectionStats(F), A = tableauStats(l);
-    var PP = !F.derniers ? periodePrecedente(F.debut, F.fin) : null, comparable = F.derniers || PP;
+    var PP = !F.derniers ? periodePrecedente(F.debut, F.fin || (F.debut ? auj() : "")) : null, comparable = F.derniers || PP;
     var B = F.comparer && comparable ? tableauStats(selectionStats(F, true)) : null, C = B && B.parties ? comparerStats(A, B) : null;
     var h = '<div class="filtres-stats">' +
-      '<div class="fenetres" role="group" aria-label="Nombre de parties">' + [5, 10, 20, 0].map(function (x) { return puceStat("st-derniers", x, x ? x + " parties" : "Toutes", F.derniers === x); }).join("") + '</div>' +
+      pastillesPeriodeHTML() +
       '<div class="fenetres" role="group" aria-label="Format">' + [["", "9 et 18 trous"], ["9", "9 trous"], ["18", "18 trous"]].map(function (x) { return puceStat("st-format", x[0], x[1], F.format === x[0]); }).join("") + '</div>' +
       (etat.parcours.length ? '<div class="champ"><label for="st-parcours">Parcours</label><select id="st-parcours" data-c="st-parcours"><option value="">Tous les parcours</option>' +
         etat.parcours.map(function (pc) { return '<option value="' + at(pc.id) + '"' + (pc.id === F.parcours ? " selected" : "") + '>' + t(pc.nom) + '</option>'; }).join("") + '</select></div>' : '') +
@@ -98,7 +127,7 @@
     if (ci) h += '<div class="carte-tb evol-index"><p class="surtitre">Évolution de ton index</p>' + ci + '<p class="aide">Toutes les parties, quels que soient les filtres.</p></div>';
     return h;
   }
-  ACTIONS["st-derniers"] = function (el) { filtresStats().derniers = parseInt(el.getAttribute("data-v"), 10) || 0; rendreEtFocus(el); };
+  ACTIONS["st-derniers"] = function (el) { appliquerPeriode(el.getAttribute("data-v")); rendreEtFocus(el); };
   ACTIONS["st-format"] = function (el) { filtresStats().format = el.getAttribute("data-v") || ""; rendreEtFocus(el); };
   ACTIONS["st-periode-effacer"] = function () { var F = filtresStats(); F.debut = ""; F.fin = ""; rendre(); };
   CHANGEMENTS["st-parcours"] = function (el) { filtresStats().parcours = el.value; rendre(); var s = document.getElementById("st-parcours"); if (s) s.focus({ preventScroll: true }); };

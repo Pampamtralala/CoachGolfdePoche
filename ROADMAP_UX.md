@@ -11,7 +11,7 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 | 1 | UX01 Audit et cartographie | P0 | **Terminé** | `ux/ux01-audit` · PR #18 (fusionnée) |
 | 2 | UX03 Navigation à 5 entrées | P0 | **Terminé** | `ux/ux03-navigation` · PR #19 (fusionnée) |
 | 3 | UX05 Enseignements personnalisés | P0 | **En revue** | `ux/ux05-enseignements` |
-| 4 | UX07 Filtres et visualisations (fonctionnel : filtres communs, types de graphiques) | P1 | À faire | — |
+| 4 | UX07 Filtres et visualisations (fonctionnel : filtres communs, types de graphiques) | P1 | **En revue** | `ux/ux07-filtres` (après #20) |
 | 5 | UX04 Tableau de bord « Mon jeu » | P0 | À faire | — |
 | 6 | UX06 Espace Analyses | P0 | À faire | — |
 | 7 | UX08 Mon sac | P1 | À faire | — |
@@ -263,3 +263,29 @@ Encore utiles pour les chantiers UX : 4, 5, 7 et 8 — appliquées telles que pr
 - Difficultés : deux enseignements pouvaient porter sur le même sujet (côté des ratés et erreur la plus fréquente) ;
   la règle « une catégorie par carte » sur Mon jeu évite le doublon, la fiche les garde tous. La fiabilité des
   évolutions s'appuie sur le nombre de parties, celle des côtés sur le nombre de ratés latéraux.
+
+### UX07 — Filtre commun et version texte des graphiques (25/11/2026)
+
+- Objectif : une seule période pour toutes les analyses, conservée d'un écran à l'autre, avec le périmètre toujours dit.
+- Modifications :
+  - `ui-stats.js` : le filtre des Statistiques devient le filtre commun (`ui.stats`) ; pastilles 5, 10, 20 parties,
+    **Saison** (année civile en cours, décision 8) et Toutes ; format, parcours et période libre inchangés ; une période
+    sans date de fin court jusqu'à aujourd'hui (la saison se compare donc à la période de même durée juste avant) ;
+    `perimetreTexte`, `partiesFiltrees`, `fenetreCommune`.
+  - Objectifs d'index (`ui-objectifs.js`) et tendances de Mon jeu (`ui-tableau.js`) : leurs boutons 5/10/20 pilotent le
+    filtre commun (l'ancienne action `fenetre` reste acceptée).
+  - Comprendre mon jeu (`ui-analyste.js`) : ses périodes propres (toutes, trois mois, saison) sont remplacées par le
+    filtre commun, avec le périmètre affiché ; un enseignement ouvert en détail remet le filtre sur « Toutes ».
+  - Graphiques Chart.js : une version texte dépliable sous chaque graphique (`ui-graphes.js`).
+  - `style.css` : les cinq pastilles passent à la ligne plutôt que de couper leur texte.
+- Non modifié, volontairement : les périodes du Journal (mois, trimestre, saison, libre) sont des périodes de rapport,
+  pas un filtre d'analyse ; l'objectif d'index des coups gagnés n'est pas une période. Les filtres club, type de coup,
+  practice ou parcours et provenance n'ont de sens que pour les coups et les clubs : ils viendront avec UX06 et UX08.
+  La technique des graphiques (Chart.js, SVG, barres) reste en l'état avec la refonte graphique reportée (décision 3).
+- Tests : `npm test` (908 noms, 0 doublon), `test-startup.js`, essais 3 à 29 verts (essais 4 et 27 adaptés : les
+  objectifs et Comprendre mon jeu suivent le filtre commun, 10 parties par défaut), nouvel `essai30.js` (pastilles,
+  saison sur l'année civile et comparable, même période dans Statistiques, objectifs, Mon jeu et Comprendre mon jeu,
+  changement fait dans Comprendre repris partout, version texte de chaque graphique, 360 et 390 px).
+- Difficultés : Comprendre mon jeu partait de toutes les parties ; il part désormais du filtre commun (10 parties par
+  défaut), ce qui peut donner « pas assez de parties » là où toutes les parties suffisaient : le périmètre affiché et
+  la pastille « Toutes » le rendent explicite. La saison n'avait pas de date de fin : la comparaison la borne à aujourd'hui.

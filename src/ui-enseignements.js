@@ -46,7 +46,9 @@
   ACTIONS["ens-ouvrir"] = function (el) { ui.retourFocus = el; ui.feuille = { enseignements: true }; rendreFeuille(); var b = document.getElementById("f-fermer"); if (b) b.focus(); };
   /* Détail : la question correspondante de « Comprendre mon jeu », sur toutes les parties (comme l'enseignement). */
   ACTIONS["ens-detail"] = function (el) {
-    etatAnalyste(); ui.analyste.periode = "toutes"; ui.analyste.q = el.getAttribute("data-v"); ui.analyste.recherche = "";
+    etatAnalyste(); ui.analyste.q = el.getAttribute("data-v"); ui.analyste.recherche = "";
+    /* L'enseignement porte sur toutes les parties : le détail aussi (filtre commun remis à « Toutes », formats et parcours compris). */
+    var F = appliquerPeriode("0"); F.format = ""; F.parcours = "";
     ui.retourFocus = ui.retourFocus || el; ui.feuille = { analyste: true }; rendreFeuille();
     var r = document.getElementById("an-rep-" + ui.analyste.q); if (r && r.scrollIntoView) r.scrollIntoView({ block: "start" });
     var b = document.getElementById("f-fermer"); if (b) b.focus({ preventScroll: true });

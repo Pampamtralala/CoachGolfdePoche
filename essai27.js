@@ -45,6 +45,9 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.click('#barre [data-a="onglet"][data-v="bilan"]');
     await page.click('[data-a="an-ouvrir"]');
     await page.waitForSelector('#feuille.analyste');
+    /* UX07 : la période est le filtre commun (10 parties par défaut) ; ici, toutes les parties. */
+    verifie(await page.locator('#feuille [data-a="an-periode"][data-v="10"][aria-pressed="true"]').count() === 1, nom + ' période commune par défaut : 10 parties');
+    await page.click('#feuille [data-a="an-periode"][data-v="0"]');
     await page.click('#feuille [data-a="an-question"][data-v="score"]');
     r.score = norm(await page.textContent('#an-rep-score .an-phrase'));
     r.scoreSource = norm(await page.textContent('#an-rep-score .an-source'));
@@ -68,12 +71,13 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.click('#feuille [data-a="an-question"][data-v="club"]');
     r.club = norm(await page.textContent('#an-rep-club'));
     verifie(/Pour répondre Il faut au moins 2 clubs avec 10 coups notés avec une direction/.test(r.club) && /saisie Expert/.test(r.club), nom + ' club : ce qu\'il faut saisir : ' + r.club);
-    /* Période : trois mois → moins de parties, comparaison refusée proprement */
-    await page.click('#feuille [data-a="an-periode"][data-v="trimestre"]');
+    /* Période (filtre commun, UX07) : 5 parties → comparaison refusée proprement */
+    await page.click('#feuille [data-a="an-periode"][data-v="5"]');
     await page.click('#feuille [data-a="an-question"][data-v="score"]');
     r.trimestre = norm(await page.textContent('#an-rep-score'));
     verifie(/Pas encore assez de parties complètes/.test(r.trimestre) && /tu en as [0-5] sur cette période/.test(r.trimestre), nom + ' trois mois : ' + r.trimestre);
-    await page.click('#feuille [data-a="an-periode"][data-v="toutes"]');
+    verifie(/^Sur 5 parties/.test(norm(await page.textContent('#feuille .an-perimetre'))), nom + ' périmètre affiché : ' + norm(await page.textContent('#feuille .an-perimetre')));
+    await page.click('#feuille [data-a="an-periode"][data-v="0"]');
     /* Recherche par mots-clés */
     await page.fill('#an-recherche', 'trois putts');
     r.recherche = await page.$$eval('#feuille .an-q', l => l.map(x => x.textContent));

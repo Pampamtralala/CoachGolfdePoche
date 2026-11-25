@@ -23,12 +23,10 @@
   }
 
   function objectifsHTML(cible) {
-    var n = FENETRES.indexOf(ui.fenetre) >= 0 ? ui.fenetre : 5, f = statsFenetre(partiesAnalyse(), n), O = objectifs(cible), i = 0;
+    var n = fenetreCommune(), f = statsFenetre(partiesAnalyse(), n), O = objectifs(cible), i = 0;
     var h = '<h3 class="titre-bloc">' + t("Pour jouer index " + cible) + '</h3>' +
       '<p>' + t("Un joueur d'index " + cible + " touche en moyenne " + nb1(O.gir) + " greens, prend " + nb1(O.putts) + " putts et " + nb1(O.pen) + " coup" + (O.pen >= 2 ? "s" : "") + " de pénalité par partie.") + '</p>' +
-      '<div class="filtres" role="group" aria-label="Nombre de parties prises en compte">' + FENETRES.map(function (k) {
-        return '<button class="puce neutre" type="button" data-a="fenetre" data-v="' + k + '" aria-pressed="' + (k === n) + '">' + k + ' parties</button>';
-      }).join("") + '</div>' +
+      pastillesPeriodeHTML() +
       '<div class="defile"><table class="carte-score objectifs"><thead><tr><th scope="col">Sur 18 trous</th><th scope="col" class="num">Toi</th><th scope="col" class="num">Cible</th><th scope="col" class="num">Évolution</th></tr></thead><tbody>';
     var sansScore = false;
     OBJ_STATS.forEach(function (st) {
@@ -45,10 +43,11 @@
       comment('<p>' + t("Les valeurs de la cible sont ce que réalise en moyenne un joueur de cet index : des ordres de grandeur. La petite courbe montre tes parties, de la plus ancienne à la plus récente, et le trait pointillé la cible. La tendance s'affiche à partir de 4 parties : la moitié récente est comparée à la moitié ancienne.") + '</p>');
     return h;
   }
+  /* UX07 : l'ancien réglage « fenêtre » pilote désormais le filtre commun. */
   ACTIONS.fenetre = function (el) {
     var k = parseInt(el.getAttribute("data-v"), 10);
     if (FENETRES.indexOf(k) < 0) return;
-    ui.fenetre = k; rendreEtFocus(el);
+    appliquerPeriode(String(k)); rendreEtFocus(el);
   };
 
   /* ---------- Relevés de la saisie détaillée ---------- */

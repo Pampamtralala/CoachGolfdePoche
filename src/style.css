@@ -1673,3 +1673,8 @@ main.entree { animation: entreeVue .22s ease-out; }
 .carte-ens .ens-fiab.insuffisant { color: var(--alerte); }
 .carte-ens .ligne-btn { margin-top: 8px; align-items: center; }
 .ens-groupe { margin: 20px 0 8px; }
+/* UX07 : version texte des graphiques. */
+.graphe-texte { margin: 4px 0 12px; font-size: .875rem; color: var(--encre-2); }
+.graphe-texte summary { cursor: pointer; }
+/* Cinq pastilles de période : elles passent à la ligne plutôt que de couper leur texte. */
+.fenetres.periode .opt { flex: 1 0 auto; }
