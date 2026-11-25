@@ -301,3 +301,27 @@ TESTS EXÉCUTÉS ET RÉSULTATS : essai24 (premier écran, index invalide refusé
 BRANCHE / COMMIT / LIEN PR : data/p02-premier-lancement · PR #14 (brouillon, à fusionner après #13)
 PROCHAINE TÂCHE AUTORISÉE : aucune sans accord ; candidats P10 (coups perdus estimés), P11, P12.
 ```
+
+## 25 novembre 2026 (matin, 2)
+
+```text
+DATE : 25/11/2026
+CRÉDITS ALLOUÉS / CONSOMMÉS / RESTANTS : non mesurables (aucun compteur fourni).
+FUSIONS : PR #13 (P04) et #14 (P02) fusionnées sur `app` à la demande explicite du propriétaire
+  (« Fusionne 13 et 14 ») ; appli claude.ai mise à jour.
+TÂCHE ACTUELLE : P10 puis P11 ; P12 à détailler avant de coder (« avant de lancer p12, détaille-moi »).
+FONCTIONNALITÉS LIVRÉES (branche data/p10-coups-perdus) :
+  - modèle (coupsGagnes) : couvertureMej compte les seules mises en jeu renseignées ; taux sur les
+    par 4 et 5 connus, ramené à la part de départs puis à 18 trous ; sous 6 départs connus, le départ
+    n'est pas estimé et reste compris dans « Attaques de green (départ compris) ». Anciennes parties :
+    résultat identique (test-plus inchangé) ;
+  - engine-estimation.js : ecartsHabituels (5 dernières parties contre les 20 d'avant, 27 et 72 trous
+    minimum, sans index ni distance), limitesEstimation (fiabilité et données manquantes) ;
+  - libellés : « estimation des coups gagnés ou perdus », « pas du Strokes Gained » (Statistiques,
+    accueil, menu, bilan de partie, sac, profil) ; « Méthode, fiabilité et limites » consultable.
+TESTS EXÉCUTÉS ET RÉSULTATS : npm test (estimation : 17 vérifications) : 0 échec ; test-startup : OK ;
+  essai25 (libellés, départ non inventé en express, méthode et limites, écart habituel refusé puis
+  calculé avec périodes et effectifs) : OK ; essais 3 à 24 : OK (essai3 : départ « non mesuré » en express).
+BRANCHE / COMMIT / LIEN PR : data/p10-coups-perdus · PR #15 (brouillon)
+PROCHAINE TÂCHE : P11 (journal et rapports), demandée dans le même message.
+```

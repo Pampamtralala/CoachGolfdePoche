@@ -119,8 +119,8 @@
     cartes.push({ t: "Putting", v: nb1(c.P * k), u: "putts par partie", tend: tend(c.P * k, avant.T ? avant.P * ka : null, false),
       x: pluriel(Math.round(c.P3 * k * 10) / 10, "trois-putts").replace(/^(\d+)\.(\d)/, "$1,$2") + " par partie.", r: c.P3 * k > ref.p3 ? "Les putts de 5 à 10 m sont ta marge : vise de les laisser à moins d’un mètre." : "Peu de trois-putts : bien." });
     var cg = coupsGagnes(l, obj);
-    if (cg) cartes.push({ t: "Coups gagnés", v: (cg.total > 0 ? "+" : "") + nb1(cg.total), u: "face à l’index " + obj, tend: "",
-      x: "Coups gagnés ou perdus par partie face à un joueur de ton objectif.", r: cg.total >= 0 ? "Tu joues déjà au niveau de ton objectif." : "Voir les deux secteurs qui coûtent le plus ci-dessous." });
+    if (cg) cartes.push({ t: "Coups gagnés (estimation)", v: (cg.total > 0 ? "+" : "") + nb1(cg.total), u: "face à l’index " + obj, tend: "",
+      x: "Estimation des coups gagnés ou perdus par partie face à un joueur de ton objectif, à partir du score, des greens, des putts et des pénalités (pas du Strokes Gained).", r: cg.total >= 0 ? "Tu joues déjà au niveau de ton objectif." : "Voir les deux secteurs qui coûtent le plus ci-dessous." });
     var h = '<div class="fenetres" role="group" aria-label="Période">' + [5, 10, 20].map(function (x) {
       return '<button class="opt" type="button" data-a="fenetre" data-v="' + x + '" aria-pressed="' + (n === x) + '">' + x + ' parties</button>';
     }).join("") + '</div>' +

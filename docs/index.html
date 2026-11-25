@@ -1638,6 +1638,13 @@ main.entree { animation: entreeVue .22s ease-out; }
 .programme-option { margin: 8px 0 14px; }
 .programme-option p:not(.surtitre) { margin: 0 0 10px; }
 
+/* ---------- Estimation des coups (P10) ---------- */
+.estimation-avertissement { margin: -4px 0 8px; }
+.methode-estimation .constats li.limite { color: var(--encre); font-weight: 600; }
+.habituel th[scope="row"] { padding: 8px 10px; text-align: left; font-weight: 600; border-top: 1px solid var(--filet); }
+.habituel td { padding: 8px 6px; }
+.habituel td.num { width: 56px; font-variant-numeric: tabular-nums; }
+
 /* ---------- Sac de golf en perspective (fausse 3D) ----------
    Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
    --s3-bulle, --s3-bulle-texte, --s3-chiffre, --s3-focus. */
@@ -4532,20 +4539,43 @@ function cibleAuto(index) {
    exactement l'écart entre le score du joueur et celui de la cible.
    Quand la longueur du premier putt est notée, la distance laissée est portée au crédit
    du coup qui précède (attaque ou petit jeu) et le putting est jugé à distance égale. */
+/* Mises en jeu sur la même fenêtre que cumulParties (P10) : seules celles renseignées comptent.
+   Un par 3 n'a pas de mise en jeu à rater : il compte comme connu. Une saisie express ne note pas la mise en jeu. */
+function couvertureMej(parties, maxTrous) {
+  var r = { T: 0, departs: 0, connus: 0, inconnus: 0, rates: 0, u: null };
+  for (var i = (parties || []).length - 1; i >= 0; i--) {
+    var p = parties[i];
+    if (r.T && r.T + p.trous.length > maxTrous) break;
+    p.trous.forEach(function (t, k) {
+      if (!t) return;
+      r.T++;
+      if (t[5] === 3) return;
+      r.departs++;
+      if (renseigneTrou(p.renseigne, k, RENS_MEJ)) { r.connus++; if (!t[0] && !t[1]) r.rates++; }
+      else r.inconnus++;
+    });
+  }
+  /* Taux sur les départs renseignés, ramené à la part de départs (par 4 et 5) dans les trous joués, puis à 18 trous. */
+  if (r.connus >= 6) r.u = r.rates / r.connus * r.departs / r.T * 18;
+  return r;
+}
 function coupsGagnes(parties, cible) {
   var c = cumulParties(parties, 90);
   if (c.T < 9) return null;
   var R = repereSG(cible), k = 18 / c.T;
   var mT = 18 - R.gir, v = 1 + R.pm - R.pg;
-  var u = c.U * k, m = c.M * k, x = c.X * k;
+  /* Mises en jeu ratées qui font manquer le green, sur les seuls trous où la mise en jeu est connue.
+     Moins de 9 trous connus : le départ n'est pas estimé, il reste compris dans les attaques de green. */
+  var cm = couvertureMej(parties, 90), departConnu = cm.u != null;
+  var u = cm.u, m = c.M * k, x = c.X * k;
   var pm = c.M ? c.PM / c.M : null, pg = c.G ? c.PG / c.G : null;
   var note = c.N >= 9, e = note ? c.E * 18 / c.N : null;
   var eg = 0, em = 0;
   for (var b = 1; b <= 4; b++) { var att = puttsAttendus(cible, b); eg += c["g" + b] * att; em += c["m" + b] * att; }
   for (b = 1; b <= 5; b++) { var atb = puttsAttendusB(cible, b); eg += c["gb" + b] * atb; em += c["mb" + b] * atb; }
   var brut = {
-    depart: -(u - R.u) * (v + (note ? 0 : SG_RECENTRAGE)),
-    attaque: -((m - u) - (mT - R.u)) * v + (c.Gb * R.pg - eg) * k,
+    depart: departConnu ? -(u - R.u) * (v + (note ? 0 : SG_RECENTRAGE)) : null,
+    attaque: (departConnu ? -((m - u) - (mT - R.u)) * v : -(m - mT) * v) + (c.Gb * R.pg - eg) * k,
     petit: c.M ? ((c.Mb * R.pm - em) + ((c.M - c.Mb) * R.pm - (c.PM - c.PMb))) * k : null,
     putting: (c.G || c.Mb) ? ((eg + em - c.PGb - c.PMb) + ((c.G - c.Gb) * R.pg - (c.PG - c.PGb))) * k : null,
     penal: -(x - R.x),
@@ -4556,12 +4586,12 @@ function coupsGagnes(parties, cible) {
     var val = brut[s.id] == null ? null : arrondi1(brut[s.id]);
     if (val === 0) val = 0;
     if (val != null) total += val;
-    return { id: s.id, nom: s.nom, d: s.d, sg: val };
+    return { id: s.id, nom: s.id === "attaque" && !departConnu ? "Attaques de green (départ compris)" : s.nom, d: s.d, sg: val };
   });
   return {
     T: c.T, n: c.n, N: c.N, cible: cible, secteurs: secteurs, total: arrondi1(total),
-    detail: c.Gb + c.Mb, corriges: c.K,
-    joueur: { u: arrondi1(u), m: arrondi1(m), pg: pg == null ? null : arrondi2(pg), pm: pm == null ? null : arrondi2(pm), x: arrondi1(x),
+    detail: c.Gb + c.Mb, corriges: c.K, mej: cm, departConnu: departConnu,
+    joueur: { u: u == null ? null : arrondi1(u), m: arrondi1(m), pg: pg == null ? null : arrondi2(pg), pm: pm == null ? null : arrondi2(pm), x: arrondi1(x),
       e: note ? arrondi1(e) : null, s: note ? arrondi1((c.S - c.PAR) * 18 / c.N) : null },
     ref: { u: arrondi1(R.u), m: arrondi1(mT), pg: arrondi2(R.pg), pm: arrondi2(R.pm), x: arrondi1(R.x), e: arrondi1(R.e), s: arrondi1(R.s) }
   };
@@ -6837,6 +6867,77 @@ function analysePutting(parties) {
 }
 
 
+/* Coach de golf de poche — estimation responsable des coups perdus (roadmap DATA, P10). Fonctions pures.
+   Ce n'est pas du Strokes Gained : le Strokes Gained compare chaque coup à une référence selon la distance et la
+   position de la balle. Ici, on estime par secteur à partir du score, des greens en régulation (déduits), des
+   mises en jeu renseignées, des putts et des pénalités. Aucune distance n'est nécessaire. */
+
+var HABITUEL_RECENT = 5, HABITUEL_BASE = 20, HABITUEL_MIN_RECENT = 27, HABITUEL_MIN_BASE = 72;
+
+function arr1E(v) { return v == null ? null : Math.round(v * 10) / 10; }
+function arr2E(v) { return v == null ? null : Math.round(v * 100) / 100; }
+function jourE(d) { return typeof d === "string" ? d.slice(0, 10) : null; }
+
+/* Chiffres d'un groupe de parties, ramenés à 18 trous. La mise en jeu ne compte que là où elle est connue. */
+function profilSecteurs(parties) {
+  var s = statsTrous([]), cm = couvertureMej(parties, Infinity);
+  parties.forEach(function (p) { ajouterStats(s, statsTrous(p.trous)); });
+  var k = s.T ? 18 / s.T : 0;
+  return {
+    parties: parties.length, trous: s.T, notes: s.N, mej: cm,
+    du: parties.length ? jourE(parties[0].d) : null, au: parties.length ? jourE(parties[parties.length - 1].d) : null,
+    u: cm.u,
+    m: s.M * k, g: s.G * k,
+    pg: s.G ? s.PG / s.G : null, pm: s.M ? s.PM / s.M : null,
+    x: s.X * k, e: s.N >= 9 ? s.E * 18 / s.N : null,
+    score: s.N >= 9 ? (s.S - s.PAR) * 18 / s.N : null
+  };
+}
+
+/* Écart des dernières parties à la performance habituelle du joueur (les parties d'avant), secteur par secteur.
+   Positif : mieux que d'habitude. Ne demande ni index cible ni distance. null + raison si les données manquent. */
+function ecartsHabituels(parties) {
+  var l = (parties || []).filter(function (p) { return p && Array.isArray(p.trous) && p.trous.length; });
+  var nr = Math.min(HABITUEL_RECENT, Math.floor(l.length / 2));
+  if (nr < 1) return { ok: false, raison: "parties", manque: Math.max(0, 2 - l.length) };
+  var recent = l.slice(l.length - nr), base = l.slice(Math.max(0, l.length - nr - HABITUEL_BASE), l.length - nr);
+  var R = profilSecteurs(recent), B = profilSecteurs(base);
+  if (R.trous < HABITUEL_MIN_RECENT || B.trous < HABITUEL_MIN_BASE)
+    return { ok: false, raison: "trous", recent: R, base: B, manqueRecent: Math.max(0, HABITUEL_MIN_RECENT - R.trous), manqueBase: Math.max(0, HABITUEL_MIN_BASE - B.trous) };
+  var v = 1 + (B.pm == null ? 1 : B.pm) - (B.pg == null ? 2 : B.pg);   /* ce que coûte un green manqué, d'habitude */
+  var departConnu = R.u != null && B.u != null;
+  var brut = {
+    depart: departConnu ? -(R.u - B.u) * v : null,
+    attaque: departConnu ? -((R.m - R.u) - (B.m - B.u)) * v : -(R.m - B.m) * v,
+    petit: R.pm != null && B.pm != null ? -(R.pm - B.pm) * R.m : null,
+    putting: R.pg != null && B.pg != null ? -(R.pg - B.pg) * R.g : null,
+    penal: -(R.x - B.x),
+    rattrapage: R.e != null && B.e != null ? -(R.e - B.e) : null
+  };
+  var total = 0;
+  var secteurs = SG_SECTEURS.map(function (s) {
+    var val = brut[s.id] == null ? null : arr1E(brut[s.id]);
+    if (val === 0) val = 0;
+    if (val != null) total += val;
+    return { id: s.id, nom: s.id === "attaque" && !departConnu ? "Attaques de green (départ compris)" : s.nom, d: s.d, ecart: val };
+  });
+  return { ok: true, recent: R, base: B, departConnu: departConnu, secteurs: secteurs, total: arr1E(total),
+    scoreEcart: R.score != null && B.score != null ? arr1E(B.score - R.score) : null };
+}
+
+/* Fiabilité et données manquantes d'une estimation face à un index cible (résultat de coupsGagnes). */
+function limitesEstimation(r) {
+  if (!r) return null;
+  var l = [];
+  if (!r.departConnu) l.push({ id: "mej", txt: "Mises en jeu trop peu renseignées (" + r.mej.connus + " départs connus sur " + r.mej.departs + " par 4 et 5) : le départ n'est pas séparé des attaques de green." });
+  else if (r.mej.inconnus) l.push({ id: "mej", txt: r.mej.inconnus + " départs sans mise en jeu renseignée (saisie express) : le départ est estimé sur les " + r.mej.connus + " autres." });
+  if (r.N < r.T) l.push({ id: "score", txt: (r.T - r.N) + " trous sans score : le rattrapage porte sur les " + r.N + " autres." });
+  if (r.detail < Math.min(9, r.T)) l.push({ id: "putt1", txt: "Longueur du premier putt rarement notée (" + r.detail + " trous) : le putting compare ta moyenne de putts à celle de la cible, sans tenir compte de la longueur." });
+  var fiab = r.T >= 72 ? "établie" : r.T >= 36 ? "indicative" : "tendance";
+  return { fiabilite: fiab, limites: l };
+}
+
+
 /* ============================================================
    INTERFACE : accueil, questionnaire, plan, bilan, exercices, profil.
    Les données du joueur sont gardées sur l'appareil et, quand c'est possible,
@@ -6848,7 +6949,7 @@ function analysePutting(parties) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-25T06:28:44.537Z";
+  var VERSION_APPLI = "2026-11-25T06:53:08.174Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -8518,7 +8619,7 @@ function analysePutting(parties) {
   /* Texte de l'infobulle de chaque secteur : le résultat, puis les chiffres qui le fondent. */
   function detailsSG(r) {
     var J = r.joueur, C = r.ref, d = {
-      depart: "Mises en jeu ratées qui font manquer le green : toi " + nb1(J.u) + ", cible " + nb1(C.u) + " par partie.",
+      depart: J.u == null ? "Pas assez de mises en jeu renseignées pour estimer le départ : il reste compris dans les attaques de green." : "Mises en jeu ratées qui font manquer le green : toi " + nb1(J.u) + ", cible " + nb1(C.u) + " par partie.",
       attaque: "Greens manqués : toi " + nb1(J.m) + ", cible " + nb1(C.m) + " par partie.",
       petit: J.pm == null ? "" : "Putts par green manqué : toi " + nb2(J.pm) + ", cible " + nb2(C.pm) + ".",
       putting: J.pg == null ? "" : "Putts par green touché : toi " + nb2(J.pg) + ", cible " + nb2(C.pg) + ".",
@@ -8538,6 +8639,34 @@ function analysePutting(parties) {
     if (i >= 0) return i;
     return OBJ_INDEX.reduce(function (b, x, k) { return Math.abs(x - v) < Math.abs(OBJ_INDEX[b] - v) ? k : b; }, 0);
   }
+  /* P10 : méthode, fiabilité et données manquantes, consultables. */
+  function methodeEstimationHTML(r) {
+    var L = limitesEstimation(r); if (!L) return "";
+    return '<details class="calcul methode-estimation"><summary>' + t("Méthode, fiabilité et limites") + '</summary>' +
+      '<p>' + t("Fiabilité : " + L.fiabilite + " (" + r.T + " trous, " + pluriel(r.n, "partie") + " ; « tendance » sous 36 trous, « indicative » jusqu'à 72, « établie » au-delà).") + '</p>' +
+      '<ul class="constats">' +
+        '<li>' + t("Données utilisées : score de chaque trou, greens en régulation déduits du score et des putts, mises en jeu renseignées, putts, longueur du premier putt quand elle est notée, pénalités. Aucune distance.") + '</li>' +
+        '<li>' + t("Référence : les chiffres moyens d'un joueur de l'index visé, interpolés entre des repères internes (ordres de grandeur, pas une base de données officielle).") + '</li>' +
+        '<li>' + t("Un green manqué coûte, d'après ces repères, la différence entre putts après un green manqué et putts après un green touché, plus un coup pour le rejoindre.") + '</li>' +
+        '<li>' + t("Ce n'est pas du Strokes Gained : il faudrait la distance et la position de la balle à chaque coup.") + '</li>' +
+        L.limites.map(function (x) { return '<li class="limite">' + t(x.txt) + '</li>'; }).join("") +
+      '</ul></details>';
+  }
+  /* P10 : écart des dernières parties au jeu habituel, sans index cible ni distance. */
+  function habituelHTML() {
+    var H = ecartsHabituels(partiesAnalyse());
+    var h = '<h3 class="titre-bloc">Par rapport à ton jeu habituel</h3>';
+    if (!H.ok) return h + '<p class="aide">' + t(H.raison === "parties" ? "Il faut au moins deux parties pour comparer les dernières à ton jeu habituel." :
+      "Il faut au moins " + HABITUEL_MIN_RECENT + " trous récents et " + HABITUEL_MIN_BASE + " trous de référence" + (H.manqueBase ? " (encore " + H.manqueBase + " trous de référence)" : "") + " pour une comparaison qui ait du sens.") + '</p>';
+    var R = H.recent, B = H.base;
+    h += '<p class="aide">' + t((R.parties > 1 ? "Tes " + R.parties + " dernières parties" : "Ta dernière partie") + " (" + R.trous + " trous, " + periodeLib(R.du, R.au) + ") comparée" + (R.parties > 1 ? "s" : "") + " aux " + pluriel(B.parties, "partie") + " d'avant (" + B.trous + " trous). Estimation par secteur, en coups pour 18 trous : positif, mieux que d'habitude.") + '</p>' +
+      '<div class="defile"><table class="carte-score habituel"><tbody>' + H.secteurs.map(function (s) {
+        return '<tr><th scope="row">' + t(s.nom) + '</th><td class="num">' + (s.ecart == null ? '<span class="marque inconnu">–</span>' : t(s.ecart === 0 ? "=" : signe(s.ecart))) + '</td><td>' + t(s.ecart == null ? "non estimé" : Math.abs(s.ecart) < 0.3 ? "comme d'habitude" : s.ecart > 0 ? "mieux" : "moins bien") + '</td></tr>';
+      }).join("") + '</tbody></table></div>' +
+      (H.scoreEcart != null ? '<p>' + t("Score : " + (Math.abs(H.scoreEcart) < 0.5 ? "comme d'habitude." : coupsLib(H.scoreEcart, H.scoreEcart > 0 ? "gagné" : "perdu") + " pour 18 trous par rapport à d'habitude.")) + '</p>' : '') +
+      '<p class="aide">' + t("Un écart sur quelques parties peut venir du parcours ou de la météo : c'est un constat, pas une cause.") + '</p>';
+    return h;
+  }
   function coupsGagnesHTML() {
     var p = etat.profil, cible = indexVise();
     var r = coupsGagnes(partiesAnalyse(), cible);
@@ -8551,7 +8680,9 @@ function analysePutting(parties) {
       '<p aria-live="polite">Face à ton objectif : index <b class="main">' + cible + '</b><small>sur 18 trous</small></p>' +
       '<button class="pm" type="button" data-a="sg-cible" data-d="1" aria-label="Objectif moins ambitieux"' + (i >= OBJ_INDEX.length - 1 ? " disabled" : "") + '>+</button></div>' +
       deuxSecteursHTML(cible) + objectifsHTML(cible) + reperesPlusHTML(cible) +
-      '<h3 class="titre-bloc">Coups gagnés ou perdus par secteur</h3>' + grapheSG(r, detailsSG(r));
+      '<h3 class="titre-bloc">Estimation des coups gagnés ou perdus par secteur</h3>' +
+      '<p class="aide estimation-avertissement">' + t("Estimation à partir de ton score, de tes greens en régulation (déduits), de tes mises en jeu renseignées, de tes putts et de tes pénalités. Ce n'est pas du Strokes Gained, qui compare chaque coup selon sa distance et la position de la balle.") + '</p>' +
+      grapheSG(r, detailsSG(r));
     h += '<p class="sg-total">' + t(r.total < 0 ? "Au total : environ " + coupsLib(r.total, "perdu") + " par partie."
       : r.total > 0 ? "Au total : environ " + coupsLib(r.total, "gagné") + " par partie." : "Au total : tu es au niveau de cette cible.") + '</p>';
     var mesures = r.secteurs.filter(function (s) { return s.sg != null; });
@@ -8574,7 +8705,7 @@ function analysePutting(parties) {
     }
     h += '<details class="calcul"><summary>Les chiffres du calcul</summary><div class="defile"><table class="carte-score calcul"><thead><tr><th scope="col">Sur 18 trous</th><th scope="col" class="num">Toi</th><th scope="col" class="num">Cible</th></tr></thead><tbody>' +
       ligne("Score au-dessus du par", r.joueur.s == null ? null : signe(r.joueur.s), signe(r.ref.s)) +
-      ligne("Mises en jeu ratées qui font manquer le green", nb1(r.joueur.u), nb1(r.ref.u)) +
+      ligne("Mises en jeu ratées qui font manquer le green", r.joueur.u == null ? null : nb1(r.joueur.u), nb1(r.ref.u)) +
       ligne("Greens manqués", nb1(r.joueur.m), nb1(r.ref.m)) +
       ligne("Putts par green touché en régulation", r.joueur.pg == null ? null : nb2(r.joueur.pg), nb2(r.ref.pg)) +
       ligne("Putts par green manqué", r.joueur.pm == null ? null : nb2(r.joueur.pm), nb2(r.ref.pm)) +
@@ -8583,7 +8714,7 @@ function analysePutting(parties) {
       '</tbody></table></div>' +
       '<p class="aide" style="margin-top:10px">Méthode : un green manqué coûte un coup pour le rejoindre, et les coups joués en plus (recentrages, coups grattés, approches en deux fois) sont comptés au rattrapage. Tes putts sont comparés à ceux de la cible : sur les greens touchés pour le putting, sur les greens manqués pour le petit jeu, où le nombre de putts dépend surtout de l’approche. Quand tu notes la longueur du premier putt, la distance laissée revient au coup d’avant et ton putting est jugé à distance égale. ' +
       (r.joueur.s != null && r.N === r.T ? "Avec un score à chaque trou, le total est exactement l’écart entre ton score moyen et celui de la cible. " : "Sans score à chaque trou, une mise en jeu ratée qui fait manquer le green est comptée un demi-coup de plus. ") +
-      'Les repères de la cible sont des ordres de grandeur.</p></details>';
+      'Les repères de la cible sont des ordres de grandeur.</p></details>' + methodeEstimationHTML(r) + habituelHTML();
     return { resume: (r.total < 0 ? coupsLib(r.total, "perdu") : r.total > 0 ? coupsLib(r.total, "gagné") : "à égalité") + " face à un index " + cible, corps: h };
   }
 
@@ -8914,7 +9045,7 @@ function analysePutting(parties) {
   function sacInfoHTML() {
     var id = ui.sacSel;
     if (!id) return '<p class="sac-info-vide">' + t("Touche un club : il sort du sac et affiche sa distance.") + '</p>';
-    if (id === "putter") return '<p class="surtitre">Putter</p><p class="sac-info-txt">' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans le Bilan, avec les coups gagnés.") + '</p>';
+    if (id === "putter") return '<p class="surtitre">Putter</p><p class="sac-info-txt">' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans les Statistiques, avec l’estimation des coups gagnés.") + '</p>';
     var c = CLUB[id], s = statsClub(clubsVus()[id]), fo = s ? fourchette(clubsVus()[id]) : null, plage = fo && fo.bas !== fo.haut;
     return '<div class="sac-info-tete"><div><p class="surtitre">' + t(SAC_FAMILLES[c.fam]) + '</p><h3>' + t(nomCourt(c)) + '</h3></div>' +
       '<p class="sac-info-dist">' + (s ? '<b class="main">' + (plage ? fo.bas + '–' + fo.haut : s.moy) + '</b><span>m</span>' : '<b class="main vide">?</b>') + '</p></div>' +
@@ -8988,7 +9119,7 @@ function analysePutting(parties) {
       '<section class="feuille sac-fiche" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">';
     function entete(sur, titre) { return '<header><p class="surtitre">' + t(sur) + '</p><h2 id="f-titre">' + t(titre) + '</h2><button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>'; }
     if (id === "putter") {
-      return tete + entete("Putter", "Putter") + '<p>' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans le Bilan, avec les coups gagnés.") + '</p></section>';
+      return tete + entete("Putter", "Putter") + '<p>' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans les Statistiques, avec l’estimation des coups gagnés.") + '</p></section>';
     }
     var c = CLUB[id], mes = etat.carnet.clubs[id] || [], parc = coupsDuParcours().clubs[id] || [], tout = mes.concat(parc);
     var s = statsClub(tout), an = analyseCarnet(mesuresTout(), sacActuel());
@@ -9294,7 +9425,7 @@ function analysePutting(parties) {
       { g: "Statistiques", l: [
         { p: "bilan", t: "Tableau de bord", k: "stats chiffres cles tendances index" },
         { p: "bilan", s: "notes", t: "Ton jeu sur 100", k: "notes jauges priorite semaine" },
-        { p: "bilan", s: "sg", t: "Objectif d’index et coups gagnés", k: "strokes gained cible" },
+        { p: "bilan", s: "sg", t: "Objectif d’index et estimation des coups gagnés", k: "strokes gained coups gagnés perdus estimation cible" },
         { p: "bilan", s: "evitables", t: "Erreurs évitables", k: "penalites double approche trois putts" },
         { p: "bilan", s: "releves", t: "Relevés détaillés", k: "constats premier putt" },
         { p: "bilan", s: "defauts", t: "Tes défauts", k: "slice hook diagnostic" },
@@ -9540,7 +9671,7 @@ function analysePutting(parties) {
     } else if (ui.depart) {
       h += departHTML();
     } else {
-      h += comment('<p>Sur le parcours, note chaque trou en marchant vers le départ suivant : mise en jeu, green, putts, pénalités et score. Les réponses les plus courantes sont déjà cochées. Tes chiffres mettent à jour ton bilan, tes objectifs et tes coups gagnés.</p>');
+      h += comment('<p>Sur le parcours, note chaque trou en marchant vers le départ suivant : mise en jeu, green, putts, pénalités et score. Les réponses les plus courantes sont déjà cochées. Tes chiffres mettent à jour ton bilan, tes objectifs et l’estimation de tes coups gagnés.</p>');
     }
     if (l.length) {
       h += '<h3>Tes dernières parties</h3><div class="defile"><table class="carte-score parties"><thead><tr><th scope="col">Partie</th>' +
@@ -9556,7 +9687,7 @@ function analysePutting(parties) {
       h += '</tbody></table></div><p class="aide" style="margin-top:8px">' +
         t("Touche une partie pour voir sa carte.") + '</p>' +
         indexEstimeHTML() +
-        '<button class="btn large" type="button" data-a="pt-voir-sg">Voir mes objectifs et mes coups gagnés</button>';
+        '<button class="btn large" type="button" data-a="pt-voir-sg">Voir mes objectifs et l’estimation de mes coups gagnés</button>';
     }
     return h + '</section>';
   }
@@ -11531,7 +11662,7 @@ function analysePutting(parties) {
   /* ---------- Objectif d'index, dans le profil ---------- */
   function indexViseHTML() {
     var p = etat.profil, v = p.indexVise;
-    return '<section class="bloc" id="objectif-index"><h2>Objectif d’index</h2><p>' + t("Tes statistiques et tes coups gagnés se comparent à un joueur de cet index, pas aux pros." + (v == null ? (indexDeclare(p) != null ? " Sans choix, l'appli prend l'index " + cibleAuto(p.index) + ", trois points sous le tien." : " Sans index déclaré, choisis-en un : sinon l'appli prend un repère de débutant (" + cibleAuto(indexNiveau(p)) + ").") : "")) + '</p>' +
+    return '<section class="bloc" id="objectif-index"><h2>Objectif d’index</h2><p>' + t("Tes statistiques et l'estimation de tes coups gagnés se comparent à un joueur de cet index, pas aux pros." + (v == null ? (indexDeclare(p) != null ? " Sans choix, l'appli prend l'index " + cibleAuto(p.index) + ", trois points sous le tien." : " Sans index déclaré, choisis-en un : sinon l'appli prend un repère de débutant (" + cibleAuto(indexNiveau(p)) + ").") : "")) + '</p>' +
       '<div class="choix-ligne index-vise" role="group" aria-label="Objectif d’index">' + OBJ_INDEX.slice().reverse().map(function (x) {
         return '<button class="opt" type="button" data-a="index-vise" data-v="' + x + '" aria-pressed="' + (indexVise() === x) + '">' + (x === 0 ? "Scratch" : "Index " + x) + '</button>';
       }).join("") + '</div></section>';
@@ -11662,8 +11793,8 @@ function analysePutting(parties) {
     cartes.push({ t: "Putting", v: nb1(c.P * k), u: "putts par partie", tend: tend(c.P * k, avant.T ? avant.P * ka : null, false),
       x: pluriel(Math.round(c.P3 * k * 10) / 10, "trois-putts").replace(/^(\d+)\.(\d)/, "$1,$2") + " par partie.", r: c.P3 * k > ref.p3 ? "Les putts de 5 à 10 m sont ta marge : vise de les laisser à moins d’un mètre." : "Peu de trois-putts : bien." });
     var cg = coupsGagnes(l, obj);
-    if (cg) cartes.push({ t: "Coups gagnés", v: (cg.total > 0 ? "+" : "") + nb1(cg.total), u: "face à l’index " + obj, tend: "",
-      x: "Coups gagnés ou perdus par partie face à un joueur de ton objectif.", r: cg.total >= 0 ? "Tu joues déjà au niveau de ton objectif." : "Voir les deux secteurs qui coûtent le plus ci-dessous." });
+    if (cg) cartes.push({ t: "Coups gagnés (estimation)", v: (cg.total > 0 ? "+" : "") + nb1(cg.total), u: "face à l’index " + obj, tend: "",
+      x: "Estimation des coups gagnés ou perdus par partie face à un joueur de ton objectif, à partir du score, des greens, des putts et des pénalités (pas du Strokes Gained).", r: cg.total >= 0 ? "Tu joues déjà au niveau de ton objectif." : "Voir les deux secteurs qui coûtent le plus ci-dessous." });
     var h = '<div class="fenetres" role="group" aria-label="Période">' + [5, 10, 20].map(function (x) {
       return '<button class="opt" type="button" data-a="fenetre" data-v="' + x + '" aria-pressed="' + (n === x) + '">' + x + ' parties</button>';
     }).join("") + '</div>' +
@@ -13508,7 +13639,7 @@ function analysePutting(parties) {
   /* ---------- Coups gagnés ou perdus par secteur ---------- */
   function grapheSG(r, details) {
     var S = r.secteurs, mx = Math.max(1.5, Math.ceil(Math.max.apply(null, S.map(function (s) { return Math.abs(s.sg || 0); })) * 2) / 2);
-    var resume = "Coups gagnés ou perdus sur 18 trous face à un joueur d'index " + r.cible + " : " +
+    var resume = "Estimation des coups gagnés ou perdus sur 18 trous face à un joueur d'index " + r.cible + " (pas du Strokes Gained) : " +
       S.map(function (s) { return s.nom + " " + (s.sg == null ? "non mesuré" : signe(s.sg)); }).join(" ; ") + ".";
     return grapheHTML("sg", 30 + S.length * 40, resume, function (C) {
       return {

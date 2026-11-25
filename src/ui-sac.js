@@ -90,7 +90,7 @@
   function sacInfoHTML() {
     var id = ui.sacSel;
     if (!id) return '<p class="sac-info-vide">' + t("Touche un club : il sort du sac et affiche sa distance.") + '</p>';
-    if (id === "putter") return '<p class="surtitre">Putter</p><p class="sac-info-txt">' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans le Bilan, avec les coups gagnés.") + '</p>';
+    if (id === "putter") return '<p class="surtitre">Putter</p><p class="sac-info-txt">' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans les Statistiques, avec l’estimation des coups gagnés.") + '</p>';
     var c = CLUB[id], s = statsClub(clubsVus()[id]), fo = s ? fourchette(clubsVus()[id]) : null, plage = fo && fo.bas !== fo.haut;
     return '<div class="sac-info-tete"><div><p class="surtitre">' + t(SAC_FAMILLES[c.fam]) + '</p><h3>' + t(nomCourt(c)) + '</h3></div>' +
       '<p class="sac-info-dist">' + (s ? '<b class="main">' + (plage ? fo.bas + '–' + fo.haut : s.moy) + '</b><span>m</span>' : '<b class="main vide">?</b>') + '</p></div>' +
@@ -164,7 +164,7 @@
       '<section class="feuille sac-fiche" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">';
     function entete(sur, titre) { return '<header><p class="surtitre">' + t(sur) + '</p><h2 id="f-titre">' + t(titre) + '</h2><button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>'; }
     if (id === "putter") {
-      return tete + entete("Putter", "Putter") + '<p>' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans le Bilan, avec les coups gagnés.") + '</p></section>';
+      return tete + entete("Putter", "Putter") + '<p>' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans les Statistiques, avec l’estimation des coups gagnés.") + '</p></section>';
     }
     var c = CLUB[id], mes = etat.carnet.clubs[id] || [], parc = coupsDuParcours().clubs[id] || [], tout = mes.concat(parc);
     var s = statsClub(tout), an = analyseCarnet(mesuresTout(), sacActuel());

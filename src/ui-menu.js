@@ -44,7 +44,7 @@
       { g: "Statistiques", l: [
         { p: "bilan", t: "Tableau de bord", k: "stats chiffres cles tendances index" },
         { p: "bilan", s: "notes", t: "Ton jeu sur 100", k: "notes jauges priorite semaine" },
-        { p: "bilan", s: "sg", t: "Objectif d’index et coups gagnés", k: "strokes gained cible" },
+        { p: "bilan", s: "sg", t: "Objectif d’index et estimation des coups gagnés", k: "strokes gained coups gagnés perdus estimation cible" },
         { p: "bilan", s: "evitables", t: "Erreurs évitables", k: "penalites double approche trois putts" },
         { p: "bilan", s: "releves", t: "Relevés détaillés", k: "constats premier putt" },
         { p: "bilan", s: "defauts", t: "Tes défauts", k: "slice hook diagnostic" },
