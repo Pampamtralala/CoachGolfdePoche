@@ -1,6 +1,6 @@
 const fs = require('fs'), p = f => fs.readFileSync(__dirname + '/src/' + f, 'utf8');
 const strip = s => s.replace(/if \(typeof module !== "undefined"\) \{[\s\S]*?\n\}\n/g, '').replace(/if \(typeof module !== "undefined"\) \{ module\.exports = [^\n]*\n/g, '');
-const moteur = ['data-base.js', 'data-symptomes.js', 'data-exercices-1.js', 'data-exercices-2.js', 'engine.js', 'data-plus.js', 'data-strategie.js', 'engine-plus.js', 'engine-strategie.js', 'engine-analyse.js', 'engine-carte.js', 'engine-handicap.js', 'engine-donnees.js', 'engine-stats.js', 'engine-clubs.js', 'engine-parcours.js', 'engine-erreurs.js', 'engine-putting.js', 'engine-estimation.js', 'engine-journal.js', 'engine-analyste.js', 'engine-enseignements.js'];
+const moteur = ['data-base.js', 'data-symptomes.js', 'data-exercices-1.js', 'data-exercices-2.js', 'engine.js', 'data-plus.js', 'data-strategie.js', 'engine-plus.js', 'engine-strategie.js', 'engine-analyse.js', 'engine-carte.js', 'engine-handicap.js', 'engine-donnees.js', 'engine-stats.js', 'engine-clubs.js', 'engine-parcours.js', 'engine-erreurs.js', 'engine-putting.js', 'engine-estimation.js', 'engine-journal.js', 'engine-analyste.js', 'engine-enseignements.js', 'engine-chronologie.js'];
 /* L'interface est une seule fonction : ses morceaux sont insérés à l'endroit des repères INCLURE. */
 const ui = p('ui.js').replace(/[ \t]*\/\*INCLURE:([a-z0-9-]+\.js)\*\/\n/g, (m, f) => p(f) + '\n');
 if (/INCLURE:/.test(ui)) throw new Error('inclusion non résolue');

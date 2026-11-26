@@ -60,11 +60,12 @@
   /* UX03 : page Journal (entrée de la barre). Les bilans, notes, rapports et l'import restent dans la fiche. */
   VUES.journal = function () {
     var n = etat.parties.length;
-    return '<section class="bloc premier"><p class="surtitre">Journal</p><h1>Mes parties</h1>' +
-      '<p class="aide">' + t(n ? pluriel(n, "partie") + " enregistrée" + (n > 1 ? "s" : "") + ", de la plus récente à la plus ancienne." : "Ton historique de parties, de notes et de rapports.") + '</p>' +
-      '<div class="ligne-btn"><button class="btn principal" type="button" data-a="j-ouvrir">Bilans, notes et rapports</button>' +
+    /* UX10 : la chronologie de toutes les activités d'abord, puis le tableau des parties. */
+    return '<section class="bloc premier"><p class="surtitre">Journal</p><h1>Mon journal</h1>' +
+      '<p class="aide">' + t(n ? pluriel(n, "partie") + " enregistrée" + (n > 1 ? "s" : "") + ", avec tes séries de practice, ton index et tes défis." : "Ton historique de parties, de notes et de rapports.") + '</p>' +
+      '<div class="raccourcis"><button class="btn" type="button" data-a="j-ouvrir">Bilans, notes et rapports</button>' +
       '<button class="btn" type="button" data-a="j-ouvrir">Importer des parties</button>' +
-      '<button class="btn" type="button" data-a="md-ouvrir">Mes données</button></div></section>' + dernieresPartiesHTML();
+      '<button class="btn" type="button" data-a="md-ouvrir">Mes données</button></div></section>' + chronologieHTML() + dernieresPartiesHTML();
   };
   function rendreJournal(focusSel) {
     var f = document.getElementById("feuille"), y = f ? f.scrollTop : 0;
