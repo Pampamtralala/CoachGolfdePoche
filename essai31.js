@@ -27,7 +27,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
 
     /* Carnet vide, sans index : rien d'inventé */
     r.vide = await titres();
-    verifie(JSON.stringify(r.vide) === JSON.stringify(['Performance générale', 'Indicateurs clés', 'Actions rapides', 'Comprendre mon jeu']), nom + ' vide : blocs ' + r.vide.join(' | '));
+    verifie(JSON.stringify(r.vide) === JSON.stringify(['Premiers pas', 'Performance générale', 'Indicateurs clés', 'Actions rapides', 'Comprendre mon jeu']), nom + ' vide : blocs ' + r.vide.join(' | '));
     r.videIndex = norm(await page.innerText('#mj-perf'));
     verifie(/Index déclaré – Non renseigné/i.test(r.videIndex) && /Index estimé – Inconnu/i.test(r.videIndex) && /Objectif – À définir/i.test(r.videIndex), nom + ' vide : index : ' + r.videIndex);
     verifie(await page.locator('#mj-kpi .kpi-lien').count() === 0 && await page.locator('#mj-kpi .etat-vide').count() === 1, nom + ' vide : pas d\'indicateur fictif');
