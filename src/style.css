@@ -1712,3 +1712,7 @@ main.entree { animation: entreeVue .22s ease-out; }
 .sac-synthese tr.alerte .sac-etat { color: var(--alerte); }
 .fiche-club-synthese { margin: 4px 0 12px; }
 .fiche-club-synthese .kpi-v .main { font-size: 24px; }
+/* UX09 : détails d'un coup repliés, leur valeur lisible dans le titre. */
+.pv-plus-coup { margin: 10px 0; border-top: 1px solid var(--filet); padding-top: 6px; }
+.pv-plus-coup > summary { cursor: pointer; min-height: 48px; display: flex; flex-direction: column; justify-content: center; font-weight: 700; color: var(--imprime); }
+.pv-plus-coup > summary small { font-weight: 400; color: var(--encre-2); }

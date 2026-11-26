@@ -13,9 +13,9 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 | 3 | UX05 Enseignements personnalisés | P0 | **Terminé** | `ux/ux05-enseignements` · PR #20 (fusionnée) |
 | 4 | UX07 Filtres et visualisations (fonctionnel : filtres communs, types de graphiques) | P1 | **Terminé** | `ux/ux07-filtres` · PR #21 (fusionnée) |
 | 5 | UX04 Tableau de bord « Mon jeu » | P0 | **Terminé** | `ux/ux04-mon-jeu` · PR #22 (fusionnée) |
-| 6 | UX06 Espace Analyses | P0 | **En revue** | `ux/ux06-analyses` |
-| 7 | UX08 Mon sac | P1 | **En revue** | `ux/ux08-mon-sac` (après #23) |
-| 8 | UX09 Saisie sur le parcours | P1 | À faire | — |
+| 6 | UX06 Espace Analyses | P0 | **Terminé** | `ux/ux06-analyses` · PR #23 (fusionnée) |
+| 7 | UX08 Mon sac | P1 | **Terminé** | `ux/ux08-mon-sac` · PR #24 (fusionnée) |
+| 8 | UX09 Saisie sur le parcours | P1 | **En revue** | `ux/ux09-saisie` |
 | 9 | UX10 Journal chronologique | P1 | À faire | — |
 | 10 | UX11 Après partie | P1 | À faire | — |
 | 11 | UX12 Premier lancement et états vides | P1 | À faire | — |
@@ -367,3 +367,19 @@ Encore utiles pour les chantiers UX : 4, 5, 7 et 8 — appliquées telles que pr
   toucher, 360 et 390 px). `essai-sac3d.js` (fichier autonome absent du dépôt) échouait déjà avant ce chantier.
 - Difficultés : une colonne « À noter » rendait le tableau trop large sur téléphone ; la note passe sous le nom du club,
   en version courte (la phrase complète reste dans la fiche).
+
+### UX09 — Saisie d'un coup sur le parcours (25/11/2026)
+
+- Objectif : noter un coup vite, à une main, sans rien inventer.
+- Modifications (`ui-jeu.js`, panneau d'un coup en saisie Expert) : nouvel ordre — **club**, **direction** (gauche ou
+  droite sur l'ellipse), **distance mesurée** (vide par défaut) ; position de la balle, type de coup, amplitude des
+  wedges et marquage GPS sont repliés sous « Plus de détails », avec leur valeur visible dans le titre (« Balle :
+  départ », « Balle : non notée »…). Le repli s'ouvre de lui-même quand un détail a déjà été noté (type de coup,
+  amplitude, position d'un coup existant). Un coup se note en trois interactions après l'ouverture : club, direction,
+  Enregistrer. Les trois niveaux de saisie, les validations, la correction et la sauvegarde sont inchangés.
+- Garanties vérifiées : la distance reste vide (la moyenne du club n'apparaît qu'en indication) ; une direction ne
+  remplit pas la distance ; la position n'est jamais choisie à la place du joueur (départ pour le premier coup, sinon
+  carte GPS ou rien) ; corriger un coup ne crée pas de second coup ; zones tactiles d'au moins 44 px.
+- Tests : `npm test` (926 noms), `test-startup.js`, essais 3 à 33 verts (essais 10 et 16 adaptés : ouvrir « Plus de
+  détails » avant la position, le type, l'amplitude ou le GPS), nouvel `essai34.js`.
+- Difficultés : aucune sur la logique ; seul l'ordre d'affichage change.
