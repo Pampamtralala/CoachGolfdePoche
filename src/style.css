@@ -1726,3 +1726,9 @@ main.entree { animation: entreeVue .22s ease-out; }
 .chrono-ev .quoi small { color: var(--encre-2); }
 .chrono-ev.marquant .quoi b { color: var(--bon); }
 .chrono-note { font-style: italic; }
+/* UX11 : après la partie. */
+.apres-habitudes { margin: 12px 0; }
+.apres-synthese { font-weight: 700; }
+.apres-habitudes .constats li.mieux b { color: var(--bon); }
+.apres-trous, .apres-clubs, .apres-change { margin: 6px 0; }
+.apres-liens { margin: 12px 0; }

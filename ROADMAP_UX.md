@@ -17,7 +17,7 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 | 7 | UX08 Mon sac | P1 | **Terminé** | `ux/ux08-mon-sac` · PR #24 (fusionnée) |
 | 8 | UX09 Saisie sur le parcours | P1 | **En revue** | `ux/ux09-saisie` |
 | 9 | UX10 Journal chronologique | P1 | **En revue** | `ux/ux10-chronologie` (après #25) |
-| 10 | UX11 Après partie | P1 | À faire | — |
+| 10 | UX11 Après partie | P1 | **En revue** | `ux/ux11-apres-partie` (après #26) |
 | 11 | UX12 Premier lancement et états vides | P1 | À faire | — |
 | 12 | UX13 Repositionnement du coaching | P2 | À faire | — |
 | 13 | UX14 Accessibilité (partie fonctionnelle : clavier, lecteur d'écran, zones tactiles) | P2 | À faire | — |
@@ -400,3 +400,19 @@ Encore utiles pour les chantiers UX : 4, 5, 7 et 8 — appliquées telles que pr
   nouvel `essai35.js` (vide, rempli, ordre, mois, faits marquants, filtres, note, détails, sauvegarde inchangée, 360 et 390 px).
 - Difficultés : la classe `.chrono` existait déjà (chronomètre des défis) et faisait sortir la liste de l'écran ;
   renommée `.chrono-liste`. L'export final du moteur doit garder la forme en bloc attendue par le build.
+
+### UX11 — Après la partie (25/11/2026)
+
+- Objectif : faire du bilan de fin de partie un moment qui dit ce qui a changé, à partir des seules données saisies.
+- Modifications (`ui-apres.js`, utilisées par le bilan express et le bilan en chiffres de `ui-partie.js`) :
+  - **Par rapport à tes habitudes** : score, putts, greens en régulation et pénalités de la partie, ramenés à 18 trous,
+    contre la moyenne des 10 parties précédentes (dès 3 parties ; sinon, on le dit), avec flèche, signe et mot ; synthèse
+    d'une phrase (« Partie meilleure que d'habitude de 6,0 coups, surtout grâce au putting »), le facteur cité étant
+    l'écart le plus net dans le même sens que le score.
+  - **Ce qui a changé** : score moyen et putts des 10 dernières parties, avant → avec cette partie.
+  - **Meilleur et plus coûteux trou**, **clubs utilisés** (coups notés, sinon familles de départ).
+  - **Voir l'analyse** : Performance, Putting, Mises en jeu, Erreurs, directement dans la bonne rubrique.
+  Le reste est conservé : chiffres, Stableford, record, coups gagnés estimés, erreurs, note, carte de score, partage en image.
+- Tests : `npm test`, `test-doublons` (941 noms), essais liés à la partie verts, nouvel `essai36.js` (express et chiffres,
+  comparaison, synthèse, évolution, trous, carte de score, accès à Putting, sans historique).
+- Difficultés : comparer une partie de 9 trous à des parties de 18 demande de tout ramener à 18 trous, comme partout ailleurs.
