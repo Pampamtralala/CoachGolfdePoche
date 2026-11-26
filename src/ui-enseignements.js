@@ -56,4 +56,4 @@
   function fermerFeuilleEns() { if (ui.feuille) { ui.feuille = null; ui.pile = []; ui.retourFocus = null; rendreFeuille(); } }
   ACTIONS["ens-aller"] = function (el) { fermerFeuilleEns(); allerA(el.getAttribute("data-v"), el.getAttribute("data-s")); };
   /* Passerelle vers le coaching : la bibliothèque filtrée sur le domaine concerné. */
-  ACTIONS["exos-domaine"] = function (el) { fermerFeuilleEns(); ui.filtre.d = el.getAttribute("data-v"); allerOnglet("exercices", true); };
+  ACTIONS["exos-domaine"] = function (el) { fermerFeuilleEns(); ui.filtre.d = el.getAttribute("data-v"); ui.filtreDonnees = ui.filtre.d; allerOnglet("exercices", true); };
