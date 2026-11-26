@@ -20,7 +20,7 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 | 10 | UX11 Après partie | P1 | **En revue** | `ux/ux11-apres-partie` (après #26) |
 | 11 | UX12 Premier lancement et états vides | P1 | **En revue** | `ux/ux12-premiers-pas` (après #27) |
 | 12 | UX13 Repositionnement du coaching | P2 | **En revue** | `ux/ux13-coaching` (après #28) |
-| 13 | UX14 Accessibilité (partie fonctionnelle : clavier, lecteur d'écran, zones tactiles) | P2 | À faire | — |
+| 13 | UX14 Accessibilité (partie fonctionnelle : clavier, lecteur d'écran, zones tactiles) | P2 | **En revue** | `ux/ux14-accessibilite` (après #29) |
 | — | UX15 Tests et non-régression | P0 | Après chaque chantier | — |
 | Reporté | UX02 Identité visuelle et design system ; finitions visuelles d'UX14 | — | Reporté à la demande du propriétaire (25/11) | — |
 
@@ -448,3 +448,17 @@ Encore utiles pour les chantiers UX : 4, 5, 7 et 8 — appliquées telles que pr
     parties quand ils existent).
   - Rien retiré : exercices, programmes, diagnostics, défis, badges, cycles.
 - Tests : `test-doublons` (944 noms), essais liés verts, nouvel `essai38.js`.
+
+### UX14 — Accessibilité, partie fonctionnelle (25/11/2026)
+
+- Objectif : vérifier et corriger l'accessibilité des écrans principaux, sans la refonte graphique (reportée).
+- Audit automatique (`essai39.js`) de Mon jeu, Analyses, Jouer, Mon sac et Journal à 360 px (clair), 768 px (sombre) et
+  1 280 px : nom accessible de chaque bouton et champ, zones tactiles ≥ 44 px (liens dans le texte exceptés ; la scène du
+  sac 3D aussi, chaque club étant accessible par le tableau), texte ≥ 12 px, focus visible au clavier, évolution jamais
+  signalée par la couleur seule, aucun débordement.
+- Corrections : chaque flèche d'évolution porte son sens en mots (« mieux » / « moins bien », lisible par les lecteurs
+  d'écran et au survol) dans les statistiques, les tendances et l'après-partie ; badges de provenance à 12 px ; textes
+  des jauges du jeu sur 100 à 12 px.
+- Reporté avec la refonte graphique : thème plein soleil, cohérence des icônes, transitions, finitions visuelles.
+- Tests : `npm test` (944 noms, 0 doublon), `test-startup.js`, **essais 3 à 39 tous verts** sur la branche qui empile
+  UX09 à UX14.

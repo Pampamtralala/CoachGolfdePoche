@@ -1686,7 +1686,7 @@ main.entree { animation: entreeVue .22s ease-out; }
 .mj-obj { cursor: pointer; }
 .mj-courbe { margin-top: 8px; }
 .mj-courbe .courbe-index { width: 100%; max-width: 260px; height: 56px; }
-.ens-prov { font: 600 11px/1 var(--f-texte); letter-spacing: .02em; text-transform: none; color: var(--encre-2); border: 1px solid var(--filet); border-radius: 999px; padding: 2px 6px; white-space: nowrap; }
+.ens-prov { font: 600 12px/1.1 var(--f-texte); letter-spacing: .02em; text-transform: none; color: var(--encre-2); border: 1px solid var(--filet); border-radius: 999px; padding: 2px 6px; white-space: nowrap; }
 .kpi-lien { position: relative; width: 100%; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .kpi-lien > span { display: block; }
 .kpi-lien .kpi-v { display: flex; }
@@ -1741,3 +1741,5 @@ main.entree { animation: entreeVue .22s ease-out; }
 .pp-quoi b, .pp-quoi small { display: block; }
 .pp-quoi small { color: var(--encre-2); }
 .pp-etapes .btn { flex: 0 0 auto; }
+/* UX14 : aucun texte sous 12 px dans les jauges du jeu sur 100. */
+.jn small { font-size: 12px; }
