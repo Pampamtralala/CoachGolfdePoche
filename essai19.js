@@ -83,9 +83,7 @@ const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
     verifie(r.apresFiltre.join(' | ') === 'Driver 7 | Fer 7 9', nom + ' le profil suit les filtres : ' + r.apresFiltre.join(' | '));
     /* Depuis le sac : la fiche du fer 7 ouvre son profil */
     await allerVue(page, 'sac');
-    const b = page.locator('#sac-scene [data-id="f7"]'); const bb = await b.boundingBox();
-    await b.click({ position: { x: bb.width * 0.68, y: bb.height * 0.3 } });
-    if (!(await page.locator('#feuille').count())) await b.click({ position: { x: bb.width * 0.68, y: bb.height * 0.3 } });
+    await page.click('#c-synthese [data-a="sac-fiche-club"][data-id="f7"]');
     await page.waitForSelector('#feuille [data-a="st-voir-club"]');
     r.lien = (await page.textContent('#feuille [data-a="st-voir-club"]')).trim();
     await page.click('#feuille [data-a="st-voir-club"]');

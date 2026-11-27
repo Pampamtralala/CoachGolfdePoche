@@ -78,12 +78,11 @@ function partieType(graine, pars) {
     r.annonce = await page.$eval('.message, [role="status"]', x => x.textContent).catch(() => '');
     /* Fiche du fer 7 : dispersion et distance fiable */
     await allerVue(page, 'sac');
-    const toucher = async id => { const b = page.locator(`#sac-scene [data-id="${id}"]`); const bb = await b.boundingBox(); await b.click({ position: { x: bb.width * 0.68, y: bb.height * 0.3 } }); };
-    await toucher('f7'); await page.waitForTimeout(250);
-    r.infoF7 = await page.$eval('.sac-info', x => x.textContent.replace(/\s+/g, ' ').trim()).catch(() => 'pas de bulle');
-    verifie(/90/.test(r.infoF7), nom + ' distance fiable à 90 % dans la bulle : ' + r.infoF7);
+    const toucher = async id => { await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${id}"]`); };
     await vue('02-sac-f7');
     await toucher('f7'); await page.waitForSelector('#feuille .sac-ellipse');
+    r.infoF7 = await page.$eval('#feuille .disp-chiffres', x => x.textContent.replace(/\s+/g, ' ').trim());
+    verifie(/Fiable à 90 % ?\d+ m/.test(r.infoF7), nom + ' distance fiable à 90 % dans la fiche : ' + r.infoF7);
     const dsp = E.dispersion(e.carnet.clubs.f7);
     r.dispersion = await page.$eval('#feuille .disp-chiffres', x => x.textContent.replace(/\s+/g, ' ').trim());
     r.dispersionCalc = JSON.stringify(dsp);

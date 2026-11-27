@@ -31,7 +31,7 @@ const LARGEURS = (process.env.LARGEURS || '390,360,390s,1280').split(',');
     const menu = async (v, s) => { await allerVue(page, v, s); await page.waitForTimeout(150); };
     await menu('sac');
     for (const [id, v] of Object.entries(MOY)) {
-      await page.click(`#sac-scene [data-id="${id}"]`); if (!(await page.locator('#feuille').count())) await page.click('[data-a="sac-modifier"]');
+      await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${id}"]`); if (!(await page.locator('#feuille').count())) await page.click('[data-a="sac-modifier"]');
       await page.fill('#sac-val', String(v)); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' });
     }
     await page.evaluate(() => { const f = document.getElementById('fete'); if (f) f.hidden = true; const m = document.getElementById('message'); if (m) m.hidden = true; });
@@ -55,19 +55,13 @@ const LARGEURS = (process.env.LARGEURS || '390,360,390s,1280').split(',');
     /* L'accueil « Mon jeu » (19/11) n'a plus l'étiquette du sac : on passe par la rubrique Mon sac. */
     if (await page.locator('.golf-etiq.e-sac').count()) await page.click('.golf-etiq.e-sac'); else await allerVue(page, 'sac');
     await page.waitForTimeout(300);
-    await page.click('#sac-scene [data-id="f7"]'); await page.waitForTimeout(600);
-    r.sel = await page.$eval('#sac-scene .c3d.sel .c3d-bulle', x => x.textContent) + ' · ' + await page.$eval('#sac-info', x => x.textContent.replace(/\s+/g, ' ').slice(0, 120));
+    /* V4-02 : plus de sac 3D ; le tableau ouvre directement la fiche du club. */
+    r.sansSac3D = await page.locator('#sac-scene, .c3d').count();
     await page.screenshot({ path: `${D}/${nom}-3-sac.png` });
-    await page.click('#sac-scene [data-id="dr"]'); await page.waitForTimeout(600);
-    await page.screenshot({ path: `${D}/${nom}-4-sac-driver.png` });
-    await page.click('#sac-scene [data-id="dr"]'); await page.waitForTimeout(350);
+    await page.click('#c-synthese [data-a="sac-fiche-club"][data-id="dr"]'); await page.waitForSelector('#feuille');
     r.ficheDriver = await page.$eval('#feuille h2', x => x.textContent);
     await page.screenshot({ path: `${D}/${nom}-5-fiche.png` });
     await page.keyboard.press('Escape'); await page.waitForTimeout(250);
-    /* Vide : désélection */
-    const box = await page.$eval('#sac-scene .s3d', e => { const r = e.getBoundingClientRect(); return [r.left + 8, r.top + 20]; });
-    await page.mouse.click(box[0], box[1]); await page.waitForTimeout(300);
-    r.apresVide = await page.$$eval('#sac-scene .c3d.sel', l => l.length) + ' · ' + await page.$eval('#sac-info', x => x.textContent);
     /* Les autres pages par le menu */
     for (const [v, s] of [['parcours'], ['practice'], ['exercices', 'defis'], ['bilan', 'sg'], ['profil']]) {
       await menu(v, s); await page.waitForTimeout(250);

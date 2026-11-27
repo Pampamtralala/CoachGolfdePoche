@@ -33,7 +33,7 @@ const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
           const r = b.getBoundingClientRect(); if (!r.width || !r.height || getComputedStyle(b).visibility === 'hidden') return;
           if (!nomDe(b)) out.sansNom.push(b.outerHTML.slice(0, 80));
           const dansTexte = b.classList.contains('lien') || b.closest('p, li small, small');
-          if (!dansTexte && r.height < 43.5 && !b.closest('.sac-scene') && !b.closest('.voile') && !b.classList.contains('voile')) out.petits.push((b.className || b.tagName) + ' ' + Math.round(r.height) + ' « ' + nomDe(b).slice(0, 24) + ' »');
+          if (!dansTexte && r.height < 43.5 && !b.closest('.voile') && !b.classList.contains('voile')) out.petits.push((b.className || b.tagName) + ' ' + Math.round(r.height) + ' « ' + nomDe(b).slice(0, 24) + ' »');
         });
         vue.querySelectorAll('input, select, textarea').forEach(i => {
           if (i.type === 'hidden' || !i.getBoundingClientRect().width) return;

@@ -31,7 +31,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
 
     /* Synthèse en tête, avant le sac 3D */
     r.ordre = await page.$$eval('#vue h2', l => l.map(x => x.textContent.trim()).slice(0, 3));
-    verifie(r.ordre[0] === 'Mes clubs' && r.ordre[1] === 'Le sac en 3D', nom + ' synthèse d\'abord, 3D ensuite : ' + r.ordre.join(' | '));
+    verifie(r.ordre[0] === 'Mes clubs' && r.ordre[1] === 'Étagement', nom + ' synthèse d\'abord, étagement ensuite : ' + r.ordre.join(' | '));
     r.lignes = await page.$$eval('#c-synthese tbody tr', l => l.map(tr => Array.from(tr.cells).map(c => c.textContent.replace(/\s+/g, ' ').trim()).join(' ; ')));
     verifie(r.lignes.length === 5, nom + ' cinq clubs : ' + r.lignes.length);
     verifie(/^Driver ?Aucun coup mesuré ; 225 m hérité ; – ; 0$/.test(r.lignes[0]), nom + ' driver (hérité, hors moyennes) : ' + r.lignes[0]);
@@ -41,7 +41,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(await page.locator('#c-synthese tr.alerte').count() >= 1, nom + ' ligne en alerte marquée');
     r.resume = norm(await page.textContent('#c-synthese > .aide'));
     verifie(/jamais estimées/.test(r.resume) && /moins de 3 coups mesurés/.test(r.resume) && /n'entre pas dans les moyennes/.test(r.resume.replace(/’/g, "'")), nom + ' résumé : ' + r.resume);
-    verifie(await page.locator('#vue #sac-scene').count() === 1, nom + ' sac 3D conservé');
+    verifie(await page.locator('#sac-scene, .c3d, .s3d').count() === 0, nom + ' sac 3D retiré (V4-02)');
     verifie(await page.evaluate(() => document.documentElement.scrollWidth) <= w, nom + ' Mon sac sans débordement');
     await page.screenshot({ path: `${D}/${nom}-sac.png` });
 

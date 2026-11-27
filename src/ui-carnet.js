@@ -255,7 +255,7 @@
     return '<section class="bloc premier"><p class="surtitre">Mon sac</p><h1>Sac et distances</h1><div class="raccourcis"><button class="btn" type="button" data-a="serie-ouvrir">Série de balles</button><button class="btn" type="button" data-a="aller-a" data-v="sac" data-s="c-historique">Historique des mesures</button></div></section>' +
       /* UX08 : la synthèse chiffrée d'abord ; le sac en 3D reste juste en dessous, comme vue alternative. */
       syntheseSacHTML() +
-      '<section class="bloc" id="c-distances"><h2>' + t("Le sac en 3D") + '</h2>' + sacHTML() + distancesHTML() + '</section>' +
+      '<section class="bloc" id="c-distances"><h2>' + t("Étagement") + '</h2>' + sacHTML() + distancesHTML() + '</section>' +
       '<section class="bloc" id="c-wedges"><h2>Ma matrice de wedges</h2>' + wedgesHTML() + '</section>' + serieAppelHTML() + historiqueMesuresHTML();
   };
 

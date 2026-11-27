@@ -7,7 +7,7 @@ const POLICES = [face('Barlow Condensed', 'barlow-condensed/files/barlow-condens
   face('Atkinson Hyperlegible', 'atkinson-hyperlegible/files/atkinson-hyperlegible-latin-400-normal.woff2', 400), face('Atkinson Hyperlegible', 'atkinson-hyperlegible/files/atkinson-hyperlegible-latin-700-normal.woff2', 700),
   face('Caveat', 'caveat/files/caveat-latin-700-normal.woff2', 700)].join('\n');
 const { allerVue } = require('./nav-essai');
-const fiche = async (page, id) => { await page.click(`#sac-scene [data-id="${id}"]`); if (!(await page.locator('#feuille').count())) await page.click('[data-a="sac-modifier"]'); await page.waitForSelector('#feuille'); };
+const fiche = async (page, id) => { await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${id}"]`); if (!(await page.locator('#feuille').count())) await page.click('[data-a="sac-modifier"]'); await page.waitForSelector('#feuille'); };
 const MOY = { dr: 225, b3: 205, b5: 190, f4: 168, f5: 163, f6: 150, f7: 140, f8: 130, f9: 112, pw: 100 };
 (async () => {
   const D = 'shots7'; fs.mkdirSync(D, { recursive: true });
@@ -29,19 +29,19 @@ const MOY = { dr: 225, b3: 205, b5: 190, f4: 168, f5: 163, f6: 150, f7: 140, f8:
     await allerVue(page, 'sac');
     for (const [id, v] of Object.entries(MOY)) { await fiche(page, id); await page.fill('#sac-val', String(v)); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' }); }
     await page.evaluate(() => { const f = document.getElementById('fete'); if (f) f.hidden = true; const m = document.getElementById('message'); if (m) m.hidden = true; });
-    await page.evaluate(() => document.querySelector('.sac-carte').scrollIntoView({ block: 'start' }));
+    await page.evaluate(() => document.getElementById('c-synthese').scrollIntoView({ block: 'start' }));
     await page.waitForTimeout(500);
     await page.screenshot({ path: `${D}/${nom}-1-sac.png` });
     res[nom] = {
       largeur: await page.evaluate(() => document.documentElement.scrollWidth),
-      debord: await page.evaluate(() => [...document.querySelectorAll('.c3d-tete')].filter(b => { const r = b.getBoundingClientRect(); return r.left < 0 || r.right > innerWidth; }).map(b => b.dataset.id)),
+      debord: await page.evaluate(() => [...document.querySelectorAll('#c-synthese [data-a="sac-fiche-club"]')].filter(b => { const r = b.getBoundingClientRect(); return r.left < 0 || r.right > innerWidth; }).map(b => b.dataset.id)),
       chevauche: await page.evaluate(() => { const o = []; document.querySelectorAll('.sac-rang').forEach((r, ri) => { const l = [...r.querySelectorAll('.sac-etiq')].map(e => e.getBoundingClientRect()); l.forEach((a, i) => { if (l[i + 1] && a.right > l[i + 1].left + .5) o.push(ri + ':' + i); }); }); return o; }),
-      alertes: await page.$$eval('#sac-scene .c3d.alerte .c3d-tete', l => l.map(b => b.dataset.id).join(' ')),
+      alertes: await page.$$eval('#c-synthese tr.alerte [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' ')),
       score: await page.$eval('#sac-bilan .sac-score', x => x.textContent)
     };
     await page.evaluate(() => document.getElementById('sac-bilan').scrollIntoView({ block: 'start' })); await page.waitForTimeout(200);
     await page.screenshot({ path: `${D}/${nom}-2-bilan.png` });
-    await page.evaluate(() => document.querySelector('.sac-carte').scrollIntoView({ block: 'start' }));
+    await page.evaluate(() => document.getElementById('c-synthese').scrollIntoView({ block: 'start' }));
     await fiche(page, 'f5'); await page.waitForTimeout(350);
     await page.screenshot({ path: `${D}/${nom}-3-fiche.png` });
     await page.fill('#sac-val', '157'); await page.waitForTimeout(150);
@@ -50,7 +50,7 @@ const MOY = { dr: 225, b3: 205, b5: 190, f4: 168, f5: 163, f6: 150, f7: 140, f8:
     await page.evaluate(() => { const f = document.getElementById('feuille'); f.scrollTop = f.scrollHeight; });
     await page.screenshot({ path: `${D}/${nom}-5-fiche-bas.png` });
     await page.keyboard.press('Escape'); await page.waitForTimeout(250);
-    res[nom].apresEchap = await page.$eval('#sac-scene .c3d.sel .c3d-bulle > span', x => x.textContent) + ' · feuille : ' + await page.locator('#feuille').count();
+    res[nom].apresEchap = 'feuille : ' + await page.locator('#feuille').count();
     await page.click('[data-a="sac-composer"]'); await page.waitForTimeout(350);
     await page.screenshot({ path: `${D}/${nom}-6-composer.png` });
     await page.keyboard.press('Escape');
@@ -59,14 +59,13 @@ const MOY = { dr: 225, b3: 205, b5: 190, f4: 168, f5: 163, f6: 150, f7: 140, f8:
       for (const [id, v] of Object.entries({ f4: 175, f5: 162, f9: 118, pw: 106, sw: 94 })) { await fiche(page, id); await page.fill('#sac-val', String(v)); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' }); }
       res.parfait = await page.$eval('#sac-bilan', x => x.textContent.replace(/\s+/g, ' ').slice(0, 90));
       res.fete = await page.$eval('#fete', x => x.hidden ? '' : x.textContent);
-      await page.evaluate(() => document.querySelector('.sac-carte').scrollIntoView({ block: 'start' })); await page.waitForTimeout(300);
+      await page.evaluate(() => document.getElementById('c-synthese').scrollIntoView({ block: 'start' })); await page.waitForTimeout(300);
       await page.screenshot({ path: `${D}/${nom}-7-parfait.png` });
       /* Putter */
-      await page.$eval('#sac-scene [data-id="putter"]', b => b.click()); res.putter = await page.$eval('#sac-info', x => x.textContent.replace(/\s+/g, ' '));
-      await page.keyboard.press('Escape');
+      res[nom].sac3D = await page.locator('#sac-scene, .c3d, .s3d').count(); if (res[nom].sac3D) throw new Error('sac 3D encore présent');
       /* Retirer un club */
       await fiche(page, 'b5'); await page.click('[data-a="sac-retirer"]');
-      res.retire = await page.$$eval('#sac-scene .c3d-tete', l => l.map(b => b.dataset.id).join(' ')) + ' · ' + await page.textContent('#message');
+      res.retire = await page.$$eval('#c-synthese [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' ')) + ' · ' + await page.textContent('#message');
       res.focusRetire = await page.evaluate(() => document.activeElement.getAttribute('data-a'));
     }
     await ctx.close();

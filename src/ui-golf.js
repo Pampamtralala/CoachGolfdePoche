@@ -79,7 +79,6 @@
     var duree = vent === 3 ? 0.7 : vent === 2 ? 1.4 : vent === 1 ? 3 : 2.2, h = new Date().getHours();
     return '<div class="golf' + (h >= 17 && h < 22 ? " soir" : "") + '" role="group" aria-label="Le golf" style="--vent:' + duree + 's">' + GOLF_SVG +
       '<div class="golf-titre">' + titreHTML + '</div>' +
-      '<div class="golf-sac">' + sacMiniHTML() + '</div>' +
       lieux.map(function (l) {
         return '<button class="golf-zone z-' + l.cle + '" type="button" ' + l.attrs + ' tabindex="-1" aria-hidden="true"></button>' +
           '<button class="golf-etiq e-' + l.cle + (l.vif ? ' vif' : '') + (l.cle === "sac" ? ' haut' : '') + '" type="button" ' + l.attrs + ' aria-label="' + at(l.lieu + " : " + l.titre + (l.meta ? ". " + l.meta : "")) + '">' +

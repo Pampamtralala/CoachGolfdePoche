@@ -14,7 +14,7 @@ if (/typeof module/.test(js)) throw new Error('reste de module');
 /* Chart.js (licence MIT) est intégré à la page : aucune dépendance à un service extérieur. */
 const chart = p('vendor/chart.umd.min.js').replace(/\/\/# sourceMappingURL=.*$/m, '');
 if (/<\/script/i.test(chart)) throw new Error('balise script dans Chart.js');
-const html = p('gabarit.html').replace('/*STYLE*/', () => p('style.css') + '\n' + p('sac3d.css') + '\n' + p('golf.css')).replace('/*CHARTJS*/', () => chart).replace('/*SCRIPT*/', () => js);
+const html = p('gabarit.html').replace('/*STYLE*/', () => p('style.css') + '\n' + p('golf.css')).replace('/*CHARTJS*/', () => chart).replace('/*SCRIPT*/', () => js);
 
 /* 1. La page pour claude.ai : un seul fichier. */
 fs.mkdirSync(__dirname + '/dist', { recursive: true });

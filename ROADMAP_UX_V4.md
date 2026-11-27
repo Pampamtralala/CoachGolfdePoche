@@ -19,7 +19,7 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | N° | Chantier | Priorité | Dépend de | Statut | Branche · PR |
 | --- | --- | --- | --- | --- | --- |
 | 01 | Audit de l'existant | P0 | — | **En revue** | `ux4/01-audit` |
-| 02 | Retirer le sac 3D | P0 | 01 | À faire | — |
+| 02 | Retirer le sac 3D | P0 | 01 | **En revue** | `ux4/02-sac3d` |
 | 03 | Retirer les séries de practice (archivage des données) | P0 | 01, S01 | À faire | — |
 | 04 | Unifier les composants visuels (titre / section / KPI / contexte / aide) | P0 | 01 | À faire | — |
 | 05 | Arborescence et navigation (Accueil · Performance · Jouer · Sac · Activité) | P0 | 02–04 | À faire | — |
@@ -172,3 +172,17 @@ Confirmés par l'utilisateur le 27/11 (« OK pour les 3 ») ; PR #2 fermée.
   sans débordement à 360 et 390 px (vérifié par mesure et capture). Essais adaptés : 3, 6, 7, 9 (saisie par référence),
   33 (nouveau contrat).
 - Restent pour 02/03 : sac 3D et graphe de régularité (alimentés par les valeurs de décision), boutons de série.
+
+### 02 — Retirer le sac 3D (27/11/2026)
+
+- Objectif : supprimer la représentation 3D du sac et ses miniatures, sans toucher aux données ni aux analyses.
+- Supprimé : `src/sac3d.js`, `src/sac3d.css` (et leur inclusion dans `build.js` / `ui.js`), la scène et la carte
+  « club sorti » de Mon sac (`clubsScene`, `sacScene`, `sacInfoHTML`, `sacMiniHTML`, `majSacDirect`, actions `sac-vide`
+  et `sac-modifier`), la miniature de la stratégie « se joue comme » (`.sjc-sac`), celle du paysage d'accueil (code mort),
+  les règles CSS associées, et `essai-sac3d.js` (déjà en échec, fichier autonome disparu).
+- Conservé : composition du sac, tableau « Mes clubs », alertes d'écart (`analyseSac`), bilan des écarts et graphe de
+  régularité (section renommée « Étagement », ancre `#c-distances` inchangée), fiches clubs, matrice de wedges.
+  L'action `sac-club` ouvre désormais directement la fiche (anciens liens).
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts. Essais adaptés : 3, 6, 7, 8, 9, 10, 11, 19, 33, 39
+  (accès aux fiches par le tableau ; les infos de la bulle 3D sont vérifiées dans la fiche : fourchette, « fiable à 90 % »).
+- Poids : `index.html` passe de 1354 à 1328 Ko.
