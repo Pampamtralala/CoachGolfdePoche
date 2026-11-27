@@ -18,16 +18,16 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 
 | N° | Chantier | Priorité | Dépend de | Statut | Branche · PR |
 | --- | --- | --- | --- | --- | --- |
-| 01 | Audit de l'existant | P0 | — | **En revue** | `ux4/01-audit` |
-| 02 | Retirer le sac 3D | P0 | 01 | **En revue** | `ux4/02-sac3d` |
-| 03 | Retirer les séries de practice (archivage des données) | P0 | 01, S01 | **En revue** | `ux4/03-series` |
-| 04 | Unifier les composants visuels (titre / section / KPI / contexte / aide) | P0 | 01 | À faire | — |
+| 01 | Audit de l'existant | P0 | — | Terminé | `ux4/01-audit` · #31 |
+| 02 | Retirer le sac 3D | P0 | 01 | Terminé | `ux4/02-sac3d` · #33 |
+| 03 | Retirer les séries de practice (archivage des données) | P0 | 01, S01 | Terminé | `ux4/03-series` · #34 |
+| 04 | Unifier les composants visuels (titre / section / KPI / contexte / aide) | P0 | 01 | **En revue** | `ux4/04-composants` |
 | 05 | Arborescence et navigation (Accueil · Performance · Jouer · Sac · Activité) | P0 | 02–04 | À faire | — |
 | 06 | Refaire l'accueil | P0 | 04, 05 | À faire | — |
 | 07 | Regrouper Performance (5 familles) | P0 | 04, 05 | À faire | — |
 | 08 | Simplifier Jouer et le bilan | P1 | 05 | À faire | — |
 | 09 | Unifier Activité et le profil (coaching et Mes données dans le profil) | P1 | 05 | À faire | — |
-| S01 | Séparer références et observations | P0 | 01 | **En revue** | `ux4/s01-references` |
+| S01 | Séparer références et observations | P0 | 01 | Terminé | `ux4/s01-references` · #32 |
 | S02 | Trois onglets de Mon sac, configuration par une icône | P0 | 02–04 | À faire | — |
 | S03 | Graphique d'étagement | P0 | S01, S02 | À faire | — |
 | S04 | Fiches clubs individuelles | P0 | S01, S02 | À faire | — |
@@ -206,3 +206,23 @@ Confirmés par l'utilisateur le 27/11 (« OK pour les 3 ») ; PR #2 fermée.
 - Note de méthode : le script de lots lit maintenant la liste `ko` de chaque essai (et pas seulement le code de
   sortie, que plusieurs essais ne positionnent pas) ; c'est ce qui a révélé l'essai 3 à corriger depuis S01.
 - Poids : `index.html` passe de 1328 à 1314 Ko.
+
+_01, S01, 02 et 03 fusionnés dans `app` le 27/11 (PR #31 à #34), déploiement Pages vérifié._
+
+### 04 — Unifier les composants visuels (27/11/2026)
+
+- Objectif : une seule hiérarchie page › section › donnée principale › contexte › aide à la demande, avant de refaire
+  les écrans (06, 07, S02…).
+- Nouveau `src/ui-composants.js` : `pageTeteHTML`, `sectionTeteHTML` (titre + « Détail › » + aide repliée),
+  `kpiHTML` / `kpisHTML` (titre, provenance, valeur — « – » si inconnue —, tendance, unité, contexte, constat, effectif ;
+  carte entière cliquable vers le détail, ou aide repliée « ⓘ » si la carte n'est pas un lien), `aideHTML` (pli signalé
+  par « i » ; `comment()` en devient un alias), `etatVideHTML` (déplacé depuis `ui-tableau.js`).
+- Adoption : les six cartes KPI réécrites à la main (Mon jeu, tableau de bord, repères, putting, rapport du journal,
+  fiche club) passent par `kpiHTML` ; toutes les aides « Comment ça marche » prennent le style commun ; le pli
+  d'import de la carte aussi. Les explications des KPI du tableau de bord et des repères sont repliées (« Détail »,
+  « Comment lire ») ; Mon sac remplace son paragraphe d'explication par une aide repliée et une ligne d'état.
+- Styles : `.kpi` unique (plus de variante bouton/article), `.aide-pli`, `.section-tete`, `.page-tete`.
+- Audit texte (`mesure-texte.js`, élargi à trois rubriques d'analyse ; `mesures-ux/texte-avant-04.json` →
+  `texte-apres-04.json`) : Performance −7 %, Mon sac −17 % (−47 % depuis la référence V4), autres écrans inchangés —
+  la réduction forte viendra de la refonte des écrans (06, 07), qui s'appuiera sur ces briques.
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts (essais 5, 13, 18, 33 adaptés au nouveau balisage).

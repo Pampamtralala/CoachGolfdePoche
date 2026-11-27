@@ -521,7 +521,7 @@
     } else if (pc) h += '<p>' + t("Ce parcours n'a pas encore de carte. Avec elle, le pavé affiche la distance à l'entrée, au milieu et au fond du green.") + '</p>';
     else h += '<p>' + t("Cherche ton golf : l'appli crée le parcours et télécharge ses greens. La carte reste ensuite dans le téléphone, même sans réseau.") + '</p>';
     h += '<h3 class="titre-bloc">' + t(c ? "Mettre à jour depuis OpenStreetMap" : "Trouver le golf sur OpenStreetMap") + '</h3>' + carteRechercheHTML(pc) +
-      '<details class="comment"' + (dansCadre() ? " open" : "") + '><summary>Importer un fichier</summary><div><p>' + t("Un export OpenStreetMap du golf, au format JSON ou GeoJSON (par exemple depuis Overpass Turbo).") + '</p>' +
+      '<details class="aide-pli"' + (dansCadre() ? " open" : "") + '><summary>Importer un fichier</summary><div><p>' + t("Un export OpenStreetMap du golf, au format JSON ou GeoJSON (par exemple depuis Overpass Turbo).") + '</p>' +
       '<label class="btn large carte-fichier">Choisir un fichier<input type="file" class="vh" data-c="carte-fichier" accept=".json,.geojson,application/json,application/geo+json"></label></div></details>';
     if (pc && !c && gpsPossible()) h += '<h3 class="titre-bloc">Sans OpenStreetMap</h3><p>' + t("Tu peux relever chaque green sur place : pendant la partie, ouvre la carte du trou, marque l'entrée puis le fond du green.") + '</p>' +
       '<button class="btn large" type="button" data-a="carte-vide" data-id="' + pc.id + '">Relever les greens moi-même</button>';

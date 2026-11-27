@@ -64,10 +64,6 @@
     if (!no.vide) h += '<div class="carte-tb notes-accueil"><p class="surtitre">Ton jeu sur 100</p>' + no.html + '</div>';
     return h;
   }
-  function etatVideHTML(ico, titre, texte, action, bouton) {
-    return '<div class="etat-vide">' + icone(ico) + '<p class="tb-titre">' + t(titre) + '</p><p>' + t(texte) + '</p>' +
-      (action ? '<button class="btn principal" type="button" data-a="' + action + '">' + t(bouton) + '</button>' : '') + '</div>';
-  }
 
   /* Qualité des données : transparence sur l'échantillon et les sources. */
   function qualiteGolfHTML() {
@@ -123,10 +119,7 @@
       x: "Estimation des coups gagnés ou perdus par partie face à un joueur de ton objectif, à partir du score, des greens, des putts et des pénalités (pas du Strokes Gained).", r: cg.total >= 0 ? "Tu joues déjà au niveau de ton objectif." : "Voir les deux secteurs qui coûtent le plus ci-dessous." });
     /* UX04 : affiché dans Analyses (pli « Repères »), sous le filtre commun : plus de pastilles ici. */
     var h = '<p class="aide">' + t("Sur " + pluriel(c.n, "partie") + " (" + c.T + " trous)" + (avant.T ? ", comparé aux " + avant.n + " précédentes." : ".")) + '</p>' +
-      '<div class="kpi-grille">' + cartes.map(function (x) {
-        return '<article class="kpi"><p class="kpi-t">' + t(x.t) + '</p><p class="kpi-v"><span class="main">' + t(x.v) + '</span>' + x.tend + '</p><p class="kpi-u">' + t(x.u) + '</p>' +
-          '<p class="kpi-x">' + t(x.x) + '</p><p class="kpi-r">' + t(x.r) + '</p></article>';
-      }).join("") + '</div>';
+      kpisHTML(cartes.map(function (x) { return { t: x.t, v: x.v, u: x.u, tend: x.tend, r: x.r, aide: x.x }; }));
     var ci = courbeIndexHTML(null, 300, 70);
     if (ci) h += '<div class="carte-tb evol-index"><p class="surtitre">Évolution de ton index</p>' + ci + '</div>';
     return h;

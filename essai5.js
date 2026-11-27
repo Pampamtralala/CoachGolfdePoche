@@ -127,7 +127,7 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   res.pliReferme = await page.$eval('#defauts', x => x.classList.contains('ouvert'));
   await allerVue(page, 'bilan', 'carte'); /* UX06 : la carte est dans Performance générale */
   if (!(await page.$eval('#carte', x => x.classList.contains('ouvert')))) await page.click('[data-a="pli"][data-v="carte"]');
-  res.commentCarte = await page.$$eval('#carte details.comment summary', l => l.map(x => x.textContent).join('|'));
+  res.commentCarte = await page.$$eval('#carte details.aide-pli summary', l => l.map(x => x.textContent).join('|'));
   res.onglets = await page.$$eval('#menu .menu-titre', l => l.map(b => b.textContent.trim() + (b.scrollWidth > b.clientWidth ? ' DÉBORDE' : '') + (b.querySelector('svg') ? '' : ' SANS ICÔNE')).join(' | '));
 
   /* ---- Aujourd'hui, sans partie ---- */
@@ -248,7 +248,7 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   res.detailTrou = await toucherGraphe('#feuille canvas', 0, 3);
   await vue('51-parcours-detail');
   await page.keyboard.press('Escape');
-  res.aidesCarnet = await page.$$eval('#vue details.comment summary', l => l.map(x => x.textContent).join(' | '));
+  res.aidesCarnet = await page.$$eval('#vue details.aide-pli summary', l => l.map(x => x.textContent).join(' | '));
   res.texteCarnet = await page.$$eval('#vue > section > p, #vue > section > .aide', l => l.map(x => x.textContent.slice(0, 60)));
   await long('52-carnet', 3);
 

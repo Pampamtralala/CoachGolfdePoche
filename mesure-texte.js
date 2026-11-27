@@ -32,6 +32,12 @@ const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
     const b = await page.$(`#barre [data-v="${v}"]`); if (!b) continue;
     await b.click(); await page.waitForTimeout(80); res.ecrans[nom] = await mesure();
   }
+  /* V4-04 : quelques rubriques d'analyse en plus (KPI, aides). */
+  for (const r of ['mej', 'putting', 'comprendre']) {
+    await page.click('#barre [data-v="bilan"]'); await page.waitForTimeout(60);
+    const c = await page.$(`[data-a="rubrique"][data-v="${r}"]`); if (!c) continue;
+    await c.click(); await page.waitForTimeout(80); res.ecrans['analyses-' + r] = await mesure();
+  }
   fs.writeFileSync(sortie, JSON.stringify(res, null, 1));
   console.log(JSON.stringify(res));
   await browser.close();

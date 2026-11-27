@@ -255,10 +255,15 @@ details { padding-top: 6px; }
 summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--action-texte); font-weight: 700; }
 details ul { margin: 0; padding-left: 20px; font-size: 16px; }
 details li { margin-bottom: 8px; }
-.comment { padding-top: 0; margin: 2px 0 8px; }
-.comment summary { min-height: 40px; font-size: 15px; font-weight: 400; text-decoration: underline; text-underline-offset: 3px; }
-.comment > div { padding: 2px 0 2px 12px; border-left: 3px solid var(--filet-fort); font-size: 15px; color: var(--encre-2); }
-.comment > div p:last-child { margin-bottom: 4px; }
+/* V4-04 · aide à la demande : repliée, signalée par « i ». */
+.aide-pli { padding-top: 0; margin: 2px 0 8px; }
+.aide-pli summary { min-height: 40px; gap: 8px; font-size: 15px; font-weight: 400; color: var(--encre-2); }
+.aide-pli summary::-webkit-details-marker { display: none; }
+.aide-pli summary { list-style: none; }
+.ico-info { flex: none; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid currentColor; font: italic 700 12px/1 Georgia, serif; }
+.aide-pli[open] summary { color: var(--action-texte); }
+.aide-pli > div { padding: 2px 0 2px 12px; border-left: 3px solid var(--filet-fort); font-size: 15px; color: var(--encre-2); }
+.aide-pli > div p:last-child { margin-bottom: 4px; }
 .deux-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px 24px; }
 .deux-col ul { margin: 0; padding-left: 20px; }
 .deux-col li { margin-bottom: 4px; }
@@ -1304,8 +1309,13 @@ main.entree { animation: entreeVue .22s ease-out; }
 .kpi-t { margin: 0; font: 700 13px/1.2 var(--f-titre); letter-spacing: .07em; text-transform: uppercase; color: var(--encre-2); }
 .kpi-v { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
 .kpi-v .main { font: 800 30px/1 var(--f-display); color: var(--encre); letter-spacing: -.02em; }
-.kpi-u { margin: 2px 0 8px; font-size: 13px; color: var(--encre-2); }
-.kpi-x { margin: 0 0 8px; font-size: 13.5px; line-height: 1.35; }
+.kpi > span { display: block; }
+.kpi > .kpi-v { display: flex; }
+.kpi-u { margin: 2px 0 6px; font-size: 13px; color: var(--encre-2); }
+.kpi-c { margin: 0 0 6px; font-size: 13.5px; line-height: 1.35; }
+.kpi-aide { margin: 4px 0 0; }
+.kpi-aide summary { min-height: 32px; font-size: 13px; }
+.kpi-aide > div { font-size: 13.5px; }
 .kpi-r { margin: auto 0 0; padding: 6px 0 0 10px; border-left: 3px solid var(--sauge); font-size: 13.5px; line-height: 1.35; color: var(--encre); }
 .tend { padding: 2px 7px; border-radius: 999px; font: 700 12px var(--f-texte); }
 .tend.mieux { background: var(--action-fond); color: var(--bon); }
@@ -1677,9 +1687,6 @@ main.entree { animation: entreeVue .22s ease-out; }
 .mj-courbe .courbe-index { width: 100%; max-width: 260px; height: 56px; }
 .ens-prov { font: 600 12px/1.1 var(--f-texte); letter-spacing: .02em; text-transform: none; color: var(--encre-2); border: 1px solid var(--filet); border-radius: 999px; padding: 2px 6px; white-space: nowrap; }
 .kpi-lien { position: relative; width: 100%; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-.kpi-lien > span { display: block; }
-.kpi-lien .kpi-v { display: flex; }
-.kpi-lien .kpi-u, .kpi-lien .kpi-n { margin-top: 4px; font-size: .85rem; color: var(--encre-2); }
 .kpi-lien > .ico { position: absolute; right: 10px; top: 14px; width: 16px; height: 16px; color: var(--encre-2); }
 .kpi-lien .kpi-t { padding-right: 18px; }
 @media (max-width: 520px) { .mj-perf-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mj-obj { grid-column: span 2; } }
@@ -1736,6 +1743,13 @@ main.entree { animation: entreeVue .22s ease-out; }
 .jn small { font-size: 12px; }
 /* V4 S01 : distances de référence et héritées, distinctes des observées. */
 .sac-synthese .marque.ref, .sac-synthese .marque.herit { font-size: .8rem; color: var(--encre-2); font-weight: 400; }
+
+/* V4-04 · hiérarchie commune : page, section (titre + « Détail › »), donnée, contexte, aide. */
+.page-tete h1 { margin-bottom: 4px; }
+.page-sous { margin: 0 0 8px; font-size: 15px; color: var(--encre-2); }
+.section-tete { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.section-tete h2 { margin-bottom: 8px; }
+.section-tete .lien.detail { flex: none; min-height: 44px; white-space: nowrap; }
 
 /* ---------- Accueil en paysage de golf ----------
    Jour en clair, soirée après 17 h, nuit en mode sombre. Les couleurs du dessin sont des variables. */
@@ -7533,7 +7547,7 @@ function filtrerChronologie(ev, f) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-27T10:30:15.077Z";
+  var VERSION_APPLI = "2026-11-27T11:28:58.511Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, references: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -8897,6 +8911,66 @@ function filtrerChronologie(ev, f) {
     if (!nom || !(PAGES.indexOf(nom) >= 0 || a(ALIAS, nom))) return;
     if (pageDe(nom) !== ui.onglet && ui.vue !== "questionnaire" && etat.profil) allerOnglet(nom, true);
   });
+
+  /* ============================================================
+     COMPOSANTS COMMUNS (roadmap V4, chantier 04)
+     Une seule hiérarchie sur tous les écrans :
+       1 · page (titre court)  2 · section  3 · donnée principale  4 · contexte  5 · aide à la demande (repliée).
+     Les écrans assemblent ces briques ; ils ne réécrivent plus leur propre carte de KPI ni leur propre aide.
+     ============================================================ */
+
+  /* 1 · En-tête de page : surtitre facultatif, titre court, une ligne de sous-titre au plus, contenu libre ensuite
+     (sous-navigation, filtres). */
+  function pageTeteHTML(o) {
+    return '<section class="bloc premier page-tete">' + (o.avant || '') + (o.surtitre ? '<p class="surtitre">' + t(o.surtitre) + '</p>' : '') +
+      '<h1>' + t(o.titre) + '</h1>' + (o.sous ? '<p class="page-sous">' + t(o.sous) + '</p>' : '') + (o.apres || '') + '</section>';
+  }
+
+  /* 2 · En-tête de section : titre, lien « Détail › » facultatif (o.lien = { a, v, s, id, lib }), aide repliée facultative. */
+  function attrsLien(l) {
+    return 'data-a="' + l.a + '"' + (l.v != null ? ' data-v="' + at(String(l.v)) + '"' : '') + (l.s ? ' data-s="' + at(l.s) + '"' : '') + (l.id ? ' data-id="' + at(l.id) + '"' : '');
+  }
+  function sectionTeteHTML(titre, o) {
+    o = o || {};
+    return '<div class="section-tete"><h2>' + t(titre) + '</h2>' +
+      (o.lien ? '<button class="lien detail" type="button" ' + attrsLien(o.lien) + '>' + t(o.lien.lib || "Détail") + ' <span aria-hidden="true">›</span></button>' : '') + '</div>' +
+      (o.aide ? aideHTML(o.aide, o.aideTitre) : '');
+  }
+
+  /* 3 + 4 · Carte KPI. x = {
+       t : titre court ; v : valeur (« – » si inconnue, jamais zéro inventé) ; u : unité ;
+       tend : évolution (HTML de tendanceStat) ; ctx : une ligne de contexte ; n : effectif (« 86 départs ») ;
+       prov : provenance (Observé, Déclaré, Déduit, Référence…) ; r : constat ou conseil court ;
+       aide : explication, repliée derrière « ⓘ » (cartes non cliquables seulement) ;
+       lien : { a, v, s, id } — la carte entière devient un bouton vers le détail ; label : texte lu à la place }.
+     Un bouton ne peut pas contenir de pli : l'aide d'une carte cliquable va dans son détail. */
+  function kpiHTML(x) {
+    var corps = '<span class="kpi-t">' + t(x.t) + (x.prov ? ' <span class="ens-prov">' + t(x.prov) + '</span>' : '') + '</span>' +
+      '<span class="kpi-v"><span class="main">' + t(x.v == null || x.v === "" ? "–" : String(x.v)) + '</span>' + (x.tend || '') + '</span>' +
+      (x.u ? '<span class="kpi-u">' + t(x.u) + '</span>' : '') +
+      (x.ctx ? '<span class="kpi-c">' + t(x.ctx) + '</span>' : '') +
+      (x.r ? '<span class="kpi-r">' + t(x.r) + '</span>' : '') +
+      (x.n ? '<span class="kpi-n">' + t(x.n) + '</span>' : '');
+    if (x.lien) return '<button class="kpi kpi-lien" type="button" ' + attrsLien(x.lien) + ' aria-label="' + at(x.label || (x.t + " : " + (x.v == null ? "inconnu" : x.v) + (x.u ? " " + x.u : "") + ". Voir le détail")) + '">' + corps + icone("chevron") + '</button>';
+    return '<article class="kpi">' + corps + (x.aide ? aideHTML('<p>' + t(x.aide) + '</p>', x.aideTitre || "Comment lire", "kpi-aide") : '') + '</article>';
+  }
+  /* Grille de 4 à 6 cartes (classe en plus facultative). */
+  function kpisHTML(cartes, cls) {
+    return '<div class="kpi-grille' + (cls ? " " + cls : "") + '">' + cartes.filter(Boolean).map(kpiHTML).join("") + '</div>';
+  }
+
+  /* 5 · Aide à la demande : repliée, signalée par « ⓘ ». html est déjà échappé par l'appelant. */
+  function aideHTML(html, titre, cls) {
+    return '<details class="aide-pli' + (cls ? " " + cls : "") + '"><summary><span class="ico-info" aria-hidden="true">i</span>' + t(titre || "Comment est-ce calculé ?") + '</summary><div>' + html + '</div></details>';
+  }
+  /* Ancien nom, gardé pour les écrans existants. */
+  function comment(html, titre) { return aideHTML(html, titre || "Comment ça marche"); }
+
+  /* État vide : ce qui manque, à quoi ça servira, une seule action. */
+  function etatVideHTML(ico, titre, texte, action, bouton) {
+    return '<div class="etat-vide">' + icone(ico) + '<p class="tb-titre">' + t(titre) + '</p><p>' + t(texte) + '</p>' +
+      (action ? '<button class="btn principal" type="button" data-a="' + action + '">' + t(bouton) + '</button>' : '') + '</div>';
+  }
 
   /* ============================================================
      OUTILS : contrôle des données, carnet de distances, coups gagnés
@@ -11803,7 +11877,7 @@ function filtrerChronologie(ev, f) {
     } else if (pc) h += '<p>' + t("Ce parcours n'a pas encore de carte. Avec elle, le pavé affiche la distance à l'entrée, au milieu et au fond du green.") + '</p>';
     else h += '<p>' + t("Cherche ton golf : l'appli crée le parcours et télécharge ses greens. La carte reste ensuite dans le téléphone, même sans réseau.") + '</p>';
     h += '<h3 class="titre-bloc">' + t(c ? "Mettre à jour depuis OpenStreetMap" : "Trouver le golf sur OpenStreetMap") + '</h3>' + carteRechercheHTML(pc) +
-      '<details class="comment"' + (dansCadre() ? " open" : "") + '><summary>Importer un fichier</summary><div><p>' + t("Un export OpenStreetMap du golf, au format JSON ou GeoJSON (par exemple depuis Overpass Turbo).") + '</p>' +
+      '<details class="aide-pli"' + (dansCadre() ? " open" : "") + '><summary>Importer un fichier</summary><div><p>' + t("Un export OpenStreetMap du golf, au format JSON ou GeoJSON (par exemple depuis Overpass Turbo).") + '</p>' +
       '<label class="btn large carte-fichier">Choisir un fichier<input type="file" class="vh" data-c="carte-fichier" accept=".json,.geojson,application/json,application/geo+json"></label></div></details>';
     if (pc && !c && gpsPossible()) h += '<h3 class="titre-bloc">Sans OpenStreetMap</h3><p>' + t("Tu peux relever chaque green sur place : pendant la partie, ouvre la carte du trou, marque l'entrée puis le fond du green.") + '</p>' +
       '<button class="btn large" type="button" data-a="carte-vide" data-id="' + pc.id + '">Relever les greens moi-même</button>';
@@ -12141,10 +12215,6 @@ function filtrerChronologie(ev, f) {
     if (!no.vide) h += '<div class="carte-tb notes-accueil"><p class="surtitre">Ton jeu sur 100</p>' + no.html + '</div>';
     return h;
   }
-  function etatVideHTML(ico, titre, texte, action, bouton) {
-    return '<div class="etat-vide">' + icone(ico) + '<p class="tb-titre">' + t(titre) + '</p><p>' + t(texte) + '</p>' +
-      (action ? '<button class="btn principal" type="button" data-a="' + action + '">' + t(bouton) + '</button>' : '') + '</div>';
-  }
 
   /* Qualité des données : transparence sur l'échantillon et les sources. */
   function qualiteGolfHTML() {
@@ -12200,10 +12270,7 @@ function filtrerChronologie(ev, f) {
       x: "Estimation des coups gagnés ou perdus par partie face à un joueur de ton objectif, à partir du score, des greens, des putts et des pénalités (pas du Strokes Gained).", r: cg.total >= 0 ? "Tu joues déjà au niveau de ton objectif." : "Voir les deux secteurs qui coûtent le plus ci-dessous." });
     /* UX04 : affiché dans Analyses (pli « Repères »), sous le filtre commun : plus de pastilles ici. */
     var h = '<p class="aide">' + t("Sur " + pluriel(c.n, "partie") + " (" + c.T + " trous)" + (avant.T ? ", comparé aux " + avant.n + " précédentes." : ".")) + '</p>' +
-      '<div class="kpi-grille">' + cartes.map(function (x) {
-        return '<article class="kpi"><p class="kpi-t">' + t(x.t) + '</p><p class="kpi-v"><span class="main">' + t(x.v) + '</span>' + x.tend + '</p><p class="kpi-u">' + t(x.u) + '</p>' +
-          '<p class="kpi-x">' + t(x.x) + '</p><p class="kpi-r">' + t(x.r) + '</p></article>';
-      }).join("") + '</div>';
+      kpisHTML(cartes.map(function (x) { return { t: x.t, v: x.v, u: x.u, tend: x.tend, r: x.r, aide: x.x }; }));
     var ci = courbeIndexHTML(null, 300, 70);
     if (ci) h += '<div class="carte-tb evol-index"><p class="surtitre">Évolution de ton index</p>' + ci + '</div>';
     return h;
@@ -12442,10 +12509,7 @@ function filtrerChronologie(ev, f) {
       { t: "Mises en jeu", v: A.mej.part == null ? "–" : A.mej.part + " %", u: "jouables, par 4 et par 5", tend: C && tendanceStat(C.mej),
         x: A.mej.n ? A.mej.jouables + " jouables sur " + A.mej.n + " renseignées." + (A.mej.inconnues ? " " + A.mej.inconnues + " non renseignées (saisie express), non comptées." : "") : "Aucune mise en jeu renseignée : passe en saisie standard.", n: A.mej.n + " départs" },
       { t: "Greens en régulation", v: nbStat(A.gir18), u: "par 18 trous · déduit", tend: C && tendanceStat(C.gir18), x: "Déduit du score et des putts, pas observé : " + nbStat(A.partGir) + " % des trous.", n: A.trous + " trous" }];
-    h += '<div class="kpi-grille">' + cartes.map(function (x) {
-      return '<article class="kpi"><p class="kpi-t">' + t(x.t) + '</p><p class="kpi-v"><span class="main">' + t(x.v) + '</span>' + (x.tend || "") + '</p><p class="kpi-u">' + t(x.u) + '</p>' +
-        '<p class="kpi-x">' + t(x.x) + '</p><p class="kpi-n">' + t(x.n) + '</p></article>';
-    }).join("") + '</div>';
+    h += kpisHTML(cartes.map(function (x) { return { t: x.t, v: x.v, u: x.u, tend: x.tend, n: x.n, aide: x.x || null, aideTitre: "Détail" }; }));
     h += grapheScoresHTML(A.parPartie);
     h += repartitionsStatsHTML(l, A);
     /* Évolution de l'index : toute l'histoire, quels que soient les filtres. */
@@ -12629,10 +12693,9 @@ function filtrerChronologie(ev, f) {
     var h = '<section class="bloc" id="st-putting"><h2>Putting</h2>';
     if (!A.trous) return h + etatVideHTML("stats", "Pas encore de putts à analyser", "Enregistre des parties : le nombre de putts de chaque trou suffit.") + '</section>';
     h += '<p class="aide putt-echantillon">' + t("Sur " + pluriel(A.trous, "trou") + " joué" + (A.trous > 1 ? "s" : "") + " (" + pluriel(R.parties, "partie") + "), " + A.putts + " putts.") + '</p>';
-    h += '<div class="kpi-grille putt-kpis">' +
-      [["Putts par trou", nb1(A.parTrou), "soit " + nb1(A.par18) + " sur 18 trous", pluriel(A.trous, "trou")], ["Un putt", pctP(A.partUn), "des trous joués", pluriel(A.un, "trou")],
+    h += kpisHTML([["Putts par trou", nb1(A.parTrou), "soit " + nb1(A.par18) + " sur 18 trous", pluriel(A.trous, "trou")], ["Un putt", pctP(A.partUn), "des trous joués", pluriel(A.un, "trou")],
        ["Deux putts", pctP(A.partDeux), "des trous joués", pluriel(A.deux, "trou")], ["Trois putts et +", pctP(A.partTrois), "des trous joués", pluriel(A.troisPlus, "trou")]]
-        .map(function (k) { return '<article class="kpi"><p class="kpi-t">' + t(k[0]) + '</p><p class="kpi-v"><span class="main">' + t(k[1]) + '</span></p><p class="kpi-u">' + t(k[2]) + '</p><p class="kpi-n">' + t(k[3]) + '</p></article>'; }).join("") + '</div>';
+        .map(function (k) { return { t: k[0], v: k[1], u: k[2], n: k[3] }; }), "putt-kpis");
     h += barreRepartitionHTML("Putts par trou", [{ lib: "Un ou aucun", v: A.un + A.zero, c: "c" }, { lib: "Deux", v: A.deux, c: "k" }, { lib: "Trois et plus", v: A.troisPlus, c: "d" }],
       pluriel(A.trous, "trou"), A.zero ? A.zero + " trou" + (A.zero > 1 ? "s" : "") + " sans putt (balle rentrée de hors du green), compté" + (A.zero > 1 ? "s" : "") + " avec « un ou aucun »." : "");
     /* Évolution */
@@ -12773,7 +12836,7 @@ function filtrerChronologie(ev, f) {
     if (n.texte) l.push("« " + n.texte + " »");
     return l.join(" · ");
   }
-  function chiffreJournal(lib, v, sous) { return '<div class="kpi"><p class="kpi-t">' + t(lib) + '</p><p class="kpi-v"><span class="main">' + t(v) + '</span></p><p class="kpi-n">' + t(sous) + '</p></div>'; }
+  function chiffreJournal(lib, v, sous) { return kpiHTML({ t: lib, v: v, n: sous }); }
   function journalHTML() {
     var J = etatJournal(), B = bornesJournal(), R = rapportPeriode(partiesAnalyse(), B, auj()), S = R.stats;
     var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer" tabindex="-1"></button>' +
@@ -13207,8 +13270,9 @@ function filtrerChronologie(ev, f) {
         '<td class="num">' + (fo ? t(fo.bas === fo.haut ? fo.bas + " m" : fo.bas + "–" + fo.haut + " m") : "–") + '</td>' +
         '<td class="num">' + M.n + '</td></tr>';
     }).join("");
-    return '<section class="bloc" id="c-synthese"><h2>Mes clubs</h2><p class="aide">' +
-      t("Distances des coups joués sur le parcours, jamais estimées. Une référence saisie ou une mesure héritée s'affiche à part et n'entre pas dans les moyennes. " + (alertes ? pluriel(alertes, "club") + " avec un écart anormal. " : "") + (peu ? pluriel(peu, "club") + " avec moins de " + MIN_OBS_DISTANCE + " coups mesurés." : "")) + '</p>' +
+    var etatSac = [alertes ? alertes + (alertes > 1 ? " écarts anormaux" : " écart anormal") : "", peu ? pluriel(peu, "club") + " à documenter" : ""].filter(Boolean).join(" · ");
+    return '<section class="bloc" id="c-synthese">' + sectionTeteHTML("Mes clubs", { aide: '<p>' + t("Distances des coups joués sur le parcours, jamais estimées. Une référence saisie (« réf. ») ou une mesure héritée s'affiche à part et n'entre pas dans les moyennes. Un club est à documenter sous " + MIN_OBS_DISTANCE + " coups mesurés.") + '</p>', aideTitre: "D'où viennent ces distances ?" }) +
+      (etatSac ? '<p class="aide sac-resume">' + t(etatSac + ".") + '</p>' : '') +
       '<div class="defile"><table class="carte-score sac-synthese"><thead><tr><th scope="col">Club</th><th scope="col" class="num">Distance</th><th scope="col" class="num">Plage</th><th scope="col" class="num">Coups</th></tr></thead><tbody>' +
       lignes + '</tbody></table></div><div class="ligne-btn"><button class="btn" type="button" data-a="sac-composer" data-id="sac">Composer mon sac</button></div></section>';
   }
@@ -13220,9 +13284,7 @@ function filtrerChronologie(ev, f) {
     cases.push({ t: "Référence", v: M.reference != null ? M.reference + " m" : "–", x: M.reference != null ? "saisie par toi, pour choisir ton club" : "facultative, à saisir plus bas", prov: "Référence" });
     if (sh) cases.push({ t: "Mesures héritées", v: sh.moy + " m", x: pluriel(M.heritees.length, "mesure") + " ancienne" + (M.heritees.length > 1 ? "s" : "") + ", hors moyennes", prov: "Héritée" });
     if (dir && dir.n) cases.push({ t: "Direction", v: dir.partCentre + " % dans l'axe", x: dir.partGauche + " % à gauche · " + dir.partDroite + " % à droite, sur " + pluriel(dir.n, "coup"), prov: "Observé" });
-    var h = '<div class="fiche-club-synthese"><div class="kpi-grille">' + cases.map(function (c) {
-      return '<article class="kpi"><p class="kpi-t">' + t(c.t) + ' <span class="ens-prov">' + t(c.prov) + '</span></p><p class="kpi-v"><span class="main">' + t(c.v) + '</span></p><p class="kpi-x">' + t(c.x) + '</p></article>';
-    }).join("") + '</div>';
+    var h = '<div class="fiche-club-synthese">' + kpisHTML(cases.map(function (c) { return { t: c.t, v: c.v, ctx: c.x, prov: c.prov }; }));
     return h + '</div>';
   }
   ACTIONS["sac-fiche-club"] = function (el) { var id = el.getAttribute("data-id"); if (!CLUB[id]) return; ui.sacSel = id; ui.club = id; ouvrirSac({ sac: id }, el); };
@@ -14072,7 +14134,6 @@ function filtrerChronologie(ev, f) {
     var b = app.querySelector('[data-a="pli"][data-v="' + id + '"]'); if (b) b.focus({ preventScroll: true });
   };
   /* Aide repliée sous un intitulé. Le contenu est déjà du HTML sûr. */
-  function comment(html, titre) { return '<details class="comment"><summary>' + (titre || "Comment ça marche") + '</summary><div>' + html + '</div></details>'; }
 
   /* ---------- Avancement de la semaine et du cycle ---------- */
   function seancesSemaine(w) {
@@ -14257,11 +14318,9 @@ function filtrerChronologie(ev, f) {
       { t: "Putts", v: nbStat(A.putts18), u: "par 18 trous", tend: C && tendanceStat(C.putts18), n: A.trous + " trous", s: "st-putting", prov: "Observé" },
       { t: "Trois-putts", v: nbStat(A.troisPutts18), u: "par 18 trous", tend: C && tendanceStat(C.troisPutts18), n: A.trous + " trous", s: "st-putting", prov: "Observé" },
       { t: "Pénalités", v: nbStat(A.penalites18), u: "coups par 18 trous", tend: C && tendanceStat(C.penalites18), n: A.trous + " trous", s: "st-erreurs", prov: "Observé" }];
-    h += '<div class="kpi-grille mj-kpis">' + cartes.map(function (x) {
-      return '<button class="kpi kpi-lien" type="button" data-a="aller-a" data-v="bilan"' + (x.s ? ' data-s="' + x.s + '"' : '') + ' aria-label="' + at(x.t + " : " + x.v + " " + x.u + ". Voir l'analyse") + '">' +
-        '<span class="kpi-t">' + t(x.t) + ' <span class="ens-prov">' + t(x.prov) + '</span></span><span class="kpi-v"><span class="main">' + t(x.v) + '</span>' + (x.tend || "") + '</span>' +
-        '<span class="kpi-u">' + t(x.u) + '</span><span class="kpi-n">' + t(x.n) + '</span>' + icone("chevron") + '</button>';
-    }).join("") + '</div><button class="lien" type="button" data-a="aller-a" data-v="bilan" data-s="qualite-donnees">' + t("Qualité de mes données") + '</button></section>';
+    h += kpisHTML(cartes.map(function (x) {
+      x.lien = { a: "aller-a", v: "bilan", s: x.s }; x.label = x.t + " : " + x.v + " " + x.u + ". Voir l'analyse"; return x;
+    }), "mj-kpis") + '<button class="lien" type="button" data-a="aller-a" data-v="bilan" data-s="qualite-donnees">' + t("Qualité de mes données") + '</button></section>';
     return h;
   }
   /* Dernière partie : score, parcours, indicateurs, faits marquants (meilleur et pire trou, écart à la moyenne). */

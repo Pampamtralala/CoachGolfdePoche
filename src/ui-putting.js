@@ -17,10 +17,9 @@
     var h = '<section class="bloc" id="st-putting"><h2>Putting</h2>';
     if (!A.trous) return h + etatVideHTML("stats", "Pas encore de putts à analyser", "Enregistre des parties : le nombre de putts de chaque trou suffit.") + '</section>';
     h += '<p class="aide putt-echantillon">' + t("Sur " + pluriel(A.trous, "trou") + " joué" + (A.trous > 1 ? "s" : "") + " (" + pluriel(R.parties, "partie") + "), " + A.putts + " putts.") + '</p>';
-    h += '<div class="kpi-grille putt-kpis">' +
-      [["Putts par trou", nb1(A.parTrou), "soit " + nb1(A.par18) + " sur 18 trous", pluriel(A.trous, "trou")], ["Un putt", pctP(A.partUn), "des trous joués", pluriel(A.un, "trou")],
+    h += kpisHTML([["Putts par trou", nb1(A.parTrou), "soit " + nb1(A.par18) + " sur 18 trous", pluriel(A.trous, "trou")], ["Un putt", pctP(A.partUn), "des trous joués", pluriel(A.un, "trou")],
        ["Deux putts", pctP(A.partDeux), "des trous joués", pluriel(A.deux, "trou")], ["Trois putts et +", pctP(A.partTrois), "des trous joués", pluriel(A.troisPlus, "trou")]]
-        .map(function (k) { return '<article class="kpi"><p class="kpi-t">' + t(k[0]) + '</p><p class="kpi-v"><span class="main">' + t(k[1]) + '</span></p><p class="kpi-u">' + t(k[2]) + '</p><p class="kpi-n">' + t(k[3]) + '</p></article>'; }).join("") + '</div>';
+        .map(function (k) { return { t: k[0], v: k[1], u: k[2], n: k[3] }; }), "putt-kpis");
     h += barreRepartitionHTML("Putts par trou", [{ lib: "Un ou aucun", v: A.un + A.zero, c: "c" }, { lib: "Deux", v: A.deux, c: "k" }, { lib: "Trois et plus", v: A.troisPlus, c: "d" }],
       pluriel(A.trous, "trou"), A.zero ? A.zero + " trou" + (A.zero > 1 ? "s" : "") + " sans putt (balle rentrée de hors du green), compté" + (A.zero > 1 ? "s" : "") + " avec « un ou aucun »." : "");
     /* Évolution */

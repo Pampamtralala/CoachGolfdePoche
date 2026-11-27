@@ -17,7 +17,7 @@
     if (n.texte) l.push("« " + n.texte + " »");
     return l.join(" · ");
   }
-  function chiffreJournal(lib, v, sous) { return '<div class="kpi"><p class="kpi-t">' + t(lib) + '</p><p class="kpi-v"><span class="main">' + t(v) + '</span></p><p class="kpi-n">' + t(sous) + '</p></div>'; }
+  function chiffreJournal(lib, v, sous) { return kpiHTML({ t: lib, v: v, n: sous }); }
   function journalHTML() {
     var J = etatJournal(), B = bornesJournal(), R = rapportPeriode(partiesAnalyse(), B, auj()), S = R.stats;
     var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer" tabindex="-1"></button>' +

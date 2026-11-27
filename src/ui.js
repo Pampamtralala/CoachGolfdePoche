@@ -1374,6 +1374,7 @@
     if (pageDe(nom) !== ui.onglet && ui.vue !== "questionnaire" && etat.profil) allerOnglet(nom, true);
   });
 
+  /*INCLURE:ui-composants.js*/
   /*INCLURE:ui-carnet.js*/
   /*INCLURE:ui-sac.js*/
   /*INCLURE:ui-menu.js*/
