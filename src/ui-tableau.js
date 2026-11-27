@@ -71,7 +71,7 @@
 
   /* Qualité des données : transparence sur l'échantillon et les sources. */
   function qualiteGolfHTML() {
-    var obs = observationsGolf(partiesAnalyse(), etat.carnet, etat.parcours), q = qualiteObservations(obs);
+    var obs = observationsGolf(partiesAnalyse(), null, etat.parcours) /* V4-03 : séries archivées, hors analyses */, q = qualiteObservations(obs);
     var confirmes = 0, suivis = 0;
     partiesAnalyse().forEach(function (p) {
       (p.trous || []).forEach(function (tr, i) {
@@ -186,7 +186,6 @@
     var h = etat.historique, l = [];
     h.slice(-4).reverse().forEach(function (c) { l.push({ d: c.fin, t: "Cycle " + c.cycle + " terminé", m: c.faites + " séances sur " + c.total }); });
     DEFIS.forEach(function (d) { (etatDefi(d.id).hist || []).slice(-3).forEach(function (x) { l.push({ d: x.d, t: d.t, m: (x.v != null ? "Résultat : " + x.v : "") + (x.s ? " · " + dureeChrono(x.s) : "") }); }); });
-    (etat.carnet.series || []).slice(-3).forEach(function (s) { l.push({ d: s.d, t: "Série · " + nomClub(s.c), m: pluriel(s.v.length, "balle") }); });
     l = l.filter(function (x) { return x.d; }).sort(function (a, b) { return String(b.d).localeCompare(String(a.d)); }).slice(0, 8);
     if (!l.length) return "";
     return '<section class="bloc" id="historique"><h2>Historique</h2><ul class="historique">' + l.map(function (x) {
@@ -194,19 +193,18 @@
     }).join("") + '</ul></section>';
   }
 
-  /* ---------- Mon sac : historique des mesures ---------- */
-  function historiqueMesuresHTML() {
-    var s = (etat.carnet.series || []).slice().reverse(), pts = coupsDuParcours();
-    var nParcours = Object.keys(pts).reduce(function (a, k) { return a + pts[k].length; }, 0);
-    var h = '<section class="bloc" id="c-historique"><h2>Historique des mesures</h2>';
-    if (!s.length && !nParcours) return h + etatVideHTML("sac", "Aucune mesure pour l’instant", "Tape une série de balles au practice, ou note tes coups sur le parcours : tes fourchettes se calculent toutes seules.", "serie-ouvrir", "Faire une série") + '</section>';
-    if (nParcours) h += '<p>' + t(pluriel(nParcours, "coup plein") + " noté" + (nParcours > 1 ? "s" : "") + " sur le parcours nourri" + (nParcours > 1 ? "ssent" : "t") + " aussi tes distances.") + '</p>';
-    if (s.length) h += '<ul class="historique">' + s.slice(0, 10).map(function (x) {
-      var f = fourchette(x.v), dir = x.l ? x.l.filter(function (v) { return v != null; }).length : 0;
-      return '<li><span class="hist-date">' + t(dateCourte(x.d)) + '</span><span><b>' + t(nomClub(x.c) + " · " + pluriel(x.v.length, "balle")) + '</b><small>' +
-        t((f ? (f.bas === f.haut ? f.bas + " m" : f.bas + "–" + f.haut + " m") : "") + (dir ? " · " + dir + " avec direction" : "")) + '</small></span></li>';
-    }).join("") + '</ul>';
-    return h + '<button class="btn" type="button" data-a="serie-ouvrir">Nouvelle série</button></section>';
+  /* ---------- Mon sac : séries de practice archivées (V4-03) ----------
+     Plus de saisie ni d'analyse ; les séries restent dans la sauvegarde et l'export, et se consultent ici. */
+  function archiveSeriesHTML() {
+    var s = (etat.carnet.series || []).slice().reverse();
+    if (!s.length) return "";
+    return '<section class="bloc" id="c-historique"><details class="archive-series"><summary>' + t("Séries de practice archivées (" + s.length + ")") + '</summary>' +
+      '<p class="aide">' + t("Les séries ne sont plus saisies ni comptées dans tes analyses. Elles restent dans ta sauvegarde et dans l'export.") + '</p>' +
+      '<ul class="historique">' + s.map(function (x) {
+        var f = fourchette(x.v);
+        return '<li><span class="hist-date">' + t(dateCourte(x.d)) + '</span><span><b>' + t(nomClub(x.c) + " · " + pluriel(x.v.length, "balle")) + '</b><small>' +
+          t(f ? (f.bas === f.haut ? f.bas + " m" : f.bas + "–" + f.haut + " m") : "") + '</small></span></li>';
+      }).join("") + '</ul></details></section>';
   }
 
   /* ---------- Jouer : mode de saisie ---------- */

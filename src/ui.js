@@ -190,7 +190,7 @@
     progresser: "practice", coaching: "practice", programme: "practice", "mon-sac": "sac", historique: "journal" };
   function pageDe(nom) { if (a(ALIAS, nom)) nom = ALIAS[nom]; return PAGES.indexOf(nom) >= 0 ? nom : "accueil"; }
   var ui = { vue: "auto", onglet: "accueil", semaine: 1, etape: 0, brouillon: null, mode: null, filtre: { d: "tous", monPalier: true }, feuille: null, dialogue: null, anime: false, retourFocus: null,
-    club: "f7", partie: null, bilanPartie: null, pile: [], defiEvt: null, depart: null, fenetre: 5, plis: { priorites: true }, feuilleRetour: null, sacApercu: null, sacSel: null, menu: false, partage: false, pvCoup: null, pvLong: false, serie: null, pvPanneau: null, sjc: null, strat: null, ellSel: null };
+    club: "f7", partie: null, bilanPartie: null, pile: [], defiEvt: null, depart: null, fenetre: 5, plis: { priorites: true }, feuilleRetour: null, sacApercu: null, sacSel: null, menu: false, partage: false, pvCoup: null, pvLong: false, pvPanneau: null, sjc: null, strat: null, ellSel: null };
   var app = document.getElementById("app");
 
   /* ---------- Outils de texte ---------- */
@@ -707,7 +707,7 @@
       (etat.profil.questionnaire === false ? '' : '<p class="aide prov-programme"><span class="ens-prov">' + t("D'après ton questionnaire") + '</span> ' + t("Programme construit à partir de tes réponses déclarées (niveau, défauts, disponibilités).") + '</p>') +
       (etat.profil.questionnaire === false ? '<div class="carte-tb programme-option"><p class="surtitre">' + t("Facultatif") + '</p><p>' + t("Ce programme est générique. Réponds au questionnaire (5 minutes) pour l'adapter à ton niveau, à tes défauts et à ton temps.") + '</p><button class="btn principal" type="button" data-a="modifier">Personnaliser mon programme</button></div>' : '') +
       progressionHTML() +
-      '<div class="raccourcis"><button class="btn" type="button" data-a="serie-ouvrir">Série de balles</button><button class="btn" type="button" data-a="onglet" data-v="exercices">Exercices</button><button class="btn" type="button" data-a="aller-a" data-v="exercices" data-s="defis">Défis</button></div></section>' +
+      '<div class="raccourcis"><button class="btn" type="button" data-a="onglet" data-v="exercices">Exercices</button><button class="btn" type="button" data-a="aller-a" data-v="exercices" data-s="defis">Défis</button></div></section>' +
       recoDonneesHTML() +
       '<section class="bloc" id="semaine"><h2 class="h2-semaine">Semaine ' + ui.semaine + '<span>' + t(sem.theme) + '</span></h2>' + carteCycle() + avancementHTML(ui.semaine) + '</section>';
     h += '<section class="bloc" style="border-top:0;padding-top:0">';
@@ -727,7 +727,7 @@
     if (plan.nonPlanifies && plan.nonPlanifies.length) {
       h += '<p class="note">' + t("Non planifié faute de lieu adapté : " + plan.nonPlanifies.map(function (d) { return DOM[d].nom.toLowerCase(); }).join(", ") + ". Ajoute le lieu dans ton profil si tu y as accès.") + '</p>';
     }
-    h += '</section>' + defisResumeHTML() + badgesHTML() + historiqueCoachingHTML() + serieAppelHTML() + '<section class="bloc"><h2>Fin du cycle</h2><p>Après la semaine 4, fais le bilan. Tu mets à jour tes chiffres et tes défauts, et l’appli construit le cycle suivant.</p>' +
+    h += '</section>' + defisResumeHTML() + badgesHTML() + historiqueCoachingHTML() + '<section class="bloc"><h2>Fin du cycle</h2><p>Après la semaine 4, fais le bilan. Tu mets à jour tes chiffres et tes défauts, et l’appli construit le cycle suivant.</p>' +
       '<button class="btn" type="button" data-a="fin-cycle">Faire le bilan du cycle</button></section>';
     return h;
   };
@@ -959,7 +959,6 @@
     if (f && f.enseignements && etat.profil) { c.innerHTML = ensHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.sac && (f.sac === "putter" || CLUB[f.sac]) && etat.profil) { c.innerHTML = sacFeuilleHTML(f.sac); entreeFeuille(); majFige(); return; }
     if (f && f.sacComposer && etat.profil) { c.innerHTML = sacComposerHTML(); entreeFeuille(); majFige(); return; }
-    if (f && f.serie && ui.serie && etat.profil) { c.innerHTML = serieHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.recherche && etat.profil) { c.innerHTML = rechercheHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.carte && (f.carte === "nouveau" || parcoursDe(f.carte)) && etat.profil) { c.innerHTML = carteFeuilleHTML(f.carte); entreeFeuille(); majFige(); return; }
     if (!f || !EX[f.id] || !etat.profil) { ui.feuille = null; ui.feuilleVue = false; c.innerHTML = ""; majFige(); return; }
@@ -1005,13 +1004,9 @@
       var bf = document.getElementById("f-fermer"); if (bf) bf.focus();
       return;
     }
-    /* Une série de balles en cours est enregistrée en fermant la fiche. */
-    var serie = ui.feuille && ui.feuille.serie ? enregistrerSerie() : null;
-    if (ui.feuille && ui.feuille.serie) ui.serie = null;
     /* Le sac a pu être redessiné en aperçu pendant la saisie : il est remis à l'état enregistré. */
-    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.serie || ui.feuille.carte || ui.feuille.donnees || ui.feuille.journal || ui.feuille.analyste || ui.feuille.enseignements);
+    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.carte || ui.feuille.donnees || ui.feuille.journal || ui.feuille.analyste || ui.feuille.enseignements);
     var carteF = ui.feuille && ui.feuille.carte;
-    if (serie) messageEnregistre("Série enregistrée. " + annonceSerie(serie));
     ui.sacApercu = null;
     ui.feuille = null; ui.pile = []; ui.defiEvt = null; rendreFeuille();
     var el = ui.retourFocus; ui.retourFocus = null;
@@ -1403,7 +1398,6 @@
   /*INCLURE:ui-chronologie.js*/
   /*INCLURE:ui-coaching.js*/
   /*INCLURE:ui-apres.js*/
-  /*INCLURE:ui-series.js*/
   /*INCLURE:ui-parcours.js*/
   /*INCLURE:ui-objectifs.js*/
   /*INCLURE:ui-front.js*/

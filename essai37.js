@@ -25,24 +25,24 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.waitForSelector('.tete');
     /* Premiers pas, rien de fait */
     r.etapes = await page.$$eval('#premiers-pas li', l => l.map(x => (x.classList.contains('fait') ? '✓ ' : '· ') + x.querySelector('b').textContent));
-    verifie(r.etapes.length === 4 && r.etapes.every(x => x.startsWith('·')) && /facultatif/.test(r.etapes[3]), nom + ' premiers pas : ' + r.etapes.join(' | '));
-    verifie(await page.locator('#premiers-pas [data-a="partie-rapide"]').count() >= 1 && await page.locator('#premiers-pas [data-a="serie-ouvrir"]').count() === 1, nom + ' chaque étape propose son action');
+    verifie(r.etapes.length === 3 && r.etapes.every(x => x.startsWith('·')) && /facultatif/.test(r.etapes[2]), nom + ' premiers pas : ' + r.etapes.join(' | '));
+    verifie(await page.locator('#premiers-pas [data-a="partie-rapide"]').count() >= 1 && await page.locator('[data-a="serie-ouvrir"]').count() === 0, nom + ' chaque étape propose son action (plus de série)');
     /* États vides */
     verifie(/Note une partie/.test(norm(await page.textContent('#mj-kpi'))), nom + ' Mon jeu : état vide utile');
     await page.click('#barre [data-v="sac"]');
-    verifie(/À mesurer|Aucune mesure/.test(norm(await page.textContent('#vue'))) && await page.locator('#vue [data-a="serie-ouvrir"]').count() >= 1, nom + ' Mon sac : proposer une série');
+    verifie(/Aucun coup mesuré/.test(norm(await page.textContent('#vue'))) && await page.locator('#vue [data-a="serie-ouvrir"]').count() === 0, nom + ' Mon sac : inconnu affiché, plus de série');
     await page.click('#barre [data-v="journal"]');
     verifie(/Rien pour l.instant/.test(norm(await page.textContent('#c-chronologie'))), nom + ' Journal : état vide');
     await page.click('#barre [data-v="bilan"]');
     verifie(/Pas encore de partie/.test(norm(await page.textContent('#vue .rb-tete'))) && await page.locator('#vue canvas').count() === 0, nom + ' Analyses : rien de fictif');
-    /* Une partie et une série : deux étapes cochées */
+    /* Une partie : une étape cochée (une série archivée ne compte plus) */
     const e = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), CLE);
     e.parcours = [{ id: 'p1', nom: 'Golf des Essais', pars: PARS }]; e.parties = [partie(1)];
     e.carnet = e.carnet || {}; e.carnet.series = [{ d: new Date().toISOString(), c: 'f7', v: [140, 142, 138] }]; e.maj = Date.now();
     await page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [CLE, e]);
     await page.reload(); await page.waitForSelector('.tete');
     r.etapes2 = await page.$$eval('#premiers-pas li', l => l.map(x => (x.classList.contains('fait') ? '✓ ' : '· ') + x.querySelector('b').textContent));
-    verifie(r.etapes2[0].startsWith('✓') && r.etapes2[1].startsWith('✓') && /1\/3/.test(r.etapes2[2]), nom + ' progression : ' + r.etapes2.join(' | '));
+    verifie(r.etapes2[0].startsWith('✓') && /1\/3/.test(r.etapes2[1]), nom + ' progression : ' + r.etapes2.join(' | '));
     verifie(/Ta première partie est notée/.test(norm(await page.textContent('#premiers-pas'))), nom + ' ce que débloque une étape');
     /* Trois parties complètes : la carte disparaît */
     e.parties = [partie(1), partie(2), partie(3)]; e.maj = Date.now();

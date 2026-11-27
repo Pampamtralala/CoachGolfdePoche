@@ -65,10 +65,9 @@
         { a: "cond-ouvrir", t: "Conditions du jour", k: "vent temperature meteo" }] },
       { g: "Mon sac", l: [
         { p: "sac", t: "Sac et distances", k: "clubs fourchette dispersion ecarts trous" },
-        { a: "serie-ouvrir", t: "Série de balles au practice", k: "dispersion ellipse direction practice mesurer" },
         { a: "sac-modifier", t: "Composer mon sac", k: "configuration clubs wedges loft" },
         { p: "sac", s: "c-wedges", t: "Matrice de wedges", k: "amplitudes petit jeu" },
-        { p: "sac", s: "c-historique", t: "Historique des mesures", k: "series balles" }] },
+        { p: "sac", s: "c-historique", t: "Séries de practice archivées", k: "series balles practice archive" }] },
       { g: "Journal", l: [
         { p: "journal", t: "Mes parties", k: "historique cartes scores image partage" },
         { a: "j-ouvrir", t: "Bilans, notes et rapports", k: "journal bilan mois trimestre saison rapport export import csv notes forme meteo" }] },

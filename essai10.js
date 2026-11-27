@@ -54,28 +54,22 @@ function partieType(graine, pars) {
     for (let i = 0; i < 8 && await page.locator('[data-a="q-suite"]').count(); i++) await page.click('[data-a="q-suite"]');
     await page.waitForSelector('.tete');
 
-    /* ---- 1. Série de balles au practice ---- */
-    await menuAction(page, 'serie-ouvrir'); await page.waitForSelector('#feuille .serie-saisie');
-    await page.click('#feuille [data-a="serie-club"][data-id="f7"]');
-    const balle = async v => { await page.fill('#serie-val', String(v)); await page.press('#serie-val', 'Enter'); };
-    await balle(145);
-    r.focusApresBalle = await page.evaluate(() => document.activeElement && document.activeElement.id);
-    await page.click('#feuille [data-a="serie-rapide"][data-v="0"]'); await page.click('#feuille [data-a="serie-rapide"][data-v="5"]'); await page.click('#feuille [data-a="serie-rapide"][data-v="-5"]');
-    for (const v of [150, 138, 147, 142, 152, 118]) await balle(v);
-    await balle('abc'); r.erreurBalle = await page.textContent('#serie-err');
-    r.serieEtat = await page.$eval('#serie-etat', x => x.textContent.replace(/\s+/g, ' ').trim());
-    r.nuage = await page.$$eval('#feuille .nuage .n-balle', l => l.length);
-    verifie(r.nuage === 10, nom + ' nuage de 10 balles : ' + r.nuage);
-    await page.click('#feuille [data-a="serie-suppr"][data-v="9"]');
-    r.apresRetrait = await page.$$eval('#feuille .nuage .n-balle', l => l.length);
-    await page.waitForTimeout(150); await vue('01-serie');
-    await page.evaluate(() => { const f = document.getElementById('feuille'); f.scrollTop = f.scrollHeight; }); await vue('01b-serie-bas');
-    await page.click('#feuille [data-a="serie-fin"]');
+    /* ---- 1. V4-03 : plus de série de balles ; d'anciennes mesures (héritées) et une série archivée ---- */
+    {
+      const e0 = await lire();
+      e0.carnet.clubs = { f7: [145, 145, 150, 140, 150, 138, 147, 142, 152] };
+      e0.carnet.series = [{ d: new Date().toISOString(), c: 'f7', v: [145, 145, 150, 140, 150, 138, 147, 142, 152] }];
+      e0.maj = Date.now();
+      await page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [CLE, e0]);
+      await page.reload(); await page.waitForSelector('.tete');
+    }
+    verifie(!(await page.content()).includes('serie-ouvrir'), nom + ' plus aucun accès à la série de balles');
     let e = await lire();
-    r.series = JSON.stringify(e.carnet.series.map(s => [s.c, s.v.length]));
-    verifie(e.carnet.series.length === 1 && e.carnet.series[0].c === 'f7' && e.carnet.series[0].v.length === 9, nom + ' série enregistrée : ' + r.series);
-    verifie((e.carnet.clubs.f7 || []).length === 9, nom + ' mesures du fer 7 : ' + JSON.stringify(e.carnet.clubs.f7));
-    r.annonce = await page.$eval('.message, [role="status"]', x => x.textContent).catch(() => '');
+    verifie(e.carnet.series.length === 1 && e.carnet.series[0].v.length === 9, nom + ' série archivée conservée : ' + JSON.stringify(e.carnet.series.map(s => [s.c, s.v.length])));
+    verifie((e.carnet.clubs.f7 || []).length === 9, nom + ' mesures héritées du fer 7 : ' + JSON.stringify(e.carnet.clubs.f7));
+    await allerVue(page, 'sac');
+    r.archive = (await page.textContent('#c-historique summary')).replace(/\s+/g, ' ').trim();
+    verifie(/Séries de practice archivées \(1\)/.test(r.archive), nom + ' archive visible dans Mon sac : ' + r.archive);
     /* Fiche du fer 7 : dispersion et distance fiable */
     await allerVue(page, 'sac');
     const toucher = async id => { await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${id}"]`); };
@@ -106,7 +100,8 @@ function partieType(graine, pars) {
     await page.click('#calque-partie [data-a="pv-coup"][data-v="-1"]'); await page.waitForSelector('.pv-panneau');
     await page.click('.pv-panneau [data-a="pv-club"][data-id="f7"]');
     r.distanceProposee = await page.inputValue('#pv-dist') + ' / ' + await page.getAttribute('#pv-dist', 'placeholder');
-    const moyF7 = Math.round(e.carnet.clubs.f7.reduce((a, b) => a + b, 0) / e.carnet.clubs.f7.length);
+    /* Moyenne de l'appli : sans la plus courte ni la plus longue dès cinq mesures. */
+    const f7t = e.carnet.clubs.f7.slice().sort((a, b) => a - b).slice(1, -1), moyF7 = Math.round(f7t.reduce((a, b) => a + b, 0) / f7t.length);
     verifie(r.distanceProposee === ' / moy. ' + moyF7, nom + ' distance vide, moyenne du fer 7 en indication : ' + r.distanceProposee + ' / ' + moyF7);
     await page.click('.pv-panneau [data-a="pv-dist"][data-d="5"]'); await page.click('.pv-panneau [data-a="pv-dist"][data-d="1"]');
     r.apresReglage = await page.inputValue('#pv-dist');
@@ -239,5 +234,6 @@ function partieType(graine, pars) {
     await ctx.close();
   }
   console.log(JSON.stringify({ res, ko, errs }, null, 1));
+  process.exitCode = ko.length || errs.length ? 1 : 0;
   await browser.close();
 })().catch(e => { console.error('ECHEC', String(e.stack || e.message).split('\n').filter(l => !/retrying|waiting|scrolling|stable/.test(l)).slice(0, 12).join('\n')); process.exit(1); });

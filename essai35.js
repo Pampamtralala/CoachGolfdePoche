@@ -37,18 +37,17 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     r.ordre = await page.$$eval('#vue h2', l => l.map(x => x.textContent.trim()));
     verifie(r.ordre[0] === 'Chronologie' && r.ordre.includes('Toutes mes parties'), nom + ' chronologie puis tableau : ' + r.ordre.join(' | '));
     r.ev = await page.$$eval('#c-chronologie .chrono-ev', l => l.map(x => x.querySelector('b').textContent.trim()));
-    verifie(r.ev.length === 8 && /Golf des Essais/.test(r.ev[0]) && /Série · Fer 7/.test(r.ev[1]), nom + ' huit événements, du plus récent : ' + r.ev.join(' | '));
+    verifie(r.ev.length === 7 && /Golf des Essais/.test(r.ev[0]) && !r.ev.some(x => /Série/.test(x)), nom + ' sept événements, du plus récent, sans la série archivée : ' + r.ev.join(' | '));
     verifie(await page.locator('#c-chronologie .chrono-mois').count() >= 4, nom + ' regroupés par mois');
     r.marquants = norm(await page.textContent('#c-chronologie .chrono-marquants'));
     verifie(/Record : ta meilleure partie/.test(r.marquants) && /Ton meilleur index/.test(r.marquants), nom + ' faits marquants : ' + r.marquants);
     /* Filtres */
-    await page.click('[data-a="chrono-type"][data-v="practice"]');
-    verifie(await page.locator('#c-chronologie .chrono-ev').count() === 1, nom + ' filtre practice');
+    verifie(await page.locator('[data-a="chrono-type"][data-v="practice"]').count() === 0, nom + ' plus de filtre practice');
     await page.click('[data-a="chrono-type"][data-v="note"]');
     r.note = norm(await page.textContent('#c-chronologie .chrono-ev'));
     verifie(/Golf du Lac/.test(r.note) && /« Beaucoup de vent »/.test(r.note), nom + ' filtre notes, note visible : ' + r.note);
     await page.click('[data-a="chrono-type"][data-v="tous"]'); await page.click('[data-a="chrono-periode"][data-v="30"]');
-    verifie(await page.locator('#c-chronologie .chrono-ev').count() === 2, nom + ' filtre 30 jours : ' + await page.locator('#c-chronologie .chrono-ev').count());
+    verifie(await page.locator('#c-chronologie .chrono-ev').count() === 1, nom + ' filtre 30 jours : ' + await page.locator('#c-chronologie .chrono-ev').count());
     await page.click('[data-a="chrono-periode"][data-v="tout"]'); await page.selectOption('#chrono-parcours', 'p2');
     verifie(await page.locator('#c-chronologie .chrono-ev').count() === 1, nom + ' filtre parcours');
     await page.selectOption('#chrono-parcours', '');
@@ -57,9 +56,6 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     /* Détail : partie → carte de score ; série → fiche du club */
     await page.click('#c-chronologie .chrono-ev.type-partie .ligne'); await page.waitForSelector('#feuille .carte-score');
     await page.keyboard.press('Escape'); await page.waitForSelector('#feuille', { state: 'detached' });
-    await page.click('#c-chronologie .chrono-ev.type-practice .ligne'); await page.waitForSelector('#feuille.sac-fiche');
-    verifie(/Fer 7/.test(norm(await page.textContent('#feuille h2'))), nom + ' série → fiche du fer 7');
-    await page.keyboard.press('Escape');
     /* Rien d'ajouté à la sauvegarde par la chronologie */
     const apres = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), CLE);
     verifie(!('chronologie' in apres) && !('chrono' in apres) && !JSON.stringify(apres).includes('"marquant"'), nom + ' aucune donnée dupliquée dans la sauvegarde');

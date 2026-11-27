@@ -273,15 +273,13 @@
      débloque ; la carte disparaît dès trois parties complètes (mesures et index restent proposés ailleurs). */
   function premiersPasHTML() {
     var parties = etat.parties, completes = tableauStats(partiesAnalyse()).parPartie.length;
-    var mesure = (etat.carnet.series || []).length > 0 || Object.keys(etat.carnet.references || {}).length > 0 || Object.keys(etat.carnet.clubs || {}).some(function (k) { return (etat.carnet.clubs[k] || []).length; });
-    var idx = indexDeclare(etat.profil) != null;
+        var idx = indexDeclare(etat.profil) != null;
     var E = [
       { ok: parties.length > 0, t: "Noter une première partie", fait: "Ta première partie est notée : tes indicateurs sont calculés.", a: "partie-rapide", b: "Nouvelle partie" },
-      { ok: mesure, t: "Mesurer un club au practice", fait: "Tes premières distances sont dans Mon sac.", a: "serie-ouvrir", b: "Mesurer une série" },
       { ok: completes >= 3, t: "Trois parties complètes pour voir tes tendances", fait: "Tendances et enseignements sont disponibles.", av: Math.min(completes, 3) + "/3", a: parties.length ? "partie-rapide" : "", b: "Nouvelle partie" },
       { ok: idx, t: "Indiquer ton index (facultatif)", fait: "Ton index sert aux coups reçus et aux comparaisons.", a: "aller-a", v: "profil", s: "objectif-index", b: "Indiquer mon index" }];
     /* La carte s'efface dès trois parties complètes : mesures et index restent proposés ailleurs (Mon sac, profil). */
-    if (E[0].ok && E[2].ok) return '';
+    if (E[0].ok && E[1].ok) return '';
     return '<section class="bloc premiers-pas" id="premiers-pas"><h2>Premiers pas</h2><ol class="pp-etapes">' + E.map(function (x) {
       return '<li class="' + (x.ok ? "fait" : "") + '"><span class="pp-coche" aria-hidden="true">' + (x.ok ? "✓" : "") + '</span><span class="pp-quoi"><b>' + t(x.t) + (x.av && !x.ok ? " · " + x.av : "") + '</b>' +
         (x.ok ? '<small>' + t(x.fait) + '</small>' : '') + '</span>' + (!x.ok && x.a ? '<button class="btn" type="button" data-a="' + x.a + '"' + (x.v ? ' data-v="' + x.v + '"' : '') + (x.s ? ' data-s="' + x.s + '"' : '') + '>' + t(x.b) + '</button>' : '') +
@@ -298,7 +296,6 @@
     /* Bloc 5 : actions rapides. */
     h += '<section class="bloc"><h2>Actions rapides</h2><div class="acces-rapides">' +
       '<button class="btn principal" type="button" data-a="' + (pt ? "pt-reprendre" : "partie-rapide") + '">' + icone("drapeau") + t(pt ? " Reprendre ma partie" : " Nouvelle partie") + '</button>' +
-      '<button class="btn" type="button" data-a="serie-ouvrir">' + icone("sac") + ' Mesurer une série au practice</button>' +
       '<button class="btn" type="button" data-a="onglet" data-v="bilan">' + icone("stats") + ' Explorer mes statistiques</button>' +
       '<button class="btn" type="button" data-a="onglet" data-v="journal">Mes parties</button></div>' +
       '<button class="lien" type="button" data-a="onglet" data-v="practice">' + t("Coaching (facultatif) : programme et exercices") + '</button></section>';

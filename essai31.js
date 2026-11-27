@@ -58,7 +58,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(/Golf des Essais/.test(r.derniere) && /Meilleur trou : le 4 \(−1\) · plus coûteux : le 7 \(\+2\)/.test(r.derniere) && /que ta moyenne|dans ta moyenne/.test(r.derniere), nom + ' dernière partie : ' + r.derniere);
     /* Actions rapides */
     r.actions = await page.$$eval('#vue .acces-rapides button', l => l.map(b => b.textContent.trim()).join(' | '));
-    verifie(/^Nouvelle partie \| Mesurer une série au practice \| Explorer mes statistiques \| Mes parties$/.test(r.actions), nom + ' actions : ' + r.actions);
+    verifie(/^Nouvelle partie \| Explorer mes statistiques \| Mes parties$/.test(r.actions), nom + ' actions : ' + r.actions);
     verifie(await largeur() <= w, nom + ' Mon jeu sans débordement (' + await largeur() + ')');
     await page.screenshot({ path: `${D}/${nom}-rempli.png`, fullPage: true });
     /* Clic sur un indicateur : l'analyse correspondante */

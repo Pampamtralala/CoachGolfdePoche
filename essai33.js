@@ -50,14 +50,11 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.waitForSelector('#feuille.sac-fiche');
     r.fiche = await page.$$eval('#feuille .fiche-club-synthese .kpi', l => l.map(x => x.querySelector('.kpi-t').textContent.replace(/\s+/g, ' ').trim() + ' = ' + x.querySelector('.kpi-v').textContent.replace(/\s+/g, ' ').trim()));
     verifie(r.fiche[0] === 'Distance observée Inconnu = –' && r.fiche[1] === 'Référence Référence = –' && r.fiche[2] === 'Mesures héritées Héritée = 140 m', nom + ' fiche fer 7 : ' + r.fiche.join(' | '));
-    r.series = await page.$$eval('#feuille .fiche-series li', l => l.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
-    verifie(r.series.length === 2 && /140 m/.test(r.series[0]) && /134 m/.test(r.series[1]), nom + ' évolution des séries (récente d\'abord) : ' + r.series.join(' | '));
-    verifie(await page.locator('#feuille .fiche-club-synthese [data-a="serie-ouvrir"][data-id="f7"]').count() === 1, nom + ' série en un toucher depuis la fiche');
-    verifie(await page.locator('#feuille [data-a="serie-ouvrir"][data-id="f7"]').count() === 1, nom + ' un seul bouton de série');
+    verifie(await page.locator('#feuille .fiche-series, #feuille [data-a="serie-ouvrir"]').count() === 0, nom + ' plus d\'évolution des séries ni de bouton de série (V4-03)');
     await page.screenshot({ path: `${D}/${nom}-fiche.png` });
-    await page.click('#feuille .fiche-club-synthese [data-a="serie-ouvrir"]');
-    await page.waitForTimeout(100);
-    verifie(await page.locator('#feuille').count() === 1 && /f7|Fer 7/i.test(norm(await page.textContent('#feuille'))), nom + ' la série s\'ouvre sur le fer 7');
+    await page.keyboard.press('Escape'); await page.waitForSelector('#feuille', { state: 'detached' });
+    r.archive = norm(await page.textContent('#c-historique summary'));
+    verifie(/Séries de practice archivées \(2\)/.test(r.archive), nom + ' séries archivées consultables : ' + r.archive);
     await ctx.close();
   }
   await browser.close();

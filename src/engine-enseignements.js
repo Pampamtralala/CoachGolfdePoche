@@ -124,7 +124,7 @@ function enseignements(parties, ctx) {
   var enrichir = [];
   if (R.score.statut === "insuffisant") enrichir.push({ id: "score", titre: "Encore quelques parties complètes pour voir ta tendance", action: { a: "partie-rapide", lib: "Nouvelle partie" } });
   if (R.mej.statut === "insuffisant" && l.length >= 3) enrichir.push({ id: "mej", titre: "Renseigne tes mises en jeu", action: null });
-  if (R.distance.statut === "insuffisant") enrichir.push({ id: "distance", titre: "Mesure les distances de tes clubs", action: { a: "serie-ouvrir", lib: "Mesurer une série" } });
+  if (R.distance.statut === "insuffisant") enrichir.push({ id: "distance", titre: "Note la distance de tes coups pleins en partie", action: null });
   if (R.trous.statut === "insuffisant" && /aucun parcours/.test(R.trous.phrase)) enrichir.push({ id: "trous", titre: "Rattache tes parties à un parcours", action: null });
   enrichir.slice(0, 2).forEach(function (x) {
     var r = R[x.id];

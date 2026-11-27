@@ -30,7 +30,7 @@
       ligneInventaire("Distances déclarées", D.declaree, "tapées par toi") +
       ligneInventaire("Distances estimées", D.estimee, "jamais dans les moyennes") +
       ligneInventaire("Coups sans distance", D.inconnue, "") +
-      ligneInventaire("Séances de practice", I.seances, "") +
+      ligneInventaire("Séries de practice archivées", I.seances, "") +
       ligneInventaire("Cartes GPS de parcours", I.cartes, "gardées sur cet appareil") +
       '</tbody></table></div>';
     /* Distances à vérifier */

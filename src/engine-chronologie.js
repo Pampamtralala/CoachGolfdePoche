@@ -1,10 +1,10 @@
 /* Coach de golf de poche — journal chronologique (roadmap UX, UX10). Construit à la demande à partir des données
-   existantes (parties, séries de practice, historique d'index, cycles de coaching, défis) : rien n'est copié dans
+   existantes (parties, séries de practice si on les fournit — l'appli ne le fait plus depuis V4-03 —, historique d'index, cycles de coaching, défis) : rien n'est copié dans
    la sauvegarde. Chaque événement garde de quoi ouvrir son détail. Faits marquants : record de score (partie la
    mieux jouée, au moins 3 parties complètes avant) et meilleur index déclaré. */
 
 var TYPES_CHRONO = [
-  { id: "tous", lib: "Tout" }, { id: "partie", lib: "Parties" }, { id: "practice", lib: "Practice" },
+  { id: "tous", lib: "Tout" }, { id: "partie", lib: "Parties" },
   { id: "index", lib: "Index" }, { id: "entrainement", lib: "Entraînement" }, { id: "note", lib: "Notes" }
 ];
 var MIN_RECORD_CHRONO = 3;
