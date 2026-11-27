@@ -82,7 +82,7 @@ function partieType(graine, pars) {
     await vue('02-sac-f7');
     await toucher('f7'); await page.waitForSelector('#feuille .sac-ellipse');
     r.infoF7 = await page.$eval('#feuille .disp-chiffres', x => x.textContent.replace(/\s+/g, ' ').trim());
-    verifie(/Fiable à 90 % \d+ m/.test(r.infoF7), nom + ' distance fiable à 90 % dans la fiche : ' + r.infoF7);
+    verifie(/Fiable à 90 % ?\d+ m/.test(r.infoF7), nom + ' distance fiable à 90 % dans la fiche : ' + r.infoF7);
     const dsp = E.dispersion(e.carnet.clubs.f7);
     r.dispersion = await page.$eval('#feuille .disp-chiffres', x => x.textContent.replace(/\s+/g, ' ').trim());
     r.dispersionCalc = JSON.stringify(dsp);
