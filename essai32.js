@@ -70,7 +70,7 @@ const IDS = ['perf', 'mej', 'attaque', 'petit', 'putting', 'erreurs', 'sg', 'par
     verifie(await page.locator('#vue .rubriques [aria-pressed="true"][data-v="clubs"]').count() === 1, nom + ' rubrique conservée');
     /* Navigation en profondeur depuis Mon jeu : Mises en jeu */
     await page.click('#barre [data-v="accueil"]');
-    await page.click('#mj-kpi .kpi-lien:has-text("Mises en jeu")'); await page.waitForTimeout(80);
+    await page.click('#mj-kpi .kpi-lien:has-text("Départs jouables")'); await page.waitForTimeout(80);
     verifie(await page.locator('#vue .rubriques [aria-pressed="true"][data-v="mej"]').count() === 1, nom + ' Mon jeu › Mises en jeu ouvre la rubrique');
     /* Depuis la recherche : Erreurs évitables */
     await page.click('.tete [data-a="recherche"]'); await page.fill('#recherche-q', 'évitables');

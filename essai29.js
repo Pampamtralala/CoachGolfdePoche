@@ -28,29 +28,28 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.goto('file://' + __dirname + '/dist/index.html');
     await page.click('[data-a="ac-sans-index"]'); await page.click('.carnet-form button[type="submit"]');
     await page.waitForSelector('.tete');
-    /* Carnet vide : pas de bloc, pas de faux enseignement */
-    verifie(await page.locator('#c-enseignements').count() === 0, nom + ' carnet vide : pas de bloc d\'enseignements');
+    /* Carnet vide : pas de priorité, pas de faux enseignement */
+    verifie(await page.locator('#mj-priorite').count() === 0, nom + ' carnet vide : pas de priorité');
     await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-a="ens-ouvrir"]');
     r.vide = norm(await page.textContent('#feuille'));
     verifie(/Enregistre une première partie/.test(r.vide) && await page.locator('#feuille .carte-ens').count() === 0, nom + ' fiche vide : ' + r.vide.slice(0, 120));
     await page.keyboard.press('Escape');
-    /* Deux parties : seulement des données à enrichir */
+    /* Deux parties : la priorité ne peut être que d'enrichir ses données */
     await charger(page, [partie(0, {}), partie(1, {})]);
-    r.deux = await page.$$eval('#c-enseignements .carte-ens .surtitre', l => l.map(x => x.textContent));
-    verifie(r.deux.length >= 1 && r.deux.every(x => /Données à enrichir/.test(x)), nom + ' deux parties : ' + r.deux.join(' | '));
-    verifie(await page.locator('#c-enseignements .ens-fiab.insuffisant').count() === r.deux.length, nom + ' deux parties : fiabilité insuffisante affichée');
-    /* Douze parties : six mauvaises puis six bonnes */
+    r.deux = norm(await page.textContent('#mj-priorite').catch(() => ''));
+    verifie(/Données à enrichir/.test(r.deux), nom + ' deux parties : priorité = données à enrichir : ' + r.deux);
+    /* Douze parties : six mauvaises puis six bonnes — une seule priorité (vigilance, erreur ou opportunité) */
     await charger(page, Array.from({ length: 12 }, (_, i) => partie(i, { mauvais: i < 6 })));
-    r.cartes = await page.$$eval('#c-enseignements .carte-ens', l => l.map(c => c.querySelector('.surtitre').textContent.split(' · ')[0] + ' : ' + c.querySelector('h3').textContent));
-    const cats = r.cartes.map(x => x.split(' : ')[0]);
-    verifie(r.cartes.length === 3 && new Set(cats).size === 3, nom + ' Mon jeu : trois cartes de catégories distinctes : ' + r.cartes.join(' | '));
-    r.meta = await page.$$eval('#c-enseignements .ens-meta', l => l.map(x => x.textContent));
-    verifie(r.meta.every(x => /\d+ parties?/.test(x) && /(Du|Le|En) /.test(x)), nom + ' cartes : période et effectif : ' + r.meta.join(' | '));
-    verifie(await page.locator('#c-enseignements .ens-fiab').count() === 3, nom + ' cartes : fiabilité expliquée');
+    r.priorite = norm(await page.textContent('#mj-priorite'));
+    verifie(await page.locator('#mj-priorite .carte-tb').count() === 1 && /Point de vigilance|Erreur récurrente|Opportunité/.test(r.priorite), nom + ' Accueil : une priorité : ' + r.priorite);
     await page.screenshot({ path: `${D}/${nom}-accueil.png`, fullPage: true });
-    verifie(await page.evaluate(() => document.documentElement.scrollWidth) <= w, nom + ' Mon jeu sans débordement');
+    verifie(await page.evaluate(() => document.documentElement.scrollWidth) <= w, nom + ' Accueil sans débordement');
+    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-a="ens-ouvrir"]');
+    r.meta = await page.$$eval('#feuille .ens-meta', l => l.map(x => x.textContent));
+    verifie(r.meta.length > 0 && r.meta.every(x => /\d+ parties?/.test(x) && /(Du|Le|En) /.test(x)), nom + ' cartes : période et effectif : ' + r.meta.slice(0, 3).join(' | '));
+    await page.keyboard.press('Escape');
     /* Fiche complète, regroupée par catégorie */
-    await page.click('#c-enseignements [data-a="ens-ouvrir"]');
+    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-a="ens-ouvrir"]');
     r.groupes = await page.$$eval('#feuille .ens-groupe', l => l.map(x => x.textContent));
     r.total = await page.locator('#feuille .carte-ens').count();
     verifie(r.groupes.includes('Progression') && r.groupes.includes('Erreur récurrente') && r.total > 3, nom + ' fiche : ' + r.total + ' enseignements, ' + r.groupes.join(' | '));
