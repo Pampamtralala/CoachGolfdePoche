@@ -57,7 +57,6 @@
     var b = app.querySelector('[data-a="pli"][data-v="' + id + '"]'); if (b) b.focus({ preventScroll: true });
   };
   /* Aide repliée sous un intitulé. Le contenu est déjà du HTML sûr. */
-  function comment(html, titre) { return '<details class="comment"><summary>' + (titre || "Comment ça marche") + '</summary><div>' + html + '</div></details>'; }
 
   /* ---------- Avancement de la semaine et du cycle ---------- */
   function seancesSemaine(w) {
@@ -242,11 +241,9 @@
       { t: "Putts", v: nbStat(A.putts18), u: "par 18 trous", tend: C && tendanceStat(C.putts18), n: A.trous + " trous", s: "st-putting", prov: "Observé" },
       { t: "Trois-putts", v: nbStat(A.troisPutts18), u: "par 18 trous", tend: C && tendanceStat(C.troisPutts18), n: A.trous + " trous", s: "st-putting", prov: "Observé" },
       { t: "Pénalités", v: nbStat(A.penalites18), u: "coups par 18 trous", tend: C && tendanceStat(C.penalites18), n: A.trous + " trous", s: "st-erreurs", prov: "Observé" }];
-    h += '<div class="kpi-grille mj-kpis">' + cartes.map(function (x) {
-      return '<button class="kpi kpi-lien" type="button" data-a="aller-a" data-v="bilan"' + (x.s ? ' data-s="' + x.s + '"' : '') + ' aria-label="' + at(x.t + " : " + x.v + " " + x.u + ". Voir l'analyse") + '">' +
-        '<span class="kpi-t">' + t(x.t) + ' <span class="ens-prov">' + t(x.prov) + '</span></span><span class="kpi-v"><span class="main">' + t(x.v) + '</span>' + (x.tend || "") + '</span>' +
-        '<span class="kpi-u">' + t(x.u) + '</span><span class="kpi-n">' + t(x.n) + '</span>' + icone("chevron") + '</button>';
-    }).join("") + '</div><button class="lien" type="button" data-a="aller-a" data-v="bilan" data-s="qualite-donnees">' + t("Qualité de mes données") + '</button></section>';
+    h += kpisHTML(cartes.map(function (x) {
+      x.lien = { a: "aller-a", v: "bilan", s: x.s }; x.label = x.t + " : " + x.v + " " + x.u + ". Voir l'analyse"; return x;
+    }), "mj-kpis") + '<button class="lien" type="button" data-a="aller-a" data-v="bilan" data-s="qualite-donnees">' + t("Qualité de mes données") + '</button></section>';
     return h;
   }
   /* Dernière partie : score, parcours, indicateurs, faits marquants (meilleur et pire trou, écart à la moyenne). */

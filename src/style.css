@@ -238,10 +238,15 @@ details { padding-top: 6px; }
 summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--action-texte); font-weight: 700; }
 details ul { margin: 0; padding-left: 20px; font-size: 16px; }
 details li { margin-bottom: 8px; }
-.comment { padding-top: 0; margin: 2px 0 8px; }
-.comment summary { min-height: 40px; font-size: 15px; font-weight: 400; text-decoration: underline; text-underline-offset: 3px; }
-.comment > div { padding: 2px 0 2px 12px; border-left: 3px solid var(--filet-fort); font-size: 15px; color: var(--encre-2); }
-.comment > div p:last-child { margin-bottom: 4px; }
+/* V4-04 · aide à la demande : repliée, signalée par « i ». */
+.aide-pli { padding-top: 0; margin: 2px 0 8px; }
+.aide-pli summary { min-height: 40px; gap: 8px; font-size: 15px; font-weight: 400; color: var(--encre-2); }
+.aide-pli summary::-webkit-details-marker { display: none; }
+.aide-pli summary { list-style: none; }
+.ico-info { flex: none; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid currentColor; font: italic 700 12px/1 Georgia, serif; }
+.aide-pli[open] summary { color: var(--action-texte); }
+.aide-pli > div { padding: 2px 0 2px 12px; border-left: 3px solid var(--filet-fort); font-size: 15px; color: var(--encre-2); }
+.aide-pli > div p:last-child { margin-bottom: 4px; }
 .deux-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px 24px; }
 .deux-col ul { margin: 0; padding-left: 20px; }
 .deux-col li { margin-bottom: 4px; }
@@ -1287,8 +1292,13 @@ main.entree { animation: entreeVue .22s ease-out; }
 .kpi-t { margin: 0; font: 700 13px/1.2 var(--f-titre); letter-spacing: .07em; text-transform: uppercase; color: var(--encre-2); }
 .kpi-v { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
 .kpi-v .main { font: 800 30px/1 var(--f-display); color: var(--encre); letter-spacing: -.02em; }
-.kpi-u { margin: 2px 0 8px; font-size: 13px; color: var(--encre-2); }
-.kpi-x { margin: 0 0 8px; font-size: 13.5px; line-height: 1.35; }
+.kpi > span { display: block; }
+.kpi > .kpi-v { display: flex; }
+.kpi-u { margin: 2px 0 6px; font-size: 13px; color: var(--encre-2); }
+.kpi-c { margin: 0 0 6px; font-size: 13.5px; line-height: 1.35; }
+.kpi-aide { margin: 4px 0 0; }
+.kpi-aide summary { min-height: 32px; font-size: 13px; }
+.kpi-aide > div { font-size: 13.5px; }
 .kpi-r { margin: auto 0 0; padding: 6px 0 0 10px; border-left: 3px solid var(--sauge); font-size: 13.5px; line-height: 1.35; color: var(--encre); }
 .tend { padding: 2px 7px; border-radius: 999px; font: 700 12px var(--f-texte); }
 .tend.mieux { background: var(--action-fond); color: var(--bon); }
@@ -1660,9 +1670,6 @@ main.entree { animation: entreeVue .22s ease-out; }
 .mj-courbe .courbe-index { width: 100%; max-width: 260px; height: 56px; }
 .ens-prov { font: 600 12px/1.1 var(--f-texte); letter-spacing: .02em; text-transform: none; color: var(--encre-2); border: 1px solid var(--filet); border-radius: 999px; padding: 2px 6px; white-space: nowrap; }
 .kpi-lien { position: relative; width: 100%; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-.kpi-lien > span { display: block; }
-.kpi-lien .kpi-v { display: flex; }
-.kpi-lien .kpi-u, .kpi-lien .kpi-n { margin-top: 4px; font-size: .85rem; color: var(--encre-2); }
 .kpi-lien > .ico { position: absolute; right: 10px; top: 14px; width: 16px; height: 16px; color: var(--encre-2); }
 .kpi-lien .kpi-t { padding-right: 18px; }
 @media (max-width: 520px) { .mj-perf-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mj-obj { grid-column: span 2; } }
@@ -1719,3 +1726,10 @@ main.entree { animation: entreeVue .22s ease-out; }
 .jn small { font-size: 12px; }
 /* V4 S01 : distances de référence et héritées, distinctes des observées. */
 .sac-synthese .marque.ref, .sac-synthese .marque.herit { font-size: .8rem; color: var(--encre-2); font-weight: 400; }
+
+/* V4-04 · hiérarchie commune : page, section (titre + « Détail › »), donnée, contexte, aide. */
+.page-tete h1 { margin-bottom: 4px; }
+.page-sous { margin: 0 0 8px; font-size: 15px; color: var(--encre-2); }
+.section-tete { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.section-tete h2 { margin-bottom: 8px; }
+.section-tete .lien.detail { flex: none; min-height: 44px; white-space: nowrap; }

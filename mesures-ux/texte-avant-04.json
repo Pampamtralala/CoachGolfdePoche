@@ -1,0 +1,46 @@
+{
+ "date": "2026-11-27",
+ "largeur": 390,
+ "ecrans": {
+  "accueil": {
+   "caracteres": 2382,
+   "mots": 462,
+   "hauteur": 3721
+  },
+  "analyses-performance": {
+   "caracteres": 2245,
+   "mots": 459,
+   "hauteur": 3418
+  },
+  "jouer": {
+   "caracteres": 639,
+   "mots": 121,
+   "hauteur": 1288
+  },
+  "sac": {
+   "caracteres": 804,
+   "mots": 167,
+   "hauteur": 1744
+  },
+  "journal": {
+   "caracteres": 1630,
+   "mots": 408,
+   "hauteur": 2653
+  },
+  "analyses-mej": {
+   "caracteres": 2027,
+   "mots": 401,
+   "hauteur": 2698
+  },
+  "analyses-putting": {
+   "caracteres": 2686,
+   "mots": 540,
+   "hauteur": 3524
+  },
+  "analyses-comprendre": {
+   "caracteres": 827,
+   "mots": 159,
+   "hauteur": 1335
+  }
+ }
+}

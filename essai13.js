@@ -208,7 +208,7 @@ async function toucherCarte(page, dx, dy) {
     r.boutonAutour = await page.locator('[data-a="carte-autour"]').count();
     verifie(r.boutonAutour === 0, nom + ' pas de recherche « autour de moi » sans GPS');
     /* Fichier illisible, puis export sans tracés de trous */
-    await page.click('#feuille details.comment summary');
+    await page.click('#feuille details.aide-pli summary');
     await page.setInputFiles('[data-c="carte-fichier"]', { name: 'notes.json', mimeType: 'application/json', buffer: Buffer.from('pas du json') });
     await page.waitForSelector('#feuille .erreur'); r.fichierKo = await page.textContent('#feuille .erreur');
     await page.setInputFiles('[data-c="carte-fichier"]', { name: 'golf-des-essais.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(D.golfTest({ sansTraces: true }))) });

@@ -30,8 +30,9 @@
         '<td class="num">' + (fo ? t(fo.bas === fo.haut ? fo.bas + " m" : fo.bas + "–" + fo.haut + " m") : "–") + '</td>' +
         '<td class="num">' + M.n + '</td></tr>';
     }).join("");
-    return '<section class="bloc" id="c-synthese"><h2>Mes clubs</h2><p class="aide">' +
-      t("Distances des coups joués sur le parcours, jamais estimées. Une référence saisie ou une mesure héritée s'affiche à part et n'entre pas dans les moyennes. " + (alertes ? pluriel(alertes, "club") + " avec un écart anormal. " : "") + (peu ? pluriel(peu, "club") + " avec moins de " + MIN_OBS_DISTANCE + " coups mesurés." : "")) + '</p>' +
+    var etatSac = [alertes ? alertes + (alertes > 1 ? " écarts anormaux" : " écart anormal") : "", peu ? pluriel(peu, "club") + " à documenter" : ""].filter(Boolean).join(" · ");
+    return '<section class="bloc" id="c-synthese">' + sectionTeteHTML("Mes clubs", { aide: '<p>' + t("Distances des coups joués sur le parcours, jamais estimées. Une référence saisie (« réf. ») ou une mesure héritée s'affiche à part et n'entre pas dans les moyennes. Un club est à documenter sous " + MIN_OBS_DISTANCE + " coups mesurés.") + '</p>', aideTitre: "D'où viennent ces distances ?" }) +
+      (etatSac ? '<p class="aide sac-resume">' + t(etatSac + ".") + '</p>' : '') +
       '<div class="defile"><table class="carte-score sac-synthese"><thead><tr><th scope="col">Club</th><th scope="col" class="num">Distance</th><th scope="col" class="num">Plage</th><th scope="col" class="num">Coups</th></tr></thead><tbody>' +
       lignes + '</tbody></table></div><div class="ligne-btn"><button class="btn" type="button" data-a="sac-composer" data-id="sac">Composer mon sac</button></div></section>';
   }
@@ -43,9 +44,7 @@
     cases.push({ t: "Référence", v: M.reference != null ? M.reference + " m" : "–", x: M.reference != null ? "saisie par toi, pour choisir ton club" : "facultative, à saisir plus bas", prov: "Référence" });
     if (sh) cases.push({ t: "Mesures héritées", v: sh.moy + " m", x: pluriel(M.heritees.length, "mesure") + " ancienne" + (M.heritees.length > 1 ? "s" : "") + ", hors moyennes", prov: "Héritée" });
     if (dir && dir.n) cases.push({ t: "Direction", v: dir.partCentre + " % dans l'axe", x: dir.partGauche + " % à gauche · " + dir.partDroite + " % à droite, sur " + pluriel(dir.n, "coup"), prov: "Observé" });
-    var h = '<div class="fiche-club-synthese"><div class="kpi-grille">' + cases.map(function (c) {
-      return '<article class="kpi"><p class="kpi-t">' + t(c.t) + ' <span class="ens-prov">' + t(c.prov) + '</span></p><p class="kpi-v"><span class="main">' + t(c.v) + '</span></p><p class="kpi-x">' + t(c.x) + '</p></article>';
-    }).join("") + '</div>';
+    var h = '<div class="fiche-club-synthese">' + kpisHTML(cases.map(function (c) { return { t: c.t, v: c.v, ctx: c.x, prov: c.prov }; }));
     return h + '</div>';
   }
   ACTIONS["sac-fiche-club"] = function (el) { var id = el.getAttribute("data-id"); if (!CLUB[id]) return; ui.sacSel = id; ui.club = id; ouvrirSac({ sac: id }, el); };

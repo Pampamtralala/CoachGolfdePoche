@@ -131,10 +131,7 @@
       { t: "Mises en jeu", v: A.mej.part == null ? "–" : A.mej.part + " %", u: "jouables, par 4 et par 5", tend: C && tendanceStat(C.mej),
         x: A.mej.n ? A.mej.jouables + " jouables sur " + A.mej.n + " renseignées." + (A.mej.inconnues ? " " + A.mej.inconnues + " non renseignées (saisie express), non comptées." : "") : "Aucune mise en jeu renseignée : passe en saisie standard.", n: A.mej.n + " départs" },
       { t: "Greens en régulation", v: nbStat(A.gir18), u: "par 18 trous · déduit", tend: C && tendanceStat(C.gir18), x: "Déduit du score et des putts, pas observé : " + nbStat(A.partGir) + " % des trous.", n: A.trous + " trous" }];
-    h += '<div class="kpi-grille">' + cartes.map(function (x) {
-      return '<article class="kpi"><p class="kpi-t">' + t(x.t) + '</p><p class="kpi-v"><span class="main">' + t(x.v) + '</span>' + (x.tend || "") + '</p><p class="kpi-u">' + t(x.u) + '</p>' +
-        '<p class="kpi-x">' + t(x.x) + '</p><p class="kpi-n">' + t(x.n) + '</p></article>';
-    }).join("") + '</div>';
+    h += kpisHTML(cartes.map(function (x) { return { t: x.t, v: x.v, u: x.u, tend: x.tend, n: x.n, aide: x.x || null, aideTitre: "Détail" }; }));
     h += grapheScoresHTML(A.parPartie);
     h += repartitionsStatsHTML(l, A);
     /* Évolution de l'index : toute l'histoire, quels que soient les filtres. */
