@@ -20,7 +20,7 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | --- | --- | --- | --- | --- | --- |
 | 01 | Audit de l'existant | P0 | — | **En revue** | `ux4/01-audit` |
 | 02 | Retirer le sac 3D | P0 | 01 | **En revue** | `ux4/02-sac3d` |
-| 03 | Retirer les séries de practice (archivage des données) | P0 | 01, S01 | À faire | — |
+| 03 | Retirer les séries de practice (archivage des données) | P0 | 01, S01 | **En revue** | `ux4/03-series` |
 | 04 | Unifier les composants visuels (titre / section / KPI / contexte / aide) | P0 | 01 | À faire | — |
 | 05 | Arborescence et navigation (Accueil · Performance · Jouer · Sac · Activité) | P0 | 02–04 | À faire | — |
 | 06 | Refaire l'accueil | P0 | 04, 05 | À faire | — |
@@ -186,3 +186,23 @@ Confirmés par l'utilisateur le 27/11 (« OK pour les 3 ») ; PR #2 fermée.
 - Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts. Essais adaptés : 3, 6, 7, 8, 9, 10, 11, 19, 33, 39
   (accès aux fiches par le tableau ; les infos de la bulle 3D sont vérifiées dans la fiche : fourchette, « fiable à 90 % »).
 - Poids : `index.html` passe de 1354 à 1328 Ko.
+
+### 03 — Retirer les séries de practice (27/11/2026)
+
+- Objectif : plus aucune saisie ni analyse de séries, sans perdre une seule donnée.
+- Supprimé : `src/ui-series.js` (fiche de série, actions `serie-*`) et tous ses accès : raccourcis de Mon sac et du
+  programme, bouton du tableau et de la fiche club, « Évolution de tes séries », appel en bas du programme, action rapide
+  et étape « Mesurer un club au practice » de Mon jeu, entrée de la recherche, action de l'enseignement « distances »
+  (devenu « Note la distance de tes coups pleins en partie », sans bouton), filtre « Practice » de la chronologie.
+- Archivage : `carnet.series` reste dans la sauvegarde et l'export, assaini comme avant. Il n'alimente plus ni
+  l'ellipse et la direction (`pointsClub` : coups du parcours seulement), ni la qualité des observations, ni la
+  chronologie, ni l'historique du coaching. Mon sac affiche un bloc replié « Séries de practice archivées (n) » (ancre
+  `#c-historique` conservée, aussi trouvable par la recherche) ; Mes données parle de « Séries de practice archivées ».
+- Conservé : le nuage de dispersion (déplacé dans `ui-sac.js`, il sert à la fiche quand l'ellipse manque), les défis de
+  putting « en série », le moteur `chronologie` / `observationsGolf` (testés avec des séries en entrée).
+- Vérifications : `npm test` (933 noms, 0 doublon), `test-startup.js`, essais 3 à 39 verts. Essais adaptés : 10
+  (mesures héritées + série archivée injectées), 11 (onze coups de partie avec direction ; une série archivée ne compte
+  plus), 31, 33, 35, 37. `essai10` signale désormais ses échecs par son code de sortie.
+- Note de méthode : le script de lots lit maintenant la liste `ko` de chaque essai (et pas seulement le code de
+  sortie, que plusieurs essais ne positionnent pas) ; c'est ce qui a révélé l'essai 3 à corriger depuis S01.
+- Poids : `index.html` passe de 1328 à 1314 Ko.

@@ -7,7 +7,7 @@
   var NB_CHRONO = 30;
   function etatChrono() { return ui.chrono || (ui.chrono = { type: "tous", periode: "tout", parcours: "", n: NB_CHRONO }); }
   function evenementsChrono() {
-    return chronologie({ parties: etat.parties, series: etat.carnet.series || [], indexHist: etat.indexHist || [], cycles: etat.historique || [],
+    return chronologie({ parties: etat.parties, series: [], /* V4-03 : séries archivées, hors activité */ indexHist: etat.indexHist || [], cycles: etat.historique || [],
       defis: DEFIS.map(function (d) { return { id: d.id, t: d.t, hist: etatDefi(d.id).hist || [] }; }),
       nomParcours: function (id) { var pc = parcoursDe(id); return pc ? pc.nom : "Parcours supprimé"; }, nomClub: nomClub });
   }
@@ -30,7 +30,7 @@
     var C = etatChrono(), tout = evenementsChrono(), B = bornesChrono(C.periode);
     var l = filtrerChronologie(tout, { type: C.type, debut: B.debut, fin: B.fin, parcours: C.parcours });
     var h = '<section class="bloc" id="c-chronologie"><h2>Chronologie</h2>';
-    if (!tout.length) return h + '<p class="aide">' + t("Rien pour l'instant : tes parties, séries de practice, mises à jour d'index et défis apparaîtront ici, du plus récent au plus ancien.") + '</p></section>';
+    if (!tout.length) return h + '<p class="aide">' + t("Rien pour l'instant : tes parties, mises à jour d'index et défis apparaîtront ici, du plus récent au plus ancien.") + '</p></section>';
     var marq = tout.filter(function (e) { return e.marquant; }).slice(0, 3);
     if (marq.length) h += '<div class="chrono-marquants"><p class="titre-liste">' + t("Faits marquants") + '</p><ul class="constats">' + marq.map(function (e) {
       return '<li><button class="lien" type="button" ' + lienChrono(e) + '>' + t(e.marquant) + '</button> ' + t("(" + dateCourte(e.d) + " · " + e.titre + ")") + '</li>';

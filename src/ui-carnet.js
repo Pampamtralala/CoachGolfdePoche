@@ -105,7 +105,8 @@
     e.carnet.wedgesPerso = liste(c.wedgesPerso).filter(function (v) { if (!loftValide(v) || vus[Math.round(v)]) return false; vus[Math.round(v)] = true; return true; })
       .map(Math.round).sort(function (x, y) { return x - y; }).slice(0, 8);
     definirWedges(e.carnet.wedgesPerso, e.carnet.lofts);
-    /* Séries de balles au practice : un club, une date, les distances et, balle par balle, l'écart latéral (− à gauche). */
+    /* Séries de balles au practice (archivées depuis V4-03 : gardées et exportables, hors analyses) : un club, une date,
+       les distances et, balle par balle, l'écart latéral (− à gauche). */
     e.carnet.series = liste(c.series).map(function (x) {
       if (!x || typeof x !== "object" || typeof x.c !== "string" || !a(CLUB, x.c)) return null;
       var lb = liste(x.l), v = [], l = [];
@@ -252,11 +253,11 @@
       partiesHTML() + parcoursListeHTML() + carteAppelHTML();
   };
   VUES.sac = function () {
-    return '<section class="bloc premier"><p class="surtitre">Mon sac</p><h1>Sac et distances</h1><div class="raccourcis"><button class="btn" type="button" data-a="serie-ouvrir">Série de balles</button><button class="btn" type="button" data-a="aller-a" data-v="sac" data-s="c-historique">Historique des mesures</button></div></section>' +
-      /* UX08 : la synthèse chiffrée d'abord ; le sac en 3D reste juste en dessous, comme vue alternative. */
+    return '<section class="bloc premier"><p class="surtitre">Mon sac</p><h1>Sac et distances</h1></section>' +
+      /* UX08 : la synthèse chiffrée d'abord (V4 : sac 3D et séries retirés). */
       syntheseSacHTML() +
       '<section class="bloc" id="c-distances"><h2>' + t("Étagement") + '</h2>' + sacHTML() + distancesHTML() + '</section>' +
-      '<section class="bloc" id="c-wedges"><h2>Ma matrice de wedges</h2>' + wedgesHTML() + '</section>' + serieAppelHTML() + historiqueMesuresHTML();
+      '<section class="bloc" id="c-wedges"><h2>Ma matrice de wedges</h2>' + wedgesHTML() + '</section>' + archiveSeriesHTML();
   };
 
   /* Régularité : la dispersion des balles de chaque club, quand au moins un club a plusieurs mesures. */

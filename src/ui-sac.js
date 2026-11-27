@@ -98,6 +98,35 @@
     return '<div class="sac-bilan" id="sac-bilan"><h3>Écarts entre clubs voisins</h3>' + sacBilanHTML(analyseSac()) + '</div>';
   }
 
+  /* ---------- Dispersion des coups observés (repris de l'ancienne série, V4-03) ---------- */
+  /* Nuage de balles sur une ligne : la bande d'un écart-type autour de la moyenne, la moyenne, la distance fiable à 90 %. */
+  function nuageHTML(l, dsp, titre) {
+    if (!l.length) return "";
+    var mn = Math.min.apply(null, l), mx = Math.max.apply(null, l), pad = Math.max(4, Math.round((mx - mn) * 0.12));
+    var lo = mn - pad, hi = mx + pad, X = function (v) { return 14 + (v - lo) / (hi - lo) * 292; };
+    var h = '<svg class="nuage" viewBox="0 0 320 86" role="img" aria-label="' + at(titre || ("Dispersion de " + pluriel(l.length, "balle"))) + '">', A = 40;
+    if (dsp) {
+      var xf = X(dsp.p10);
+      h += '<rect class="n-bande" x="' + X(dsp.moy - dsp.sigma).toFixed(1) + '" y="' + (A - 17) + '" width="' + Math.max(2, X(dsp.moy + dsp.sigma) - X(dsp.moy - dsp.sigma)).toFixed(1) + '" height="34" rx="6"/>' +
+        '<line class="n-fiable" x1="' + xf.toFixed(1) + '" x2="' + xf.toFixed(1) + '" y1="' + (A - 23) + '" y2="' + (A + 23) + '"/>' +
+        '<text class="n-lib" x="' + Math.max(38, Math.min(282, xf)).toFixed(1) + '" y="11" text-anchor="middle">' + t("90 % · " + dsp.p10 + " m") + '</text>' +
+        '<line class="n-moy" x1="' + X(dsp.moy).toFixed(1) + '" x2="' + X(dsp.moy).toFixed(1) + '" y1="' + (A - 19) + '" y2="' + (A + 19) + '"/>';
+    }
+    h += '<line class="n-axe" x1="10" x2="310" y1="' + A + '" y2="' + A + '"/>';
+    l.forEach(function (v, i) { h += '<circle class="n-balle" cx="' + X(v).toFixed(1) + '" cy="' + (A + ((i * 7) % 5 - 2) * 4) + '" r="5"/>'; });
+    return h + '<text class="n-lib" x="14" y="80">' + lo + ' m</text><text class="n-lib" x="306" y="80" text-anchor="end">' + hi + ' m</text></svg>';
+  }
+  /* Bloc pour la fiche d'un club : nuage et chiffres, dès trois mesures. */
+  function dispersionClubHTML(l) {
+    var dsp = dispersion(l);
+    if (!dsp) return "";
+    return '<div class="sac-dispersion"><h3>Dispersion</h3>' + nuageHTML(l, dsp) +
+      '<dl class="disp-chiffres"><div><dt>Fiable à 90 %</dt><dd><span class="main">' + dsp.p10 + '</span> m</dd></div>' +
+      '<div><dt>Dispersion</dt><dd><span class="main">±' + dsp.sigma + '</span> m</dd></div>' +
+      '<div><dt>Moyenne</dt><dd><span class="main">' + dsp.moy + '</span> m</dd></div></dl>' +
+      '<p class="aide">' + t("Choisis ce club quand l'obstacle est avant " + dsp.p10 + " m : neuf balles sur dix le passent.") + '</p></div>';
+  }
+
   /* ---------- Fiche d'un club ---------- */
   function sacVoisinsHTML(id) {
     var an = analyseSac(), clubs = clubsVus();
@@ -153,7 +182,7 @@
     if (nCoups) h += '<button class="lien voir-profil" type="button" data-a="st-voir-club" data-v="' + at(id) + '">' + t("Voir le profil de ce club : direction, résultat, tendance (" + pluriel(nCoups, "coup") + ")") + '</button>';
     if (parc.length) h += '<p class="sac-parcours">' + t("Sur le parcours : " + parc.slice(-8).join(", ") + " m" + (parc.length > 8 ? " (" + parc.length + " coups)" : "") + ".") + '</p>';
     /* V4 S01 : les mesures héritées restent visibles, à part, et peuvent être retirées une à une ; plus aucune saisie
-       balle par balle (les séries de practice disparaissent avec le chantier 03). */
+       balle par balle ; les séries de practice sont archivées (V4-03). */
     if (mes.length) h += '<details class="sac-balles"' + (ui.sacBalles ? " open" : "") + '><summary>' + t("Mesures héritées (" + mes.length + ")") + '</summary>' +
       '<p class="aide">' + t("Anciennes saisies et séries de practice, gardées et exportables, mais hors de tes moyennes observées : leur provenance n'est plus connue.") + '</p>' +
       (mes.length ? '<ul class="releves">' + mes.map(function (v, i) { return '<li><button class="puce neutre" type="button" data-a="sac-balle-suppr" data-v="' + i + '" aria-label="' + at("Retirer la mesure héritée de " + v + " m") + '">' + v + ' m <span aria-hidden="true">×</span></button></li>'; }).join("") + '</ul>' : '') + '</details>';

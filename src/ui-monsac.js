@@ -9,8 +9,7 @@
      Héritées : anciennes saisies et séries mêlées (hors moyennes). */
   function mesuresClubParSource(id) {
     var obs = mesuresObservees()[id] || [], her = etat.carnet.clubs[id] || [], ref = referencesClubs()[id];
-    var series = (etat.carnet.series || []).filter(function (s) { return s.c === id; });
-    return { observees: obs, heritees: her, reference: ref != null ? ref : null, n: obs.length, series: series };
+    return { observees: obs, heritees: her, reference: ref != null ? ref : null, n: obs.length };
   }
   /* Note courte d'un écart anormal, pour le tableau (la phrase complète est dans la fiche du club). */
   function noteEcartSac(x, id) {
@@ -34,9 +33,9 @@
     return '<section class="bloc" id="c-synthese"><h2>Mes clubs</h2><p class="aide">' +
       t("Distances des coups joués sur le parcours, jamais estimées. Une référence saisie ou une mesure héritée s'affiche à part et n'entre pas dans les moyennes. " + (alertes ? pluriel(alertes, "club") + " avec un écart anormal. " : "") + (peu ? pluriel(peu, "club") + " avec moins de " + MIN_OBS_DISTANCE + " coups mesurés." : "")) + '</p>' +
       '<div class="defile"><table class="carte-score sac-synthese"><thead><tr><th scope="col">Club</th><th scope="col" class="num">Distance</th><th scope="col" class="num">Plage</th><th scope="col" class="num">Coups</th></tr></thead><tbody>' +
-      lignes + '</tbody></table></div><div class="ligne-btn"><button class="btn" type="button" data-a="serie-ouvrir">Mesurer une série</button><button class="btn" type="button" data-a="sac-composer" data-id="sac">Composer mon sac</button></div></section>';
+      lignes + '</tbody></table></div><div class="ligne-btn"><button class="btn" type="button" data-a="sac-composer" data-id="sac">Composer mon sac</button></div></section>';
   }
-  /* En tête de la fiche d'un club : ce que disent ses données, et la série en un toucher. */
+  /* En tête de la fiche d'un club : ce que disent ses données, par provenance. */
   function ficheClubSyntheseHTML(id) {
     var M = mesuresClubParSource(id), st = statsClub(M.observees), fo = M.n >= MIN_OBS_DISTANCE ? fourchette(M.observees) : null, sh = statsClub(M.heritees);
     var P = profilClub(partiesAnalyse(), id), D = P.distance, dir = P.direction, cases = [];
@@ -47,12 +46,6 @@
     var h = '<div class="fiche-club-synthese"><div class="kpi-grille">' + cases.map(function (c) {
       return '<article class="kpi"><p class="kpi-t">' + t(c.t) + ' <span class="ens-prov">' + t(c.prov) + '</span></p><p class="kpi-v"><span class="main">' + t(c.v) + '</span></p><p class="kpi-x">' + t(c.x) + '</p></article>';
     }).join("") + '</div>';
-    if (M.series.length) h += '<p class="titre-liste">' + t("Évolution de tes séries") + '</p><ul class="historique fiche-series">' + M.series.slice(-5).reverse().map(function (s) {
-      var f = fourchette(s.v), m = statsClub(s.v);
-      return '<li><span class="hist-date">' + t(dateCourte(s.d)) + '</span><span><b>' + t(m ? m.moy + " m" : "–") + '</b><small>' + t(pluriel(s.v.length, "balle") + (f && f.bas !== f.haut ? ", " + f.bas + "–" + f.haut + " m" : "")) + '</small></span></li>';
-    }).join("") + '</ul>';
-    var ens = etat.parties.length ? calculEns().liste.filter(function (e) { return e.id === "club" && e.titre.toLowerCase().indexOf(nomCourt(CLUB[id]).toLowerCase()) >= 0; }) : [];
-    if (ens.length) h += ens.map(carteEnsHTML).join("");
-    return h + '<p class="sac-serie"><button class="btn principal large" type="button" data-a="serie-ouvrir" data-id="' + id + '">Faire une série de balles avec ce club</button></p></div>';
+    return h + '</div>';
   }
   ACTIONS["sac-fiche-club"] = function (el) { var id = el.getAttribute("data-id"); if (!CLUB[id]) return; ui.sacSel = id; ui.club = id; ouvrirSac({ sac: id }, el); };

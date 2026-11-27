@@ -56,36 +56,24 @@ function partiePave(g, pars) {
     Object.assign(e.carnet.clubs, { dr: [215, 220, 205, 225, 210], b3: [195, 200], b5: [182, 186], f4: [168], f5: [160, 163], f6: [152, 155, 158, 150, 157], f8: [134, 136, 131, 138, 135], f9: [124, 122], pw: [110, 112], sw: [86, 90, 88] });
     e.maj += 1; await ecrire(e); await recharger();
 
-    /* ---- 1. Série au fer 7 : la direction se pose sur l'ellipse ---- */
-    await menuAction(page, 'serie-ouvrir'); await page.waitForSelector('#feuille .serie-saisie');
-    await page.click('#feuille [data-a="serie-club"][data-id="f7"]');
-    r.ellipseVide = await page.locator('#serie-poseur .ell-zone').count();
-    const balles = [[4, 2], [-6, -3], [9, 1], [2, 4], [-3, -1], [12, 5], [0, -6], [6, 3], [-8, 0], [3, 2]];
-    let premiere = null;
-    for (const [l, dd] of balles) {
-      await poser('serie', l, dd);
-      if (premiere == null) premiere = { val: await page.inputValue('#serie-val'), lib: await page.textContent('#serie-poseur .ell-reglage b') };
-      await page.click('#feuille .serie-saisie button[type="submit"]');
-    }
-    r.premiereBalle = premiere;
-    verifie(/m à droite/.test(premiere.lib) && +premiere.val > 100, nom + ' le point remplit la direction et la distance : ' + JSON.stringify(premiere));
-    /* Une balle tapée au clavier, direction réglée aux boutons */
-    await page.fill('#serie-val', '120'); await page.click('#serie-poseur [data-a="ell-l"][data-d="-1"]'); await page.click('#serie-poseur [data-a="ell-l"][data-d="-1"]');
-    r.reglageBoutons = await page.textContent('#serie-poseur .ell-reglage b');
-    await page.click('#feuille .serie-saisie button[type="submit"]');
-    r.pointsSerie = await page.$$eval('#serie-poseur .ell-balle', l => l.length);
-    await page.waitForTimeout(100); await vue('01-serie-ellipse');
-    await page.click('#feuille [data-a="serie-fin"]');
+    /* ---- 1. V4-03 : plus de série au practice. Onze coups de fer 7 joués en partie, avec leur direction ;
+       une ancienne série archivée (avec directions) ne doit plus compter. ---- */
+    const balles = [[4, 2], [-6, -3], [9, 1], [2, 4], [-3, -1], [12, 5], [0, -6], [6, 3], [-8, 0], [3, 2], [-2, -5]];
+    const dists = balles.map(([l, dd]) => 140 + dd), ls = balles.map(([l]) => l);
+    const pars11 = [4, 4, 3, 5, 4, 4, 3, 4, 5, 4, 4, 3, 4, 5, 4, 3, 4, 5];
     e = await lire();
-    const se = e.carnet.series[0];
-    r.serie = JSON.stringify({ v: se.v, l: se.l });
-    verifie(se.v.length === 11 && se.l.length === 11 && se.l[10] === -2 && se.l.filter(x => x != null).length === 11, nom + ' série avec directions : ' + r.serie);
-    verifie(Math.abs(se.l[0] - 4) <= 1, nom + ' direction de la première balle ≈ 4 m à droite : ' + se.l[0]);
+    e.parties = [{ d: new Date(Date.now() - 2 * 864e5).toISOString(), o: 0,
+      trous: pars11.map(par => [1, 0, 2, 0, par + 1, par, 0, par === 3 ? 0 : 1, 2, 0, 0]),
+      coups: pars11.map((par, k) => k < balles.length ? [{ c: 'f7', d: dists[k], l: ls[k] }] : []) }];
+    e.carnet.series = [{ d: new Date(Date.now() - 9 * 864e5).toISOString(), c: 'f7', v: [100, 102, 98], l: [30, 30, 30] }];
+    e.maj += 1; await ecrire(e); await recharger();
+    verifie(await page.locator('[data-a="serie-ouvrir"]').count() === 0, nom + ' plus de série de balles');
+    const se = { l: ls };
 
     /* ---- 2. Sac : fourchette et ellipse, points touchables ---- */
     await allerVue(page, 'sac');
     const toucher = async id => { await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${id}"]`); };
-    const fo = S.fourchette(e.carnet.clubs.f7);
+    const fo = S.fourchette(dists);
     await vue('02-sac-fourchette');
     await toucher('f7'); await page.waitForSelector('#feuille .sac-ellipse');
     r.bulle = await page.$eval('#feuille .ell-fourchette', x => x.textContent);
@@ -93,13 +81,13 @@ function partiePave(g, pars) {
     r.fourchetteFiche = await page.textContent('#feuille .ell-fourchette');
     r.pointsFiche = await page.$$eval('#feuille .sac-ellipse .ell-pt', l => l.length);
     verifie(r.pointsFiche === 11, nom + ' onze points sur l\'ellipse : ' + r.pointsFiche);
-    const el = S.ellipseClub(e.carnet.clubs.f7, se.l, 18);
+    const el = S.ellipseClub(dists, se.l, 18);
     r.ellipseCalc = JSON.stringify({ d: el.d, cx: el.cx, rx: el.rx, ry: el.ry, estL: el.estimeeL });
     r.chiffres = await page.$eval('#feuille .sac-ellipse .disp-chiffres', x => x.textContent.replace(/\s+/g, ' ').trim());
     verifie(r.chiffres.includes('±' + el.rx), nom + ' latéral affiché = calculé (±' + el.rx + ') : ' + r.chiffres);
     await page.click('#feuille .sac-ellipse .ell-pt[data-v="0"]', { force: true });
     r.legendePoint = await page.textContent('#ell-legende');
-    verifie(/Balle de série/.test(r.legendePoint) && /droite/.test(r.legendePoint), nom + ' point touché : ' + r.legendePoint);
+    verifie(/Coup du trou 1/.test(r.legendePoint) && /droite/.test(r.legendePoint), nom + ' point touché : ' + r.legendePoint);
     await page.evaluate(() => document.querySelector('#feuille .sac-ellipse').scrollIntoView({ block: 'start' })); await page.waitForTimeout(100);
     await vue('03-fiche-ellipse');
     await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' });

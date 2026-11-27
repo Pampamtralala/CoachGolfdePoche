@@ -4,13 +4,9 @@
      ============================================================ */
 
   /* ---------- Données d'un club ---------- */
-  /* Coups notés avec une direction : balles des séries et coups pleins du parcours. */
+  /* Coups pleins du parcours notés avec une direction (V4-03 : les séries archivées n'y entrent plus). */
   function pointsClub(id) {
     var l = [];
-    (etat.carnet.series || []).forEach(function (s) {
-      if (s.c !== id || !s.l) return;
-      s.v.forEach(function (d, i) { if (s.l[i] != null) l.push({ d: d, l: s.l[i], src: "serie", date: s.d }); });
-    });
     var pts = etat.partie ? partiesAnalyse().concat([etat.partie]) : partiesAnalyse();
     pts.forEach(function (pt) {
       (pt.coups || []).forEach(function (cs, k) {
@@ -77,8 +73,7 @@
   }
 
   /* ---------- Poser un point sur l'ellipse : où la balle s'est arrêtée ----------
-     Coup en partie : le point ne donne que la direction (gauche ou droite), la distance se tape à part.
-     Série au practice : le point donne aussi la distance si elle n'a pas été tapée. */
+     Coup en partie : le point ne donne que la direction (gauche ou droite), la distance se tape à part. */
   function poseurHTML(o) {
     var e = o.ell, pts = (o.pts || []).map(function (p) { return { x: p.l, y: e ? p.d - e.d : 0, src: p.src }; });
     var sc = echelleEll(e, pts), nv = o.l != null ? { x: o.l, y: o.dd || 0 } : null;
@@ -99,7 +94,7 @@
     poserPoint(el.getAttribute("data-ctx"), l, Math.max(-ry, Math.min(ry, dd)), parseInt(el.getAttribute("data-ref"), 10));
   };
   ACTIONS["ell-l"] = function (el) {
-    var ctx = el.getAttribute("data-ctx"), d = el.getAttribute("data-d"), cur = ctx === "coup" ? (ui.pvCoup || {}).l : (ui.serie || {}).lp;
+    var ctx = el.getAttribute("data-ctx"), d = el.getAttribute("data-d"), cur = (ui.pvCoup || {}).l;
     if (d === "x") poserPoint(ctx, null, null, null);
     else poserPoint(ctx, Math.max(-60, Math.min(60, (cur == null ? 0 : cur) + parseInt(d, 10))), undefined, null);
     var b = document.querySelector('[data-a="ell-l"][data-ctx="' + ctx + '"][data-d="' + (d === "x" ? "1" : d) + '"]'); if (b) b.focus({ preventScroll: true });
@@ -111,16 +106,6 @@
       /* Seule la direction compte : la hauteur du toucher ne change pas la distance. */
       C.l = l;
       rendrePartie();
-    } else if (ctx === "serie") {
-      var S = ui.serie; if (!S) return;
-      S.lp = l;
-      var inp = document.getElementById("serie-val");
-      if (l == null) S.ddp = null;
-      else if (dd !== undefined) {
-        S.ddp = dd;
-        if (inp && ref > 0 && (inp.value.trim() === "" || S.dTap)) { inp.value = Math.max(5, Math.min(400, ref + dd)); S.dTap = true; }
-      }
-      majPoseurSerie();
     }
   }
 
@@ -137,13 +122,12 @@
       '<h3>Ellipse de dispersion</h3>' +
       ellipseSVG({ ell: e, pts: vus, sc: sc, sel: sel, ref: e.d, actionPt: "ell-point",
         aria: "Ellipse de dispersion : 80 % des balles à moins de " + e.rx + " m de l'axe" + (e.cx ? ", avec une tendance de " + libLat(e.cx) : "") + ", et à plus ou moins " + e.ry + " m de " + e.d + " m. " + pluriel(vus.length, "coup") + " noté" + (vus.length > 1 ? "s" : "") + " avec sa direction." }) +
-      '<p class="ell-legende" id="ell-legende" aria-live="polite">' + t(p ? (p.src === "serie" ? "Balle de série du " : "Coup du trou " + p.trou + ", partie du ") + dateCourte(p.date) + " : " + p.d + " m, " + libLat(p.l).toLowerCase() + "."
+      '<p class="ell-legende" id="ell-legende" aria-live="polite">' + t(p ? "Coup du trou " + p.trou + ", partie du " + dateCourte(p.date) + " : " + p.d + " m, " + libLat(p.l).toLowerCase() + "."
         : vus.length ? "80 % de tes balles tombent dans l'ellipse. Touche un point pour voir le coup." : "80 % de tes balles tombent dans l'ellipse.") + '</p>' +
-      (vus.some(function (q) { return q.src === "parcours"; }) && vus.some(function (q) { return q.src !== "parcours"; }) ? '<p class="ell-cle"><span class="rond"></span>practice<span class="carre"></span>parcours</p>' : '') +
       '<dl class="disp-chiffres"><div><dt>Latéral</dt><dd><span class="main">±' + e.rx + '</span> m</dd></div>' +
       '<div><dt>Tendance</dt><dd>' + (e.estimeeL ? "–" : e.cx ? '<span class="main">' + Math.abs(e.cx) + '</span> m ' + (e.cx < 0 ? "à gauche" : "à droite") : "dans l’axe") + '</dd></div>' +
       '<div><dt>Fiable à 90 %</dt><dd>' + (f.p10 ? '<span class="main">' + f.p10 + '</span> m' : "–") + '</dd></div></dl>' +
-      (e.estimeeL ? '<p class="aide">' + t("Largeur estimée d'après ton index. Note la direction de tes balles en série ou sur le parcours (un toucher sur l'ellipse) : dès " + FOURCHETTE_MIN + " coups, elle se mesure.") + '</p>' : '');
+      (e.estimeeL ? '<p class="aide">' + t("Largeur estimée d'après ton index. Note la direction de tes coups sur le parcours (un toucher sur l'ellipse) : dès " + FOURCHETTE_MIN + " coups, elle se mesure.") + '</p>' : '');
     return h + '</div>';
   }
   ACTIONS["ell-point"] = function (el) {
