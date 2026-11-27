@@ -19,7 +19,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.click('[data-a="ac-sans-index"]'); await page.click('.carnet-form button[type="submit"]');
     await page.waitForSelector('.tete');
     /* Carnet sans programme ni partie : rien d'imposé, bibliothèque ouverte */
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-v="practice"]');
+    await page.click('.tete .ident'); await page.click('#profil-coaching [data-v="practice"]');
     verifie(await page.locator('.programme-option').count() === 1 && await page.locator('.prov-programme').count() === 0, nom + ' sans questionnaire : programme proposé en option, pas présenté comme personnalisé');
     verifie(/bibliothèque reste ouverte/.test(norm(await page.textContent('#reco-donnees'))), nom + ' sans partie : pas de recommandation, bibliothèque ouverte');
     await page.click('#vue .sous-nav [data-v="exercices"]');
@@ -29,7 +29,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     e.parcours = [{ id: 'p1', nom: 'Golf des Essais', pars: PARS }]; e.parties = Array.from({ length: 12 }, (_, i) => partie(i)); e.maj = Date.now();
     await page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [CLE, e]);
     await page.reload(); await page.waitForSelector('.tete');
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-v="practice"]');
+    await page.click('.tete .ident'); await page.click('#profil-coaching [data-v="practice"]');
     r.reco = norm(await page.textContent('#reco-donnees'));
     verifie(/Recommandations observées/.test(r.reco) && /Exercices : mise en jeu/.test(r.reco), nom + ' recommandation d\'après les données : ' + r.reco);
     await page.click('#reco-donnees [data-a="exos-domaine"][data-v="drive"]'); await page.waitForTimeout(80);
@@ -38,7 +38,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.click('.filtre-donnees [data-a="filtre"][data-v="tous"]');
     verifie(await page.locator('.filtre-donnees').count() === 0 && await page.locator('#vue [data-a="filtre"][data-v="tous"][aria-pressed="true"]').count() === 1, nom + ' toute la bibliothèque, bandeau retiré');
     /* Priorités du profil : origine dite */
-    await page.click('#vue .sous-nav [data-v="bilan"]'); await page.click('#vue .rubriques [data-v="perf"]');
+    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .rubriques [data-v="perf"]');
     verifie(/D.après ton profil/.test(norm(await page.textContent('#priorites'))), nom + ' priorités : origine déclarée');
     verifie(await page.evaluate(() => document.documentElement.scrollWidth) <= w, nom + ' sans débordement');
     await ctx.close();

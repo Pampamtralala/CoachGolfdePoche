@@ -187,8 +187,20 @@
   /* Anciens noms et noms des entrées de navigation (UX03) : les liens existants mènent toujours quelque part. */
   var ALIAS = { jour: "accueil", distances: "sac", parties: "journal", carnet: "parcours", plan: "practice", entrainement: "practice",
     monjeu: "accueil", "mon-jeu": "accueil", analyses: "bilan", statistiques: "bilan", stats: "bilan", jouer: "parcours",
-    progresser: "practice", coaching: "practice", programme: "practice", "mon-sac": "sac", historique: "journal" };
-  function pageDe(nom) { if (a(ALIAS, nom)) nom = ALIAS[nom]; return PAGES.indexOf(nom) >= 0 ? nom : "accueil"; }
+    progresser: "practice", coaching: "practice", programme: "practice", "mon-sac": "sac", historique: "journal",
+    performance: "bilan", perf: "bilan", activite: "journal", "activité": "journal", journal: "journal", exercices: "exercices", defis: "exercices" };
+  /* V4-05 : adresse publique de chaque page (#performance, #activite, #jouer) ; les anciennes restent des alias. */
+  var ADRESSE_PAGE = { bilan: "performance", journal: "activite", parcours: "jouer" };
+  /* Routes de fonctions supprimées : redirection explicite, avec un message qui dit où est passé le contenu. */
+  var ROUTES_RETIREES = {
+    series: { p: "sac", s: "c-historique", m: "Les séries de practice ont été retirées : tes anciennes séries sont archivées dans Sac." },
+    serie: { p: "sac", s: "c-historique", m: "Les séries de practice ont été retirées : tes anciennes séries sont archivées dans Sac." },
+    "historique-mesures": { p: "sac", s: "c-historique", m: "Les séries de practice ont été retirées : tes anciennes séries sont archivées dans Sac." },
+    sac3d: { p: "sac", m: "Le sac en 3D a été retiré : tes clubs et leurs distances sont dans le tableau de Sac." },
+    "sac-3d": { p: "sac", m: "Le sac en 3D a été retiré : tes clubs et leurs distances sont dans le tableau de Sac." }
+  };
+  function pageDe(nom) { if (a(ROUTES_RETIREES, nom)) nom = ROUTES_RETIREES[nom].p; if (a(ALIAS, nom)) nom = ALIAS[nom]; return PAGES.indexOf(nom) >= 0 ? nom : "accueil"; }
+  function adresseDe(page) { return ADRESSE_PAGE[page] || page; }
   var ui = { vue: "auto", onglet: "accueil", semaine: 1, etape: 0, brouillon: null, mode: null, filtre: { d: "tous", monPalier: true }, feuille: null, dialogue: null, anime: false, retourFocus: null,
     club: "f7", partie: null, bilanPartie: null, pile: [], defiEvt: null, depart: null, fenetre: 5, plis: { priorites: true }, feuilleRetour: null, sacApercu: null, sacSel: null, menu: false, partage: false, pvCoup: null, pvLong: false, pvPanneau: null, sjc: null, strat: null, ellSel: null };
   var app = document.getElementById("app");
@@ -622,7 +634,7 @@
       '<header class="tete"><button class="marque-app" type="button" data-a="onglet" data-v="accueil" aria-label="Coach de poche : écran d’accueil">Coach de poche</button>' +
       '<span class="statut-tete ' + (distant.etat === "actif" ? "synchro" : "local") + '" id="statut-tete" role="img" aria-label="' + at(texteStatut()) + '" title="' + at(texteStatut()) + '">' + icone("coche") + '<span>' + (distant.etat === "actif" ? "Synchronisé" : "Enregistré") + '</span></span>' +
       '<button class="tete-btn" type="button" data-a="recherche" aria-label="Rechercher une fonction">' + icone("loupe") + '</button>' +
-      '<button class="ident" type="button" data-a="onglet" data-v="profil"' + (ui.onglet === "profil" ? ' aria-current="page"' : '') + ' aria-label="' + at("Profil : " + ident) + '"><span>' + t(ident) + '</span>' + icone("profil") + '</button></header>' +
+      '<button class="ident" type="button" data-a="onglet" data-v="profil"' + (PAGES_PROFIL.indexOf(ui.onglet) >= 0 ? ' aria-current="page"' : '') + ' aria-label="' + at("Profil : " + ident) + '"><span>' + t(ident) + '</span>' + icone("profil") + '</button></header>' +
       bandeauPartieHTML() +
       '<main id="vue" class="' + (ui.anime ? 'anime' : '') + (ui.entree ? ' entree' : '') + '">' + VUES[ui.onglet]() + '</main>' +
       '';
@@ -633,7 +645,7 @@
   function allerOnglet(nom, haut) {
     nom = pageDe(nom);
     ui.entree = ui.onglet !== nom; ui.onglet = nom; ui.menu = false;
-    try { if (location.hash !== "#" + nom) location.hash = nom; } catch (e) { /* hash indisponible */ }
+    try { if (location.hash !== "#" + adresseDe(nom)) location.hash = adresseDe(nom); } catch (e) { /* hash indisponible */ }
     rendre();
     if (haut) window.scrollTo(0, 0);
   }
@@ -703,7 +715,7 @@
   var VUES = {};
   VUES.practice = function () {
     var plan = etat.plan, sem = plan.semaines[ui.semaine - 1], faites = compteFaites(), total = plan.n * 4;
-    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("practice") + '<p class="surtitre">Analyses · Coaching</p><h1>Ton programme</h1>' +
+    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("practice") + '<p class="surtitre">Profil · Coaching</p><h1>Ton programme</h1>' +
       (etat.profil.questionnaire === false ? '' : '<p class="aide prov-programme"><span class="ens-prov">' + t("D'après ton questionnaire") + '</span> ' + t("Programme construit à partir de tes réponses déclarées (niveau, défauts, disponibilités).") + '</p>') +
       (etat.profil.questionnaire === false ? '<div class="carte-tb programme-option"><p class="surtitre">' + t("Facultatif") + '</p><p>' + t("Ce programme est générique. Réponds au questionnaire (5 minutes) pour l'adapter à ton niveau, à tes défauts et à ton temps.") + '</p><button class="btn principal" type="button" data-a="modifier">Personnaliser mon programme</button></div>' : '') +
       progressionHTML() +
@@ -804,7 +816,7 @@
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
     /* UX06 : en-tête commun (sous-navigation, rubriques, filtre commun), puis la rubrique choisie. */
     var rb = rubriqueCourante();
-    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("bilan") + '<p class="surtitre">Analyses</p><h1>Tableau de bord</h1>' + rubriquesNavHTML(rb) +
+    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("bilan") + '<h1>Performance</h1>' + rubriquesNavHTML(rb) +
       (rb === "comprendre" ? '' : tableauStatsHTML("filtres")) + '</section>';
     var sPalier = '<section class="bloc" id="palier-bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
@@ -895,6 +907,13 @@
       '<p class="aide">Vocabulaire : le pied avant est le plus proche de la cible, la main du haut est celle qui tient le haut du grip.</p></section>';
     return h;
   }
+  /* V4-05 : le coaching, facultatif, est rangé dans le profil. */
+  function coachingProfilHTML() {
+    return '<section class="bloc" id="profil-coaching">' + sectionTeteHTML("Coaching") + '<div class="ligne-btn">' +
+      '<button class="btn" type="button" data-a="onglet" data-v="practice">Programme</button>' +
+      '<button class="btn" type="button" data-a="onglet" data-v="exercices">Exercices et défis</button>' +
+      '<button class="btn" type="button" data-a="aller-a" data-v="practice" data-s="badges">Badges</button></div></section>';
+  }
   VUES.profil = function () {
     var p = etat.profil, pal = PALIERS[palierDe(indexNiveau(p)) - 1], obj = OBJECTIFS.filter(function (o) { return o.id === p.objectif; })[0];
     var syms = symptomesOrdonnes(p).map(function (id) { return lat(SYM[id].t, p.lateralite); });
@@ -905,7 +924,7 @@
     if (p.questionnaire === false) {
       h += '</dl><p class="aide">' + t("Pas encore de programme d'entraînement : il est facultatif. Le questionnaire (5 minutes) le règle sur ton niveau, tes défauts et ton temps.") + '</p>' +
         '<div class="ligne-btn"><button class="btn large" type="button" data-a="ac-profil">Modifier mon prénom, ma main ou mon index</button><button class="btn" type="button" data-a="modifier">Créer mon programme</button></div></section>';
-      return h + indexViseHTML() + donneesProfilHTML() + aProposHTML() + versionHTML();
+      return h + indexViseHTML() + coachingProfilHTML() + donneesProfilHTML() + aProposHTML() + versionHTML();
     }
     h += '<dt>Palier</dt><dd>' + t(pal.n + " · " + pal.nom) + '</dd>' +
       '<dt>Objectif</dt><dd>' + t(obj ? obj.t : "") + '</dd>' +
@@ -913,7 +932,7 @@
       '<dt>Lieux</dt><dd>' + t(nomsLieux(p.lieux)) + '</dd>' +
       '<dt>Défauts</dt><dd>' + t(syms.length ? enListe(syms) : "Aucun signalé") + '</dd></dl>' +
       '<button class="btn large" type="button" data-a="modifier">Modifier mes réponses</button></section>';
-    h += indexViseHTML();
+    h += indexViseHTML() + coachingProfilHTML();
 
     h += '<section class="bloc"><h2>Cycles</h2><p>' + t("Cycle " + etat.cycle + " commencé le " + dateCourte(etat.plan.cree) + " : " + pluriel(compteFaites(), "séance") + " faite" + (compteFaites() > 1 ? "s" : "") + " sur " + etat.plan.n * 4 + ".") + '</p>';
     if (etat.historique.length) {
@@ -1369,9 +1388,12 @@
   });
   window.addEventListener("hashchange", function () {
     histo.pousse = false;
-    var nom = location.hash.replace("#", "");
-    if (!nom || !(PAGES.indexOf(nom) >= 0 || a(ALIAS, nom))) return;
-    if (pageDe(nom) !== ui.onglet && ui.vue !== "questionnaire" && etat.profil) allerOnglet(nom, true);
+    var nom = decodeURIComponent(location.hash.replace("#", ""));
+    if (!nom || !(PAGES.indexOf(nom) >= 0 || a(ALIAS, nom) || a(ROUTES_RETIREES, nom))) return;
+    if (ui.vue === "questionnaire" || !etat.profil) return;
+    var ret = a(ROUTES_RETIREES, nom) ? ROUTES_RETIREES[nom] : null;
+    if (ret) { allerA(ret.p, ret.s); message(ret.m); return; }
+    if (pageDe(nom) !== ui.onglet) allerOnglet(nom, true);
   });
 
   /*INCLURE:ui-composants.js*/

@@ -7547,7 +7547,7 @@ function filtrerChronologie(ev, f) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-27T11:28:58.511Z";
+  var VERSION_APPLI = "2026-11-27T11:43:36.805Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, references: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -7725,8 +7725,20 @@ function filtrerChronologie(ev, f) {
   /* Anciens noms et noms des entrées de navigation (UX03) : les liens existants mènent toujours quelque part. */
   var ALIAS = { jour: "accueil", distances: "sac", parties: "journal", carnet: "parcours", plan: "practice", entrainement: "practice",
     monjeu: "accueil", "mon-jeu": "accueil", analyses: "bilan", statistiques: "bilan", stats: "bilan", jouer: "parcours",
-    progresser: "practice", coaching: "practice", programme: "practice", "mon-sac": "sac", historique: "journal" };
-  function pageDe(nom) { if (a(ALIAS, nom)) nom = ALIAS[nom]; return PAGES.indexOf(nom) >= 0 ? nom : "accueil"; }
+    progresser: "practice", coaching: "practice", programme: "practice", "mon-sac": "sac", historique: "journal",
+    performance: "bilan", perf: "bilan", activite: "journal", "activité": "journal", journal: "journal", exercices: "exercices", defis: "exercices" };
+  /* V4-05 : adresse publique de chaque page (#performance, #activite, #jouer) ; les anciennes restent des alias. */
+  var ADRESSE_PAGE = { bilan: "performance", journal: "activite", parcours: "jouer" };
+  /* Routes de fonctions supprimées : redirection explicite, avec un message qui dit où est passé le contenu. */
+  var ROUTES_RETIREES = {
+    series: { p: "sac", s: "c-historique", m: "Les séries de practice ont été retirées : tes anciennes séries sont archivées dans Sac." },
+    serie: { p: "sac", s: "c-historique", m: "Les séries de practice ont été retirées : tes anciennes séries sont archivées dans Sac." },
+    "historique-mesures": { p: "sac", s: "c-historique", m: "Les séries de practice ont été retirées : tes anciennes séries sont archivées dans Sac." },
+    sac3d: { p: "sac", m: "Le sac en 3D a été retiré : tes clubs et leurs distances sont dans le tableau de Sac." },
+    "sac-3d": { p: "sac", m: "Le sac en 3D a été retiré : tes clubs et leurs distances sont dans le tableau de Sac." }
+  };
+  function pageDe(nom) { if (a(ROUTES_RETIREES, nom)) nom = ROUTES_RETIREES[nom].p; if (a(ALIAS, nom)) nom = ALIAS[nom]; return PAGES.indexOf(nom) >= 0 ? nom : "accueil"; }
+  function adresseDe(page) { return ADRESSE_PAGE[page] || page; }
   var ui = { vue: "auto", onglet: "accueil", semaine: 1, etape: 0, brouillon: null, mode: null, filtre: { d: "tous", monPalier: true }, feuille: null, dialogue: null, anime: false, retourFocus: null,
     club: "f7", partie: null, bilanPartie: null, pile: [], defiEvt: null, depart: null, fenetre: 5, plis: { priorites: true }, feuilleRetour: null, sacApercu: null, sacSel: null, menu: false, partage: false, pvCoup: null, pvLong: false, pvPanneau: null, sjc: null, strat: null, ellSel: null };
   var app = document.getElementById("app");
@@ -8160,7 +8172,7 @@ function filtrerChronologie(ev, f) {
       '<header class="tete"><button class="marque-app" type="button" data-a="onglet" data-v="accueil" aria-label="Coach de poche : écran d’accueil">Coach de poche</button>' +
       '<span class="statut-tete ' + (distant.etat === "actif" ? "synchro" : "local") + '" id="statut-tete" role="img" aria-label="' + at(texteStatut()) + '" title="' + at(texteStatut()) + '">' + icone("coche") + '<span>' + (distant.etat === "actif" ? "Synchronisé" : "Enregistré") + '</span></span>' +
       '<button class="tete-btn" type="button" data-a="recherche" aria-label="Rechercher une fonction">' + icone("loupe") + '</button>' +
-      '<button class="ident" type="button" data-a="onglet" data-v="profil"' + (ui.onglet === "profil" ? ' aria-current="page"' : '') + ' aria-label="' + at("Profil : " + ident) + '"><span>' + t(ident) + '</span>' + icone("profil") + '</button></header>' +
+      '<button class="ident" type="button" data-a="onglet" data-v="profil"' + (PAGES_PROFIL.indexOf(ui.onglet) >= 0 ? ' aria-current="page"' : '') + ' aria-label="' + at("Profil : " + ident) + '"><span>' + t(ident) + '</span>' + icone("profil") + '</button></header>' +
       bandeauPartieHTML() +
       '<main id="vue" class="' + (ui.anime ? 'anime' : '') + (ui.entree ? ' entree' : '') + '">' + VUES[ui.onglet]() + '</main>' +
       '';
@@ -8171,7 +8183,7 @@ function filtrerChronologie(ev, f) {
   function allerOnglet(nom, haut) {
     nom = pageDe(nom);
     ui.entree = ui.onglet !== nom; ui.onglet = nom; ui.menu = false;
-    try { if (location.hash !== "#" + nom) location.hash = nom; } catch (e) { /* hash indisponible */ }
+    try { if (location.hash !== "#" + adresseDe(nom)) location.hash = adresseDe(nom); } catch (e) { /* hash indisponible */ }
     rendre();
     if (haut) window.scrollTo(0, 0);
   }
@@ -8241,7 +8253,7 @@ function filtrerChronologie(ev, f) {
   var VUES = {};
   VUES.practice = function () {
     var plan = etat.plan, sem = plan.semaines[ui.semaine - 1], faites = compteFaites(), total = plan.n * 4;
-    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("practice") + '<p class="surtitre">Analyses · Coaching</p><h1>Ton programme</h1>' +
+    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("practice") + '<p class="surtitre">Profil · Coaching</p><h1>Ton programme</h1>' +
       (etat.profil.questionnaire === false ? '' : '<p class="aide prov-programme"><span class="ens-prov">' + t("D'après ton questionnaire") + '</span> ' + t("Programme construit à partir de tes réponses déclarées (niveau, défauts, disponibilités).") + '</p>') +
       (etat.profil.questionnaire === false ? '<div class="carte-tb programme-option"><p class="surtitre">' + t("Facultatif") + '</p><p>' + t("Ce programme est générique. Réponds au questionnaire (5 minutes) pour l'adapter à ton niveau, à tes défauts et à ton temps.") + '</p><button class="btn principal" type="button" data-a="modifier">Personnaliser mon programme</button></div>' : '') +
       progressionHTML() +
@@ -8342,7 +8354,7 @@ function filtrerChronologie(ev, f) {
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
     /* UX06 : en-tête commun (sous-navigation, rubriques, filtre commun), puis la rubrique choisie. */
     var rb = rubriqueCourante();
-    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("bilan") + '<p class="surtitre">Analyses</p><h1>Tableau de bord</h1>' + rubriquesNavHTML(rb) +
+    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("bilan") + '<h1>Performance</h1>' + rubriquesNavHTML(rb) +
       (rb === "comprendre" ? '' : tableauStatsHTML("filtres")) + '</section>';
     var sPalier = '<section class="bloc" id="palier-bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
       uneBilanHTML(prios, sc, pal) + '</section>';
@@ -8433,6 +8445,13 @@ function filtrerChronologie(ev, f) {
       '<p class="aide">Vocabulaire : le pied avant est le plus proche de la cible, la main du haut est celle qui tient le haut du grip.</p></section>';
     return h;
   }
+  /* V4-05 : le coaching, facultatif, est rangé dans le profil. */
+  function coachingProfilHTML() {
+    return '<section class="bloc" id="profil-coaching">' + sectionTeteHTML("Coaching") + '<div class="ligne-btn">' +
+      '<button class="btn" type="button" data-a="onglet" data-v="practice">Programme</button>' +
+      '<button class="btn" type="button" data-a="onglet" data-v="exercices">Exercices et défis</button>' +
+      '<button class="btn" type="button" data-a="aller-a" data-v="practice" data-s="badges">Badges</button></div></section>';
+  }
   VUES.profil = function () {
     var p = etat.profil, pal = PALIERS[palierDe(indexNiveau(p)) - 1], obj = OBJECTIFS.filter(function (o) { return o.id === p.objectif; })[0];
     var syms = symptomesOrdonnes(p).map(function (id) { return lat(SYM[id].t, p.lateralite); });
@@ -8443,7 +8462,7 @@ function filtrerChronologie(ev, f) {
     if (p.questionnaire === false) {
       h += '</dl><p class="aide">' + t("Pas encore de programme d'entraînement : il est facultatif. Le questionnaire (5 minutes) le règle sur ton niveau, tes défauts et ton temps.") + '</p>' +
         '<div class="ligne-btn"><button class="btn large" type="button" data-a="ac-profil">Modifier mon prénom, ma main ou mon index</button><button class="btn" type="button" data-a="modifier">Créer mon programme</button></div></section>';
-      return h + indexViseHTML() + donneesProfilHTML() + aProposHTML() + versionHTML();
+      return h + indexViseHTML() + coachingProfilHTML() + donneesProfilHTML() + aProposHTML() + versionHTML();
     }
     h += '<dt>Palier</dt><dd>' + t(pal.n + " · " + pal.nom) + '</dd>' +
       '<dt>Objectif</dt><dd>' + t(obj ? obj.t : "") + '</dd>' +
@@ -8451,7 +8470,7 @@ function filtrerChronologie(ev, f) {
       '<dt>Lieux</dt><dd>' + t(nomsLieux(p.lieux)) + '</dd>' +
       '<dt>Défauts</dt><dd>' + t(syms.length ? enListe(syms) : "Aucun signalé") + '</dd></dl>' +
       '<button class="btn large" type="button" data-a="modifier">Modifier mes réponses</button></section>';
-    h += indexViseHTML();
+    h += indexViseHTML() + coachingProfilHTML();
 
     h += '<section class="bloc"><h2>Cycles</h2><p>' + t("Cycle " + etat.cycle + " commencé le " + dateCourte(etat.plan.cree) + " : " + pluriel(compteFaites(), "séance") + " faite" + (compteFaites() > 1 ? "s" : "") + " sur " + etat.plan.n * 4 + ".") + '</p>';
     if (etat.historique.length) {
@@ -8907,9 +8926,12 @@ function filtrerChronologie(ev, f) {
   });
   window.addEventListener("hashchange", function () {
     histo.pousse = false;
-    var nom = location.hash.replace("#", "");
-    if (!nom || !(PAGES.indexOf(nom) >= 0 || a(ALIAS, nom))) return;
-    if (pageDe(nom) !== ui.onglet && ui.vue !== "questionnaire" && etat.profil) allerOnglet(nom, true);
+    var nom = decodeURIComponent(location.hash.replace("#", ""));
+    if (!nom || !(PAGES.indexOf(nom) >= 0 || a(ALIAS, nom) || a(ROUTES_RETIREES, nom))) return;
+    if (ui.vue === "questionnaire" || !etat.profil) return;
+    var ret = a(ROUTES_RETIREES, nom) ? ROUTES_RETIREES[nom] : null;
+    if (ret) { allerA(ret.p, ret.s); message(ret.m); return; }
+    if (pageDe(nom) !== ui.onglet) allerOnglet(nom, true);
   });
 
   /* ============================================================
@@ -9227,7 +9249,7 @@ function filtrerChronologie(ev, f) {
       partiesHTML() + parcoursListeHTML() + carteAppelHTML();
   };
   VUES.sac = function () {
-    return '<section class="bloc premier"><p class="surtitre">Mon sac</p><h1>Sac et distances</h1></section>' +
+    return '<section class="bloc premier"><h1>Sac</h1></section>' +
       /* UX08 : la synthèse chiffrée d'abord (V4 : sac 3D et séries retirés). */
       syntheseSacHTML() +
       '<section class="bloc" id="c-distances"><h2>' + t("Étagement") + '</h2>' + sacHTML() + distancesHTML() + '</section>' +
@@ -9832,23 +9854,34 @@ function filtrerChronologie(ev, f) {
      NAVIGATION : cinq rubriques dans une barre (en bas sur téléphone, à gauche sur grand écran),
      et une recherche qui mène à chaque fonction de l'appli.
      ============================================================ */
-  /* UX03 : cinq entrées orientées données. Jouer, au centre, est l'action principale ;
-     le coaching (programme, exercices, défis) est rangé dans Analyses ; le profil est dans l'en-tête. */
+  /* V4-05 : Accueil (synthèse) · Performance (analyse) · Jouer (collecte) · Sac (clubs) · Activité (historique).
+     Les identifiants internes des pages ne changent pas (bilan, parcours, journal…) : seuls les noms et les adresses
+     publiques changent. Le coaching (programme, exercices, défis, badges) est rangé dans le profil (en-tête). */
   var RUBRIQUES = [
-    { id: "accueil", nom: "Mon jeu", ico: "accueil", pages: ["accueil"] },
-    { id: "bilan", nom: "Analyses", ico: "stats", pages: ["bilan", "practice", "exercices"] },
+    { id: "accueil", nom: "Accueil", ico: "accueil", pages: ["accueil"] },
+    { id: "bilan", nom: "Performance", ico: "stats", pages: ["bilan"] },
     { id: "parcours", nom: "Jouer", ico: "drapeau", pages: ["parcours"], principal: true },
-    { id: "sac", nom: "Mon sac", ico: "sac", pages: ["sac"] },
-    { id: "journal", nom: "Journal", ico: "carnet", pages: ["journal"] }
+    { id: "sac", nom: "Sac", ico: "sac", pages: ["sac"] },
+    { id: "journal", nom: "Activité", ico: "carnet", pages: ["journal"] }
   ];
-  /* Page sans entrée (le profil, ouvert depuis l'en-tête) : aucune entrée n'est marquée. */
+  /* Pages rangées sous le profil (bouton de l'en-tête) : aucune entrée de la barre n'est marquée. */
+  var PAGES_PROFIL = ["profil", "practice", "exercices"];
   function rubriqueDe(page) { var r = RUBRIQUES.filter(function (x) { return x.pages.indexOf(page) >= 0; })[0]; return r ? r.id : null; }
-  /* Sous-navigation commune aux pages d'Analyses : statistiques, questions, coaching. */
+  /* Sous-navigation de Performance : statistiques et questions sur ses données. */
   function sousNavAnalysesHTML(actif) {
-    var l = [{ v: "bilan", lib: "Statistiques" }, { a: "ens-ouvrir", lib: "Enseignements" }, { a: "an-ouvrir", lib: "Comprendre mon jeu" }, { v: "practice", lib: "Programme" }, { v: "exercices", lib: "Exercices et défis" }];
-    return '<nav class="filtres sous-nav" aria-label="Analyses">' + l.map(function (x) {
+    if (actif === "practice" || actif === "exercices") return sousNavCoachingHTML(actif);
+    var l = [{ v: "bilan", lib: "Statistiques" }, { a: "ens-ouvrir", lib: "Enseignements" }, { a: "an-ouvrir", lib: "Comprendre mon jeu" }];
+    return '<nav class="filtres sous-nav" aria-label="Performance">' + l.map(function (x) {
       var on = x.v === actif;
       return '<button class="puce neutre" type="button" data-a="' + (x.a || "onglet") + '"' + (x.v ? ' data-v="' + x.v + '"' : '') + (on ? ' aria-pressed="true" aria-current="page"' : '') + '>' + t(x.lib) + '</button>';
+    }).join("") + '</nav>';
+  }
+  /* Sous-navigation du coaching, rangé dans le profil : retour au profil, programme, exercices et défis. */
+  function sousNavCoachingHTML(actif) {
+    var l = [{ v: "practice", lib: "Programme" }, { v: "exercices", lib: "Exercices et défis" }];
+    return '<nav class="filtres sous-nav" aria-label="Coaching"><button class="puce neutre" type="button" data-a="onglet" data-v="profil">' + icone("retour") + t("Profil") + '</button>' + l.map(function (x) {
+      var on = x.v === actif;
+      return '<button class="puce neutre" type="button" data-a="onglet" data-v="' + x.v + '"' + (on ? ' aria-pressed="true" aria-current="page"' : '') + '>' + t(x.lib) + '</button>';
     }).join("") + '</nav>';
   }
   /* rendre() appelle toujours rendreMenu : c'est désormais la barre de navigation. */
@@ -9869,9 +9902,9 @@ function filtrerChronologie(ev, f) {
   function fonctions() {
     var pt = etat.partie;
     return [
-      { g: "Mon jeu", l: [
-        { p: "accueil", t: "Mon jeu : tendances et dernière partie", k: "accueil tableau de bord resume chiffres cles" }] },
-      { g: "Analyses", l: [
+      { g: "Accueil", l: [
+        { p: "accueil", t: "Accueil : tendances et dernière partie", k: "accueil tableau de bord resume chiffres cles" }] },
+      { g: "Performance", l: [
         { p: "bilan", t: "Tableau de bord des statistiques", k: "stats chiffres cles tendances index" },
         { a: "ens-ouvrir", t: "Enseignements : ce que disent mes données", k: "enseignements insights constats points forts vigilance erreurs records progression" },
         { a: "an-ouvrir", t: "Comprendre mon jeu : poser une question", k: "question comprendre analyse pourquoi mieux trois putts driver gauche droite club regulier trou difficile parcours forme" },
@@ -9882,7 +9915,7 @@ function filtrerChronologie(ev, f) {
         { p: "bilan", s: "releves", t: "Relevés détaillés", k: "constats premier putt" },
         { p: "bilan", s: "defauts", t: "Tes défauts", k: "slice hook diagnostic" },
         { p: "bilan", s: "carte", t: "Ta carte de jeu", k: "domaines palier" }] },
-      { g: "Coaching", l: [
+      { g: "Profil · Coaching", l: [
         { p: "practice", t: "Programme et séance du jour", k: "progresser plan cycle semaine entrainement calendrier" },
         { p: "exercices", t: "Bibliothèque d’exercices", k: "progresser exercices drills" },
         { p: "exercices", s: "defis", t: "Défis", k: "challenge chrono putting record" },
@@ -9893,13 +9926,13 @@ function filtrerChronologie(ev, f) {
         etat.parcours.length ? { p: "parcours", s: "c-parcours", t: "Mes parcours", k: "golf trous meilleurs pires dangers" } : null,
         { a: "carte-nouveau", t: "Carte GPS : ajouter mon golf", k: "gps green distance entree milieu fond openstreetmap carte parcours" },
         { a: "cond-ouvrir", t: "Conditions du jour", k: "vent temperature meteo" }] },
-      { g: "Mon sac", l: [
+      { g: "Sac", l: [
         { p: "sac", t: "Sac et distances", k: "clubs fourchette dispersion ecarts trous" },
-        { a: "sac-modifier", t: "Composer mon sac", k: "configuration clubs wedges loft" },
+        { a: "sac-composer", t: "Composer mon sac", k: "configuration clubs wedges loft" },
         { p: "sac", s: "c-wedges", t: "Matrice de wedges", k: "amplitudes petit jeu" },
         { p: "sac", s: "c-historique", t: "Séries de practice archivées", k: "series balles practice archive" }] },
-      { g: "Journal", l: [
-        { p: "journal", t: "Mes parties", k: "historique cartes scores image partage" },
+      { g: "Activité", l: [
+        { p: "journal", t: "Chronologie et mes parties", k: "historique cartes scores image partage" },
         { a: "j-ouvrir", t: "Bilans, notes et rapports", k: "journal bilan mois trimestre saison rapport export import csv notes forme meteo" }] },
       { g: "Profil", l: [
         { p: "profil", t: "Profil et objectif d’index", k: "moi index prenom lieux" },
@@ -12880,7 +12913,7 @@ function filtrerChronologie(ev, f) {
   VUES.journal = function () {
     var n = etat.parties.length;
     /* UX10 : la chronologie de toutes les activités d'abord, puis le tableau des parties. */
-    return '<section class="bloc premier"><p class="surtitre">Journal</p><h1>Mon journal</h1>' +
+    return '<section class="bloc premier"><h1>Activité</h1>' +
       '<p class="aide">' + t(n ? pluriel(n, "partie") + " enregistrée" + (n > 1 ? "s" : "") + ", avec tes séries de practice, ton index et tes défis." : "Ton historique de parties, de notes et de rapports.") + '</p>' +
       '<div class="raccourcis"><button class="btn" type="button" data-a="j-ouvrir">Bilans, notes et rapports</button>' +
       '<button class="btn" type="button" data-a="j-ouvrir">Importer des parties</button>' +

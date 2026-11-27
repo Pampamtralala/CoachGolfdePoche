@@ -253,7 +253,7 @@
       partiesHTML() + parcoursListeHTML() + carteAppelHTML();
   };
   VUES.sac = function () {
-    return '<section class="bloc premier"><p class="surtitre">Mon sac</p><h1>Sac et distances</h1></section>' +
+    return '<section class="bloc premier"><h1>Sac</h1></section>' +
       /* UX08 : la synthèse chiffrée d'abord (V4 : sac 3D et séries retirés). */
       syntheseSacHTML() +
       '<section class="bloc" id="c-distances"><h2>' + t("Étagement") + '</h2>' + sacHTML() + distancesHTML() + '</section>' +

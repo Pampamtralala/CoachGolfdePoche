@@ -51,7 +51,7 @@ function partie(g, pars) {
 
     /* ---- Accueil ---- */
     r.barre = await page.$$eval('#barre .barre-item', l => l.map(b => b.textContent + (b.getAttribute('aria-current') ? ' ●' : '')).join(' | '));
-    verifie(/^Mon jeu ● \| Analyses \| Jouer \| Mon sac \| Journal$/.test(r.barre), nom + ' barre : ' + r.barre);
+    verifie(/^Accueil ● \| Performance \| Jouer \| Sac \| Activité$/.test(r.barre), nom + ' barre : ' + r.barre);
     r.statut = await page.textContent('#statut-tete');
     /* Accueil « Mon jeu » (UX04) : performance, indicateurs clés, enseignements, dernière partie, actions rapides. */
     r.accueil = (await page.textContent('.mon-jeu h1')).replace(/\s+/g, ' ').trim() + ' · ' + await page.$$eval('#vue .acces-rapides button', l => l.map(b => b.textContent.trim()).join(' | '));
@@ -91,8 +91,8 @@ function partie(g, pars) {
     await vue('04-progresser');
     await page.evaluate(() => document.getElementById('badges').scrollIntoView()); await page.waitForTimeout(80); await vue('05-badges');
     await page.click('#vue [data-a="onglet"][data-v="exercices"]');
-    r.exercicesBarre = await page.$eval('#barre [aria-current="page"]', b => b.textContent);
-    verifie(r.exercicesBarre === 'Analyses', nom + ' exercices rangés sous Analyses (coaching)');
+    r.exercicesBarre = (await page.$$eval('#barre [aria-current="page"]', l => l.length)) + ' · profil ' + await page.locator('.tete .ident[aria-current="page"]').count();
+    verifie(r.exercicesBarre === '0 · profil 1', nom + ' exercices rangés sous le profil (coaching) : ' + r.exercicesBarre);
     await page.click('#vue .retour'); r.retour = await page.evaluate(() => location.hash);
 
     /* ---- Mon sac ---- */

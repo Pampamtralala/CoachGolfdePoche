@@ -2,23 +2,34 @@
      NAVIGATION : cinq rubriques dans une barre (en bas sur téléphone, à gauche sur grand écran),
      et une recherche qui mène à chaque fonction de l'appli.
      ============================================================ */
-  /* UX03 : cinq entrées orientées données. Jouer, au centre, est l'action principale ;
-     le coaching (programme, exercices, défis) est rangé dans Analyses ; le profil est dans l'en-tête. */
+  /* V4-05 : Accueil (synthèse) · Performance (analyse) · Jouer (collecte) · Sac (clubs) · Activité (historique).
+     Les identifiants internes des pages ne changent pas (bilan, parcours, journal…) : seuls les noms et les adresses
+     publiques changent. Le coaching (programme, exercices, défis, badges) est rangé dans le profil (en-tête). */
   var RUBRIQUES = [
-    { id: "accueil", nom: "Mon jeu", ico: "accueil", pages: ["accueil"] },
-    { id: "bilan", nom: "Analyses", ico: "stats", pages: ["bilan", "practice", "exercices"] },
+    { id: "accueil", nom: "Accueil", ico: "accueil", pages: ["accueil"] },
+    { id: "bilan", nom: "Performance", ico: "stats", pages: ["bilan"] },
     { id: "parcours", nom: "Jouer", ico: "drapeau", pages: ["parcours"], principal: true },
-    { id: "sac", nom: "Mon sac", ico: "sac", pages: ["sac"] },
-    { id: "journal", nom: "Journal", ico: "carnet", pages: ["journal"] }
+    { id: "sac", nom: "Sac", ico: "sac", pages: ["sac"] },
+    { id: "journal", nom: "Activité", ico: "carnet", pages: ["journal"] }
   ];
-  /* Page sans entrée (le profil, ouvert depuis l'en-tête) : aucune entrée n'est marquée. */
+  /* Pages rangées sous le profil (bouton de l'en-tête) : aucune entrée de la barre n'est marquée. */
+  var PAGES_PROFIL = ["profil", "practice", "exercices"];
   function rubriqueDe(page) { var r = RUBRIQUES.filter(function (x) { return x.pages.indexOf(page) >= 0; })[0]; return r ? r.id : null; }
-  /* Sous-navigation commune aux pages d'Analyses : statistiques, questions, coaching. */
+  /* Sous-navigation de Performance : statistiques et questions sur ses données. */
   function sousNavAnalysesHTML(actif) {
-    var l = [{ v: "bilan", lib: "Statistiques" }, { a: "ens-ouvrir", lib: "Enseignements" }, { a: "an-ouvrir", lib: "Comprendre mon jeu" }, { v: "practice", lib: "Programme" }, { v: "exercices", lib: "Exercices et défis" }];
-    return '<nav class="filtres sous-nav" aria-label="Analyses">' + l.map(function (x) {
+    if (actif === "practice" || actif === "exercices") return sousNavCoachingHTML(actif);
+    var l = [{ v: "bilan", lib: "Statistiques" }, { a: "ens-ouvrir", lib: "Enseignements" }, { a: "an-ouvrir", lib: "Comprendre mon jeu" }];
+    return '<nav class="filtres sous-nav" aria-label="Performance">' + l.map(function (x) {
       var on = x.v === actif;
       return '<button class="puce neutre" type="button" data-a="' + (x.a || "onglet") + '"' + (x.v ? ' data-v="' + x.v + '"' : '') + (on ? ' aria-pressed="true" aria-current="page"' : '') + '>' + t(x.lib) + '</button>';
+    }).join("") + '</nav>';
+  }
+  /* Sous-navigation du coaching, rangé dans le profil : retour au profil, programme, exercices et défis. */
+  function sousNavCoachingHTML(actif) {
+    var l = [{ v: "practice", lib: "Programme" }, { v: "exercices", lib: "Exercices et défis" }];
+    return '<nav class="filtres sous-nav" aria-label="Coaching"><button class="puce neutre" type="button" data-a="onglet" data-v="profil">' + icone("retour") + t("Profil") + '</button>' + l.map(function (x) {
+      var on = x.v === actif;
+      return '<button class="puce neutre" type="button" data-a="onglet" data-v="' + x.v + '"' + (on ? ' aria-pressed="true" aria-current="page"' : '') + '>' + t(x.lib) + '</button>';
     }).join("") + '</nav>';
   }
   /* rendre() appelle toujours rendreMenu : c'est désormais la barre de navigation. */
@@ -39,9 +50,9 @@
   function fonctions() {
     var pt = etat.partie;
     return [
-      { g: "Mon jeu", l: [
-        { p: "accueil", t: "Mon jeu : tendances et dernière partie", k: "accueil tableau de bord resume chiffres cles" }] },
-      { g: "Analyses", l: [
+      { g: "Accueil", l: [
+        { p: "accueil", t: "Accueil : tendances et dernière partie", k: "accueil tableau de bord resume chiffres cles" }] },
+      { g: "Performance", l: [
         { p: "bilan", t: "Tableau de bord des statistiques", k: "stats chiffres cles tendances index" },
         { a: "ens-ouvrir", t: "Enseignements : ce que disent mes données", k: "enseignements insights constats points forts vigilance erreurs records progression" },
         { a: "an-ouvrir", t: "Comprendre mon jeu : poser une question", k: "question comprendre analyse pourquoi mieux trois putts driver gauche droite club regulier trou difficile parcours forme" },
@@ -52,7 +63,7 @@
         { p: "bilan", s: "releves", t: "Relevés détaillés", k: "constats premier putt" },
         { p: "bilan", s: "defauts", t: "Tes défauts", k: "slice hook diagnostic" },
         { p: "bilan", s: "carte", t: "Ta carte de jeu", k: "domaines palier" }] },
-      { g: "Coaching", l: [
+      { g: "Profil · Coaching", l: [
         { p: "practice", t: "Programme et séance du jour", k: "progresser plan cycle semaine entrainement calendrier" },
         { p: "exercices", t: "Bibliothèque d’exercices", k: "progresser exercices drills" },
         { p: "exercices", s: "defis", t: "Défis", k: "challenge chrono putting record" },
@@ -63,13 +74,13 @@
         etat.parcours.length ? { p: "parcours", s: "c-parcours", t: "Mes parcours", k: "golf trous meilleurs pires dangers" } : null,
         { a: "carte-nouveau", t: "Carte GPS : ajouter mon golf", k: "gps green distance entree milieu fond openstreetmap carte parcours" },
         { a: "cond-ouvrir", t: "Conditions du jour", k: "vent temperature meteo" }] },
-      { g: "Mon sac", l: [
+      { g: "Sac", l: [
         { p: "sac", t: "Sac et distances", k: "clubs fourchette dispersion ecarts trous" },
-        { a: "sac-modifier", t: "Composer mon sac", k: "configuration clubs wedges loft" },
+        { a: "sac-composer", t: "Composer mon sac", k: "configuration clubs wedges loft" },
         { p: "sac", s: "c-wedges", t: "Matrice de wedges", k: "amplitudes petit jeu" },
         { p: "sac", s: "c-historique", t: "Séries de practice archivées", k: "series balles practice archive" }] },
-      { g: "Journal", l: [
-        { p: "journal", t: "Mes parties", k: "historique cartes scores image partage" },
+      { g: "Activité", l: [
+        { p: "journal", t: "Chronologie et mes parties", k: "historique cartes scores image partage" },
         { a: "j-ouvrir", t: "Bilans, notes et rapports", k: "journal bilan mois trimestre saison rapport export import csv notes forme meteo" }] },
       { g: "Profil", l: [
         { p: "profil", t: "Profil et objectif d’index", k: "moi index prenom lieux" },
