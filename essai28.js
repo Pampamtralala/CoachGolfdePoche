@@ -44,7 +44,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(await courant() === 'Accueil', nom + ' ouverture sur Accueil');
 
     /* Chaque entrée */
-    const attendu = { accueil: ['Accueil', 'h1'], bilan: ['Performance', '.familles'], parcours: ['Jouer', '#c-partie'], sac: ['Sac', '#c-wedges'], journal: ['Activité', '.carte-score.parties'] };
+    const attendu = { accueil: ['Accueil', 'h1'], bilan: ['Performance', '.familles'], parcours: ['Jouer', '#c-partie'], sac: ['Sac', '.sac-onglets'], journal: ['Activité', '.carte-score.parties'] };
     for (const [v, [lib, sel]] of Object.entries(attendu)) {
       await page.click(`#barre [data-a="onglet"][data-v="${v}"]`);
       const c = await courant(), ok = await page.locator('#vue ' + sel).count();

@@ -252,12 +252,37 @@
       '<p class="sjc-lib">Mode de saisie</p>' + modesHTML() + '</section>' +
       partiesHTML() + parcoursListeHTML() + carteAppelHTML();
   };
+  /* V4-S02 : trois onglets — Distances (par défaut), Performance, Wedges — et la configuration derrière une icône.
+     Les ancres existantes (#c-synthese, #c-distances, #c-wedges, #c-historique, #st-clubs) ouvrent le bon onglet. */
+  var ONGLETS_SAC = [{ id: "distances", court: "Distances" }, { id: "performance", court: "Performance" }, { id: "wedges", court: "Wedges" }];
+  var SECTION_ONGLET_SAC = { "c-wedges": "wedges", "st-clubs": "performance", "c-perf-clubs": "performance" };
+  function ongletSac() { return ui.sacOnglet || "distances"; }
+  function ongletSacDeSection(sec) { return SECTION_ONGLET_SAC[sec] || (/^(c-synthese|c-distances|c-historique|sac-bilan)$/.test(sec) ? "distances" : null); }
+  ACTIONS["sac-onglet"] = function (el) {
+    ui.sacOnglet = el.getAttribute("data-v"); rendre();
+    var b = app.querySelector('.sac-onglets [data-v="' + ui.sacOnglet + '"]'); if (b) b.focus({ preventScroll: true });
+  };
+  /* Chiffres d'en-tête de l'onglet Distances : clubs dans le sac, documentés (≥ 3 coups observés), à vérifier. */
+  function chiffresSacHTML() {
+    var ids = sacActuel(), obs = mesuresObservees(), an = analyseSac();
+    var doc = ids.filter(function (id) { return (obs[id] || []).length >= MIN_OBS_DISTANCE; }).length;
+    var averif = ids.filter(function (id) { return alertesDe(an, id).length; }).length;
+    return kpisHTML([
+      { t: "Clubs", v: (ids.length + 1) + "/" + (SAC_MAX + 1), u: "putter compris" },
+      { t: "Documentés", v: String(doc), u: "au moins " + MIN_OBS_DISTANCE + " coups joués" },
+      { t: "À vérifier", v: String(averif), u: averif === 1 ? "écart anormal" : "écarts anormaux" }], "sac-chiffres");
+  }
   VUES.sac = function () {
-    return '<section class="bloc premier"><h1>Sac</h1></section>' +
-      /* UX08 : la synthèse chiffrée d'abord (V4 : sac 3D et séries retirés). */
-      syntheseSacHTML() +
-      '<section class="bloc" id="c-distances"><h2>' + t("Étagement") + '</h2>' + sacHTML() + distancesHTML() + '</section>' +
-      '<section class="bloc" id="c-wedges"><h2>Ma matrice de wedges</h2>' + wedgesHTML() + '</section>' + archiveSeriesHTML();
+    var o = ongletSac();
+    var h = '<section class="bloc premier sac-tete"><div class="titre-ligne"><h1>Sac</h1>' +
+      '<button class="icone-btn" type="button" data-a="sac-composer" data-id="sac" aria-label="Configurer mon sac : composition, lofts, wedges">' + icone("reglages") + '</button></div>' +
+      '<nav class="fenetres sac-onglets" aria-label="Vues du sac">' + ONGLETS_SAC.map(function (x) {
+        return '<button class="opt" type="button" data-a="sac-onglet" data-v="' + x.id + '" aria-pressed="' + (x.id === o) + '"' + (x.id === o ? ' aria-current="true"' : '') + '>' + t(x.court) + '</button>';
+      }).join("") + '</nav></section>';
+    if (o === "performance") return h + '<section class="bloc sac-perf-intro" id="c-perf-clubs"><p class="aide">' + t(perimetreTexte(partiesFiltrees()) + " Période choisie dans Performance.") + '</p></section>' + clubsStatsHTML();
+    if (o === "wedges") return h + '<section class="bloc" id="c-wedges"><h2>Ma matrice de wedges</h2>' + wedgesHTML() + '</section>';
+    return h + '<section class="bloc sac-resume-chiffres">' + chiffresSacHTML() + '</section>' + syntheseSacHTML() +
+      '<section class="bloc" id="c-distances"><h2>' + t("Étagement") + '</h2>' + sacHTML() + distancesHTML() + '</section>' + archiveSeriesHTML();
   };
 
   /* Régularité : la dispersion des balles de chaque club, quand au moins un club a plusieurs mesures. */
@@ -311,7 +336,7 @@
           return '<td class="num"><input type="text" inputmode="numeric" autocomplete="off" maxlength="3" id="w-' + id + '-' + am.id + '" data-c="wedge" data-w="' + id + '" data-am="' + am.id + '" aria-label="' + at(nomLoft(CLUB[id]) + ", amplitude " + am.nom + ", en mètres") + '" value="' + (v == null ? "" : v) + '"></td>';
         }).join("") + '</tr>';
       }).join("") + '</tbody></table></div>' +
-      '<p class="aide">' + t("Les lignes suivent les wedges de ton sac : ajoutes-en un avec son loft depuis « Composer mon sac ».") + '</p>' +
+      '<p class="aide">' + t("Les lignes suivent les wedges de ton sac : ajoutes-en un avec son loft depuis la configuration du sac (icône en haut de la page).") + '</p>' +
       '<p class="erreur" id="w-err" role="alert" hidden></p>' +
       '<div id="graph-wedges">' + grapheWedgesHTML() + '</div>';
   }

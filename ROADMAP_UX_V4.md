@@ -24,11 +24,11 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | 04 | Unifier les composants visuels (titre / section / KPI / contexte / aide) | P0 | 01 | Terminé | `ux4/04-composants` · #35 |
 | 05 | Arborescence et navigation (Accueil · Performance · Jouer · Sac · Activité) | P0 | 02–04 | Terminé | `ux4/05-navigation` · #36 |
 | 06 | Refaire l'accueil | P0 | 04, 05 | Terminé | `ux4/06-accueil` · #37 |
-| 07 | Regrouper Performance (5 familles) | P0 | 04, 05 | **En revue** | `ux4/07-performance` |
+| 07 | Regrouper Performance (5 familles) | P0 | 04, 05 | Terminé | `ux4/07-performance` · #38 |
 | 08 | Simplifier Jouer et le bilan | P1 | 05 | À faire | — |
 | 09 | Unifier Activité et le profil (coaching et Mes données dans le profil) | P1 | 05 | À faire | — |
 | S01 | Séparer références et observations | P0 | 01 | Terminé | `ux4/s01-references` · #32 |
-| S02 | Trois onglets de Mon sac, configuration par une icône | P0 | 02–04 | À faire | — |
+| S02 | Trois onglets de Mon sac, configuration par une icône | P0 | 02–04 | **En revue** | `ux4/s02-onglets-sac` |
 | S03 | Graphique d'étagement | P0 | S01, S02 | À faire | — |
 | S04 | Fiches clubs individuelles | P0 | S01, S02 | À faire | — |
 | S05 | Statistiques clubs centralisées dans le Sac | P0 | S01, 07 | À faire | — |
@@ -289,3 +289,22 @@ _04, 05 et 06 fusionnés dans `app` le 27/11 (PR #35 à #37), déploiement Pages
   recherche, « Voir le détail ») mènent à Performance › Comprendre, question ouverte et amenée à l'écran. Supprimés :
   `analysteHTML`, `ensHTML` et leurs branches de `rendreFeuille`. Essais 27, 28, 29, 30, 32 réécrits pour ce modèle ;
   essais 3 à 39 verts.
+
+_07 (et le correctif « Comprendre en place ») fusionné dans `app` le 28/11 (PR #38), déploiement Pages vérifié._
+
+### S02 — Trois onglets dans Sac (28/11/2026)
+
+- En-tête : « Sac » et une icône de **configuration** (réglages) qui ouvre la composition du sac, rebaptisée
+  « Configuration du sac » (composition, lofts, wedges perso) ; le bouton « Composer mon sac » du tableau disparaît.
+- Onglets **Distances** (par défaut) · **Performance** · **Wedges**, en pastilles pleine largeur.
+  - Distances : trois chiffres (clubs n/14 putter compris, documentés — au moins 3 coups joués —, à vérifier — écarts
+    anormaux) ; tableau « Mes clubs » ; étagement (écarts entre voisins, régularité) ; séries archivées repliées.
+    La ligne d'état sous le titre, redondante avec les chiffres, est retirée.
+  - Performance : profil des clubs (même calcul que Performance › clubs, `clubsStatsHTML`, sur la période du filtre
+    commun, rappelée en tête) — S05 le retirera de Performance.
+  - Wedges : la matrice.
+- Liens profonds : `#c-wedges` ouvre l'onglet Wedges, `#st-clubs` l'onglet Performance, `#c-synthese`, `#c-distances`,
+  `#c-historique` l'onglet Distances (`allerA`).
+- Texte visible de Sac (onglet par défaut) : 1264 → 491 caractères (**−61 %** depuis la référence V4).
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts ; essais 3, 6, 9 (matrice dans l'onglet Wedges),
+  28, 33 (onglets, chiffres, lien profond, icône) adaptés. Captures 390 px vérifiées.

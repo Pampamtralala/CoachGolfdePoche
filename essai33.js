@@ -39,8 +39,13 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(/^Bois 5 ?Aucun coup mesuré ; – ; – ; 0$/.test(r.lignes[1]), nom + ' bois 5 sans mesure, sans estimation : ' + r.lignes[1]);
     verifie(/Seulement 1 m avec le fer 8/.test(r.lignes[2]) && /Seulement 1 m avec le fer 7/.test(r.lignes[3]), nom + ' écart anormal fer 7 / fer 8 : ' + r.lignes[2] + ' / ' + r.lignes[3]);
     verifie(await page.locator('#c-synthese tr.alerte').count() >= 1, nom + ' ligne en alerte marquée');
-    r.resume = norm(await page.textContent('#c-synthese .sac-resume')) + ' / ' + norm(await page.$eval('#c-synthese .aide-pli > div', x => x.textContent));
-    verifie(/jamais estimées/.test(r.resume) && /à documenter/.test(r.resume) && /sous 3 coups mesurés/.test(r.resume) && /n'entre pas dans les moyennes/.test(r.resume.replace(/’/g, "'")), nom + ' résumé : ' + r.resume);
+    /* V4-S02 : l'état du sac est dans les chiffres d'en-tête de l'onglet Distances */
+    r.chiffres = await page.$$eval('.sac-chiffres .kpi', l => l.map(x => x.querySelector('.kpi-t').textContent + ' ' + x.querySelector('.kpi-v').textContent));
+    verifie(r.chiffres.join(' | ') === 'Clubs 6/14 | Documentés 0 | À vérifier 2', nom + ' chiffres du sac : ' + r.chiffres.join(' | '));
+    r.onglets = await page.$$eval('.sac-onglets button', l => l.map(b => b.textContent + (b.getAttribute('aria-pressed') === 'true' ? '*' : '')).join(' | '));
+    verifie(r.onglets === 'Distances* | Performance | Wedges', nom + ' trois onglets, Distances par défaut : ' + r.onglets);
+    r.resume = norm(await page.$eval('#c-synthese .aide-pli > div', x => x.textContent));
+    verifie(/jamais estimées/.test(r.resume) && /sous 3 coups mesurés/.test(r.resume) && /n'entre pas dans les moyennes/.test(r.resume.replace(/’/g, "'")), nom + ' résumé : ' + r.resume);
     verifie(await page.locator('#sac-scene, .c3d, .s3d').count() === 0, nom + ' sac 3D retiré (V4-02)');
     verifie(await page.evaluate(() => document.documentElement.scrollWidth) <= w, nom + ' Mon sac sans débordement');
     await page.screenshot({ path: `${D}/${nom}-sac.png` });
@@ -55,6 +60,15 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.keyboard.press('Escape'); await page.waitForSelector('#feuille', { state: 'detached' });
     r.archive = norm(await page.textContent('#c-historique summary'));
     verifie(/Séries de practice archivées \(2\)/.test(r.archive), nom + ' séries archivées consultables : ' + r.archive);
+    /* V4-S02 : lien profond vers la matrice → onglet Wedges ; icône de configuration → composition */
+    await page.click('#barre [data-v="accueil"]');
+    await page.evaluate(() => { const b = document.createElement('button'); b.setAttribute('data-a', 'aller-a'); b.setAttribute('data-v', 'sac'); b.setAttribute('data-s', 'c-wedges'); b.hidden = true; document.getElementById('app').appendChild(b); b.click(); });
+    verifie(await page.locator('.sac-onglets [aria-pressed="true"][data-v="wedges"]').count() === 1 && await page.locator('#c-wedges').count() === 1, nom + ' #c-wedges ouvre l\'onglet Wedges');
+    await page.click('[data-a="sac-onglet"][data-v="performance"]');
+    verifie(await page.locator('#vue #st-clubs').count() === 1, nom + ' onglet Performance : profil des clubs');
+    await page.click('.sac-tete .icone-btn'); await page.waitForSelector('#feuille');
+    verifie(/Configuration du sac/.test(norm(await page.textContent('#feuille h2'))), nom + ' icône : configuration du sac');
+    await page.keyboard.press('Escape');
     await ctx.close();
   }
   await browser.close();

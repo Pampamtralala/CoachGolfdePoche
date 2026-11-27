@@ -132,7 +132,8 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   res.sacCompose = (e.carnet.sac || []).join(' ');
   res.sacScene = await page.$$eval('#c-synthese [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' '));
   await vue('10b-sac');
-  /* Matrice de wedges */
+  /* Matrice de wedges (onglet Wedges, V4-S02) */
+  await page.click('[data-a="sac-onglet"][data-v="wedges"]'); 
   const wedge = async (w, am, v) => { await page.fill(`#w-${w}-${am}`, String(v)); await page.dispatchEvent(`#w-${w}-${am}`, 'change'); };
   await wedge('sw', 'a1', 30); await wedge('sw', 'a2', 45); await wedge('sw', 'a3', 62); await wedge('gw', 'a2', 75);
   await wedge('lw', 'a1', 'xx');
