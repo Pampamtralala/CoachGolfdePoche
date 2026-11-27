@@ -2,11 +2,12 @@
    Comprendre), carnet vide sans chiffre fictif, navigation en profondeur depuis Mon jeu et la recherche,
    rubrique conservée quand on revient, enseignements liés, aucun débordement sur téléphone. */
 const { chromium } = require('playwright');
+const { allerRubrique } = require('./nav-essai');
 const fs = require('fs');
 const CLE = 'coachgolf.v1';
 const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
 const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
-const NOMS = ['Performance générale', 'Mises en jeu', 'Attaque de green', 'Petit jeu', 'Putting', 'Erreurs récurrentes', 'Coups perdus estimés', 'Analyse des parcours', 'Analyse des trous', 'Comparaison des clubs', 'Qualité des données', 'Comprendre mon jeu'];
+const NOMS = ['Résultats et progression', 'Mises en jeu', 'Attaque de green', 'Petit jeu', 'Putting', 'Erreurs récurrentes', 'Coups perdus estimés', 'Analyse des parcours', 'Analyse des trous', 'Comparaison des clubs', 'Qualité des données', 'Comprendre mon jeu'];
 const IDS = ['perf', 'mej', 'attaque', 'petit', 'putting', 'erreurs', 'sg', 'parcours', 'trous', 'clubs', 'qualite', 'comprendre'];
 (async () => {
   const D = 'shots32'; fs.mkdirSync(D, { recursive: true });
@@ -25,13 +26,18 @@ const IDS = ['perf', 'mej', 'attaque', 'petit', 'putting', 'erreurs', 'sg', 'par
     await page.click('[data-a="ac-sans-index"]'); await page.click('.carnet-form button[type="submit"]');
     await page.waitForSelector('.tete');
     const largeur = () => page.evaluate(() => document.documentElement.scrollWidth);
-    const rub = async id => { await page.click(`#vue .rubriques [data-v="${id}"]`); await page.waitForTimeout(40); };
+    const rub = async id => { await allerRubrique(page, id); };
 
     /* Carnet vide : chaque rubrique s'ouvre, sans chiffre inventé */
     await page.click('#barre [data-v="bilan"]');
-    r.pastilles = await page.$$eval('#vue .rubriques button', l => l.map(b => b.getAttribute('data-v')));
-    verifie(JSON.stringify(r.pastilles) === JSON.stringify(IDS), nom + ' douze rubriques dans l\'ordre : ' + r.pastilles.join(','));
-    verifie(await page.locator('#vue .rubriques [aria-pressed="true"][data-v="perf"]').count() === 1, nom + ' Performance générale par défaut');
+    /* V4-07 : cinq familles ; Résultats par défaut ; Secteurs montre ses quatre rubriques */
+    r.pastilles = await page.$$eval('#vue .familles button', l => l.map(b => b.getAttribute('data-v')));
+    verifie(JSON.stringify(r.pastilles) === JSON.stringify(['resultats', 'secteurs', 'erreurs', 'parcours', 'comprendre']), nom + ' cinq familles dans l\'ordre : ' + r.pastilles.join(','));
+    verifie(await page.locator('#vue .familles [aria-pressed="true"][data-v="resultats"]').count() === 1 && await page.locator('#vue .rubriques').count() === 0, nom + ' Résultats par défaut, sans seconde rangée');
+    await page.click('#vue [data-a="famille"][data-v="secteurs"]');
+    r.secteurs = await page.$$eval('#vue .rubriques button', l => l.map(b => b.textContent.trim()).join(' | '));
+    verifie(r.secteurs === 'Départs | Attaque | Petit jeu | Putting', nom + ' secteurs : ' + r.secteurs);
+    verifie(await page.locator('#vue .sous-nav').count() === 0, nom + ' plus de sous-navigation (enseignements et questions fusionnés)');
     for (const [k, id] of IDS.entries()) {
       await rub(id);
       const titre = norm(await page.textContent('#vue .rb-tete h2'));
@@ -50,20 +56,19 @@ const IDS = ['perf', 'mej', 'attaque', 'petit', 'putting', 'erreurs', 'sg', 'par
       await rub(id);
       const titre = norm(await page.textContent('#vue .rb-tete h2')), filtre = await page.locator('#vue .filtres-stats').count();
       r.rempli[id] = titre + (filtre ? ' + filtre' : '');
-      verifie(titre === NOMS[k] && (id === 'comprendre' ? filtre === 0 : filtre === 1), nom + ' rubrique ' + id + ' : ' + r.rempli[id]);
+      verifie(titre === NOMS[k] && filtre === 1, nom + ' rubrique ' + id + ' : ' + r.rempli[id]);
       verifie(await largeur() <= w, nom + ' ' + id + ' sans débordement (' + await largeur() + ')');
       if (['perf', 'mej', 'putting', 'erreurs'].includes(id)) await page.screenshot({ path: `${D}/${nom}-${id}.png` });
     }
     /* Contenus attendus */
-    await rub('perf'); verifie(await page.locator('#vue #st-tableau .kpi').count() === 6 && await page.locator('#vue #reperes').count() === 1, nom + ' Performance : chiffres et repères');
+    await rub('perf'); verifie(await page.locator('#vue #st-tableau .kpi').count() === 6 && await page.locator('#vue #reperes').count() === 1 && await page.locator('#vue .rb-liens [data-v="clubs"]').count() === 1, nom + ' Résultats : chiffres, repères, liens (clubs, qualité)');
     await rub('mej'); verifie(await page.locator('#vue .repartition').count() >= 1 && await page.locator('#vue #rb-rep-mej, #vue #rb-rep-cotes').count() === 2, nom + ' Mises en jeu : répartition et deux réponses');
     verifie(await page.locator('#vue [data-a="exos-domaine"][data-v="drive"]').count() >= 1, nom + ' Mises en jeu : exercices liés');
-    await rub('putting'); verifie(await page.locator('#vue #st-putting').count() === 1 && await page.locator('#vue .rb-ens .carte-ens').count() >= 1, nom + ' Putting : analyse et enseignement lié (trois-putts en hausse)');
+    await rub('putting'); verifie(await page.locator('#vue #st-putting').count() === 1 && await page.locator('#vue .rb-ens .rb-ens-liste li').count() >= 1, nom + ' Putting : analyse et enseignement lié, en une ligne (trois-putts en hausse)');
     await rub('erreurs'); verifie(await page.locator('#vue #st-erreurs').count() === 1 && await page.locator('#vue #defauts').count() === 1, nom + ' Erreurs : erreurs et défauts');
-    await rub('comprendre'); verifie(await page.locator('#vue .rb-tete [data-a="an-ouvrir"]').count() === 12, nom + ' Comprendre : douze questions');
-    await page.click('#vue .rb-tete [data-a="an-ouvrir"][data-v="score"]'); await page.waitForSelector('#feuille.analyste');
-    verifie(await page.locator('#feuille [aria-expanded="true"][data-v="score"]').count() === 1, nom + ' Comprendre : la question s\'ouvre');
-    await page.keyboard.press('Escape');
+    await rub('comprendre'); verifie(await page.locator('#vue .rb-tete [data-a="an-question"]').count() === 12 && await page.locator('#vue .rb-tete .rb-ens-liste li').count() >= 1, nom + ' Comprendre : enseignements et douze questions');
+    await page.click('#vue .rb-tete [data-a="an-question"][data-v="score"]');
+    verifie(await page.locator('#vue [aria-expanded="true"][data-v="score"]').count() === 1 && await page.locator('#vue #an-rep-score').count() === 1 && await page.locator('#feuille').count() === 0, nom + ' Comprendre : la question s\'ouvre en place');
 
     /* Rubrique conservée quand on revient dans Analyses */
     await rub('clubs'); await page.click('#barre [data-v="sac"]'); await page.click('#barre [data-v="bilan"]');

@@ -44,7 +44,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(await courant() === 'Accueil', nom + ' ouverture sur Accueil');
 
     /* Chaque entrée */
-    const attendu = { accueil: ['Accueil', 'h1'], bilan: ['Performance', '.sous-nav'], parcours: ['Jouer', '#c-partie'], sac: ['Sac', '#c-wedges'], journal: ['Activité', '.carte-score.parties'] };
+    const attendu = { accueil: ['Accueil', 'h1'], bilan: ['Performance', '.familles'], parcours: ['Jouer', '#c-partie'], sac: ['Sac', '#c-wedges'], journal: ['Activité', '.carte-score.parties'] };
     for (const [v, [lib, sel]] of Object.entries(attendu)) {
       await page.click(`#barre [data-a="onglet"][data-v="${v}"]`);
       const c = await courant(), ok = await page.locator('#vue ' + sel).count();
@@ -65,19 +65,18 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.click('#barre [data-a="onglet"][data-v="parcours"]');
     verifie(await page.locator('#vue .journal-lien [data-v="journal"]').count() === 1, nom + ' Jouer : lien vers mes parties');
 
-    /* Performance : sous-navigation (statistiques, enseignements, comprendre) ; le coaching est dans le profil */
+    /* Performance : cinq familles (V4-07) ; le coaching est dans le profil */
     await page.click('#barre [data-a="onglet"][data-v="bilan"]');
-    r.sousNav = await page.$$eval('#vue .sous-nav button', l => l.map(b => b.textContent.trim()).join(' | '));
-    verifie(r.sousNav === 'Statistiques | Enseignements | Comprendre mon jeu' && await courant() === 'Performance', nom + ' Performance : ' + r.sousNav);
+    r.sousNav = await page.$$eval('#vue .familles button', l => l.map(b => b.textContent.trim()).join(' | '));
+    verifie(r.sousNav === 'Résultats | Secteurs | Erreurs | Parcours | Comprendre' && await courant() === 'Performance', nom + ' Performance : ' + r.sousNav);
     for (const [v, lib] of [['practice', 'Programme'], ['exercices', 'Exercices et défis']]) {
       await page.click('.tete .ident'); await page.click(`#profil-coaching [data-v="${v}"]`);
       const act = await page.$eval('#vue .sous-nav [aria-current="page"]', b => b.textContent.trim()).catch(() => '');
       verifie(act === lib && await courant() === '' && await page.locator('.tete .ident[aria-current="page"]').count() === 1, nom + ' Profil › Coaching › ' + v + ' : ' + act + ' / barre « ' + await courant() + ' »');
     }
     await page.click('#barre [data-a="onglet"][data-v="bilan"]');
-    await page.click('#vue .sous-nav [data-a="an-ouvrir"]');
-    verifie(await page.locator('#feuille.analyste').count() === 1, nom + ' Analyses › Comprendre mon jeu');
-    await page.keyboard.press('Escape');
+    await page.click('#vue [data-a="famille"][data-v="comprendre"]'); if (await page.getAttribute('#vue [data-a="an-question"][data-v="score"]', 'aria-expanded') !== 'true') await page.click('#vue [data-a="an-question"][data-v="score"]');
+    verifie(await page.locator('#feuille').count() === 0 && await page.locator('#vue [aria-expanded="true"][data-v="score"]').count() === 1, nom + ' Performance › Comprendre mon jeu, en place');
 
     /* Profil : depuis l'en-tête, aucune entrée marquée */
     await page.click('.tete .ident');

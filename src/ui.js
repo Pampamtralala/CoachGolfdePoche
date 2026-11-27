@@ -202,7 +202,7 @@
   function pageDe(nom) { if (a(ROUTES_RETIREES, nom)) nom = ROUTES_RETIREES[nom].p; if (a(ALIAS, nom)) nom = ALIAS[nom]; return PAGES.indexOf(nom) >= 0 ? nom : "accueil"; }
   function adresseDe(page) { return ADRESSE_PAGE[page] || page; }
   var ui = { vue: "auto", onglet: "accueil", semaine: 1, etape: 0, brouillon: null, mode: null, filtre: { d: "tous", monPalier: true }, feuille: null, dialogue: null, anime: false, retourFocus: null,
-    club: "f7", partie: null, bilanPartie: null, pile: [], defiEvt: null, depart: null, fenetre: 5, plis: { priorites: true }, feuilleRetour: null, sacApercu: null, sacSel: null, menu: false, partage: false, pvCoup: null, pvLong: false, pvPanneau: null, sjc: null, strat: null, ellSel: null };
+    club: "f7", partie: null, bilanPartie: null, pile: [], defiEvt: null, depart: null, fenetre: 5, plis: {}, feuilleRetour: null, sacApercu: null, sacSel: null, menu: false, partage: false, pvCoup: null, pvLong: false, pvPanneau: null, sjc: null, strat: null, ellSel: null };
   var app = document.getElementById("app");
 
   /* ---------- Outils de texte ---------- */
@@ -816,10 +816,12 @@
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
     /* UX06 : en-tête commun (sous-navigation, rubriques, filtre commun), puis la rubrique choisie. */
     var rb = rubriqueCourante();
-    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("bilan") + '<h1>Performance</h1>' + rubriquesNavHTML(rb) +
-      (rb === "comprendre" ? '' : tableauStatsHTML("filtres")) + '</section>';
-    var sPalier = '<section class="bloc" id="palier-bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
-      uneBilanHTML(prios, sc, pal) + '</section>';
+    /* V4-07 : plus de sous-navigation (Enseignements et Comprendre fusionnés dans la famille « Comprendre mon jeu »). */
+    var h = '<section class="bloc premier">' + '<h1>Performance</h1>' + rubriquesNavHTML(rb) +
+      tableauStatsHTML("filtres") /* V4-07 : aussi pour Comprendre (questions en place) */ + '</section>';
+    /* V4-07 : le palier (déclaré, coaching) passe en pli : les chiffres des parties d'abord. */
+    var sPalier = pliHTML("palier-bloc", "Palier " + pal + " · " + P.nom, ("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")).toLowerCase(),
+      '<p class="chapo">' + t(P.resume) + '</p>' + uneBilanHTML(prios, sc, pal), 0);
 
     /* UX13 : origine des priorités dite en clair. */
     var c = '<p class="aide"><span class="ens-prov">' + t("D'après ton profil") + '</span> ' + t("Réponses déclarées au questionnaire, remplacées par tes tests notés et tes parties quand ils existent.") + '</p><ol class="priorites">' + prios.slice(0, 3).map(function (x, k) {
@@ -974,8 +976,6 @@
     if (f && f.conditions && etat.profil) { c.innerHTML = conditionsHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.donnees && etat.profil) { c.innerHTML = mesDonneesHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.journal && etat.profil) { c.innerHTML = journalHTML(); entreeFeuille(); majFige(); monterGraphes(); return; }
-    if (f && f.analyste && etat.profil) { c.innerHTML = analysteHTML(); entreeFeuille(); majFige(); return; }
-    if (f && f.enseignements && etat.profil) { c.innerHTML = ensHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.sac && (f.sac === "putter" || CLUB[f.sac]) && etat.profil) { c.innerHTML = sacFeuilleHTML(f.sac); entreeFeuille(); majFige(); return; }
     if (f && f.sacComposer && etat.profil) { c.innerHTML = sacComposerHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.recherche && etat.profil) { c.innerHTML = rechercheHTML(); entreeFeuille(); majFige(); return; }
@@ -1024,7 +1024,7 @@
       return;
     }
     /* Le sac a pu être redessiné en aperçu pendant la saisie : il est remis à l'état enregistré. */
-    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.carte || ui.feuille.donnees || ui.feuille.journal || ui.feuille.analyste || ui.feuille.enseignements);
+    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.carte || ui.feuille.donnees || ui.feuille.journal);
     var carteF = ui.feuille && ui.feuille.carte;
     ui.sacApercu = null;
     ui.feuille = null; ui.pile = []; ui.defiEvt = null; rendreFeuille();

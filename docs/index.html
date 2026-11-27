@@ -1755,6 +1755,19 @@ main.entree { animation: entreeVue .22s ease-out; }
 .mon-jeu .mj-action { margin-top: 10px; }
 .mj-agir { padding-top: 4px; }
 .mj-priorite .carte-tb { position: relative; width: 100%; text-align: left; }
+/* V4-07 · Performance : cinq familles, puis les rubriques de la famille en pastilles plus discrètes. */
+.familles { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 6px; }
+.familles::-webkit-scrollbar { display: none; }
+.familles .puce { flex: 0 0 auto; white-space: nowrap; }
+.familles + .rubriques { margin-top: 0; }
+.familles + .rubriques .puce { min-height: 38px; font-size: 14px; background: transparent; border: 1.5px solid var(--filet-fort); }
+.familles + .rubriques .puce[aria-pressed="true"] { border-color: var(--action); color: var(--action-texte); background: var(--sauge-fond); }
+.rb-ens-liste small { display: block; font-size: 12.5px; color: var(--encre-2); }
+/* V4-07 · Comprendre en place : questions et enseignements en accordéon, dans la page. */
+.an-q { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.an-q::after { content: "+"; flex: none; font-size: 20px; line-height: 1; color: var(--encre-2); }
+.an-q[aria-expanded="true"]::after { content: "−"; }
+.rb-ens-liste .carte-ens { margin: 6px 0 4px; }
 
 /* ---------- Accueil en paysage de golf ----------
    Jour en clair, soirée après 17 h, nuit en mode sombre. Les couleurs du dessin sont des variables. */
@@ -7552,7 +7565,7 @@ function filtrerChronologie(ev, f) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-27T11:55:56.761Z";
+  var VERSION_APPLI = "2026-11-27T23:21:23.002Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, references: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -7745,7 +7758,7 @@ function filtrerChronologie(ev, f) {
   function pageDe(nom) { if (a(ROUTES_RETIREES, nom)) nom = ROUTES_RETIREES[nom].p; if (a(ALIAS, nom)) nom = ALIAS[nom]; return PAGES.indexOf(nom) >= 0 ? nom : "accueil"; }
   function adresseDe(page) { return ADRESSE_PAGE[page] || page; }
   var ui = { vue: "auto", onglet: "accueil", semaine: 1, etape: 0, brouillon: null, mode: null, filtre: { d: "tous", monPalier: true }, feuille: null, dialogue: null, anime: false, retourFocus: null,
-    club: "f7", partie: null, bilanPartie: null, pile: [], defiEvt: null, depart: null, fenetre: 5, plis: { priorites: true }, feuilleRetour: null, sacApercu: null, sacSel: null, menu: false, partage: false, pvCoup: null, pvLong: false, pvPanneau: null, sjc: null, strat: null, ellSel: null };
+    club: "f7", partie: null, bilanPartie: null, pile: [], defiEvt: null, depart: null, fenetre: 5, plis: {}, feuilleRetour: null, sacApercu: null, sacSel: null, menu: false, partage: false, pvCoup: null, pvLong: false, pvPanneau: null, sjc: null, strat: null, ellSel: null };
   var app = document.getElementById("app");
 
   /* ---------- Outils de texte ---------- */
@@ -8359,10 +8372,12 @@ function filtrerChronologie(ev, f) {
     var sc = scoresDomaines(p), prios = priorites(p), i = 0, large = estLarge();
     /* UX06 : en-tête commun (sous-navigation, rubriques, filtre commun), puis la rubrique choisie. */
     var rb = rubriqueCourante();
-    var h = '<section class="bloc premier">' + sousNavAnalysesHTML("bilan") + '<h1>Performance</h1>' + rubriquesNavHTML(rb) +
-      (rb === "comprendre" ? '' : tableauStatsHTML("filtres")) + '</section>';
-    var sPalier = '<section class="bloc" id="palier-bloc"><p class="surtitre">' + t("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")) + '</p><h2 class="h2-palier">Palier ' + pal + '<span>' + t(P.nom) + '</span></h2><p class="chapo">' + t(P.resume) + '</p>' +
-      uneBilanHTML(prios, sc, pal) + '</section>';
+    /* V4-07 : plus de sous-navigation (Enseignements et Comprendre fusionnés dans la famille « Comprendre mon jeu »). */
+    var h = '<section class="bloc premier">' + '<h1>Performance</h1>' + rubriquesNavHTML(rb) +
+      tableauStatsHTML("filtres") /* V4-07 : aussi pour Comprendre (questions en place) */ + '</section>';
+    /* V4-07 : le palier (déclaré, coaching) passe en pli : les chiffres des parties d'abord. */
+    var sPalier = pliHTML("palier-bloc", "Palier " + pal + " · " + P.nom, ("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")).toLowerCase(),
+      '<p class="chapo">' + t(P.resume) + '</p>' + uneBilanHTML(prios, sc, pal), 0);
 
     /* UX13 : origine des priorités dite en clair. */
     var c = '<p class="aide"><span class="ens-prov">' + t("D'après ton profil") + '</span> ' + t("Réponses déclarées au questionnaire, remplacées par tes tests notés et tes parties quand ils existent.") + '</p><ol class="priorites">' + prios.slice(0, 3).map(function (x, k) {
@@ -8517,8 +8532,6 @@ function filtrerChronologie(ev, f) {
     if (f && f.conditions && etat.profil) { c.innerHTML = conditionsHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.donnees && etat.profil) { c.innerHTML = mesDonneesHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.journal && etat.profil) { c.innerHTML = journalHTML(); entreeFeuille(); majFige(); monterGraphes(); return; }
-    if (f && f.analyste && etat.profil) { c.innerHTML = analysteHTML(); entreeFeuille(); majFige(); return; }
-    if (f && f.enseignements && etat.profil) { c.innerHTML = ensHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.sac && (f.sac === "putter" || CLUB[f.sac]) && etat.profil) { c.innerHTML = sacFeuilleHTML(f.sac); entreeFeuille(); majFige(); return; }
     if (f && f.sacComposer && etat.profil) { c.innerHTML = sacComposerHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.recherche && etat.profil) { c.innerHTML = rechercheHTML(); entreeFeuille(); majFige(); return; }
@@ -8567,7 +8580,7 @@ function filtrerChronologie(ev, f) {
       return;
     }
     /* Le sac a pu être redessiné en aperçu pendant la saisie : il est remis à l'état enregistré. */
-    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.carte || ui.feuille.donnees || ui.feuille.journal || ui.feuille.analyste || ui.feuille.enseignements);
+    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.carte || ui.feuille.donnees || ui.feuille.journal);
     var carteF = ui.feuille && ui.feuille.carte;
     ui.sacApercu = null;
     ui.feuille = null; ui.pile = []; ui.defiEvt = null; rendreFeuille();
@@ -13079,29 +13092,29 @@ function filtrerChronologie(ev, f) {
       return '<li><button class="an-q" type="button" data-a="an-question" data-v="' + id + '" aria-expanded="' + ouvert + '"' + (ouvert ? ' aria-controls="an-rep-' + id + '"' : '') + '>' + t(q.q) + '</button>' + (ouvert ? reponseHTML(repondre(id, l, ctx)) : '') + '</li>';
     }).join("") + '</ul>';
   }
-  function analysteHTML() {
+  /* V4-07 (retour utilisateur) : plus de fiche par-dessus l'écran. Les questions et leurs réponses s'ouvrent en place,
+     dans la famille « Comprendre mon jeu » de Performance, sous le filtre commun. */
+  function questionsComprendreHTML() {
     var A = etatAnalyste();
-    return '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer" tabindex="-1"></button>' +
-      '<section class="feuille analyste" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
-      '<header><p class="surtitre">Tes questions, tes chiffres</p><h2 id="f-titre">Comprendre mon jeu</h2><button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>' +
-      '<p class="aide">' + t("Les réponses sont calculées à partir de ton carnet seulement : chaque chiffre est cité avec sa période et le nombre de parties, de trous ou de coups étudiés. Pas d'IA : rien n'est inventé.") + '</p>' +
-      pastillesPeriodeHTML("an-periode") + '<p class="aide an-perimetre">' + t(perimetreTexte(partiesAnalyste()) + " Même période que les autres analyses.") + '</p>' +
-      '<div class="champ"><label for="an-recherche">Cherche une question</label><input id="an-recherche" type="search" autocomplete="off" placeholder="putts, driver, trou, forme…" value="' + at(A.recherche) + '" data-i="an-recherche"></div>' +
-      '<div id="an-liste" aria-live="polite">' + listeAnalysteHTML() + '</div></section>';
+    return '<div class="champ"><label for="an-recherche">Cherche une question</label><input id="an-recherche" type="search" autocomplete="off" placeholder="putts, driver, trou, forme…" value="' + at(A.recherche) + '" data-i="an-recherche"></div>' +
+      '<div id="an-liste" class="analyste" aria-live="polite">' + listeAnalysteHTML() + '</div>';
   }
-  function rendreAnalyste(focusSel) {
-    var f = document.getElementById("feuille"), y = f ? f.scrollTop : 0;
-    rendreFeuille(); f = document.getElementById("feuille"); if (f) f.scrollTop = y;
-    var b = focusSel && document.querySelector("#feuille " + focusSel); if (b) b.focus({ preventScroll: true });
+  /* Ouvre Performance › Comprendre mon jeu (depuis n'importe où), puis amène l'élément visé à l'écran. */
+  function ouvrirComprendre(sel) {
+    ui.rubrique = "comprendre"; (ui.rubFamille || (ui.rubFamille = {})).comprendre = "comprendre";
+    if (ui.feuille) { ui.feuille = null; ui.pile = []; ui.retourFocus = null; rendreFeuille(); }
+    if (ui.onglet !== "bilan") allerOnglet("bilan", false); else rendre();
+    var c = sel && document.querySelector("#vue " + sel);
+    if (c) { if (c.scrollIntoView) c.scrollIntoView({ block: "start" }); var f = c.matches("button") ? c : c.querySelector("button"); if (f) f.focus({ preventScroll: true }); }
   }
   ACTIONS["an-ouvrir"] = function (el) {
-    ui.retourFocus = el; etatAnalyste(); var v = el.getAttribute("data-v"); if (v) ui.analyste.q = v;
-    ui.feuille = { analyste: true }; rendreFeuille(); var b = document.getElementById("f-fermer"); if (b) b.focus();
+    etatAnalyste(); var v = el.getAttribute("data-v"); if (v) { ui.analyste.q = v; ui.analyste.recherche = ""; }
+    ouvrirComprendre(v ? '[data-a="an-question"][data-v="' + v + '"]' : '#rb-questions');
   };
-  ACTIONS["an-periode"] = function (el) { var v = el.getAttribute("data-v"); appliquerPeriode(v); rendre(); rendreAnalyste('[data-a="an-periode"][data-v="' + v + '"]'); };
+  ACTIONS["an-periode"] = function (el) { appliquerPeriode(el.getAttribute("data-v")); rendre(); };
   ACTIONS["an-question"] = function (el) {
     var A = etatAnalyste(), id = el.getAttribute("data-v"); A.q = A.q === id ? null : id;
-    rendreAnalyste('[data-a="an-question"][data-v="' + id + '"]');
+    rendre(); var b = document.querySelector('#vue [data-a="an-question"][data-v="' + id + '"]'); if (b) b.focus({ preventScroll: true });
   };
   SAISIES["an-recherche"] = function (el) {
     etatAnalyste().recherche = el.value;
@@ -13110,7 +13123,7 @@ function filtrerChronologie(ev, f) {
 
   /* ============================================================
      ENSEIGNEMENTS PERSONNALISÉS (roadmap UX, UX05)
-     Calculés par le moteur déterministe à partir des autres moteurs ; tous dans la fiche (Performance),
+     Calculés par le moteur déterministe à partir des autres moteurs ; tous dans Performance › Comprendre mon jeu,
      le premier point de vigilance sert de « priorité actuelle » sur l'accueil (V4-06). Chaque carte : constat chiffré, période, effectif, fiabilité, lien, action éventuelle.
      ============================================================ */
   var cacheEns = {};
@@ -13134,26 +13147,19 @@ function filtrerChronologie(ev, f) {
       '<p class="ens-meta">' + t([per, eff].filter(Boolean).join(" · ")) + '</p><p class="ens-fiab ' + e.fiabilite.niveau + '">' + t(e.fiabilite.texte) + '</p>' +
       (lien || act ? '<div class="ligne-btn">' + act + lien + '</div>' : '') + '</article>';
   }
-  function ensHTML() {
-    var R = calculEns();
-    var corps = R.liste.length ? CATEGORIES_ENS.map(function (c) {
-      var l = R.liste.filter(function (e) { return e.cat === c.id; });
-      return l.length ? '<h3 class="ens-groupe">' + t(c.lib) + '</h3>' + l.map(carteEnsHTML).join("") : '';
-    }).join("") : '<p class="aide">' + t(R.parties ? "Rien de net pour l'instant : aucun écart ne dépasse les seuils sur tes " + pluriel(R.parties, "partie") + "." : "Enregistre une première partie : les enseignements se construisent à partir de ton carnet.") + '</p>';
-    return '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer" tabindex="-1"></button>' +
-      '<section class="feuille enseignements" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
-      '<header><p class="surtitre">' + t("Toutes tes parties prises en compte") + '</p><h2 id="f-titre">Enseignements</h2><button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>' +
-      '<p class="aide">' + t("Tirés de ton carnet par des règles fixes, sans IA : un enseignement n'apparaît que si l'écart dépasse un seuil, sur un nombre minimum d'observations. Une association n'est pas une cause.") + '</p>' + corps + '</section>';
-  }
-  ACTIONS["ens-ouvrir"] = function (el) { ui.retourFocus = el; ui.feuille = { enseignements: true }; rendreFeuille(); var b = document.getElementById("f-fermer"); if (b) b.focus(); };
-  /* Détail : la question correspondante de « Comprendre mon jeu », sur toutes les parties (comme l'enseignement). */
+  /* V4-07 (retour utilisateur) : les enseignements s'ouvrent en place (une ligne → la carte complète) ; « Voir le détail »
+     ouvre la question correspondante, en place elle aussi, dans « Comprendre mon jeu ». */
+  ACTIONS["ens-deplier"] = function (el) {
+    var id = el.getAttribute("data-v"); ui.ensOuvert = ui.ensOuvert === id ? null : id;
+    rendre(); var b = document.querySelector('#vue [data-a="ens-deplier"][data-v="' + id + '"]'); if (b) b.focus({ preventScroll: true });
+  };
+  ACTIONS["ens-ouvrir"] = function () { ui.ensTout = true; ouvrirComprendre("#rb-ens"); };
+  ACTIONS["ens-tout"] = function () { ui.ensTout = !ui.ensTout; rendre(); var b = document.querySelector('#vue [data-a="ens-tout"]'); if (b) b.focus({ preventScroll: true }); };
+  /* Détail : la question correspondante, sur toutes les parties (comme l'enseignement : filtre commun remis à « Toutes »). */
   ACTIONS["ens-detail"] = function (el) {
     etatAnalyste(); ui.analyste.q = el.getAttribute("data-v"); ui.analyste.recherche = "";
-    /* L'enseignement porte sur toutes les parties : le détail aussi (filtre commun remis à « Toutes », formats et parcours compris). */
     var F = appliquerPeriode("0"); F.format = ""; F.parcours = "";
-    ui.retourFocus = ui.retourFocus || el; ui.feuille = { analyste: true }; rendreFeuille();
-    var r = document.getElementById("an-rep-" + ui.analyste.q); if (r && r.scrollIntoView) r.scrollIntoView({ block: "start" });
-    var b = document.getElementById("f-fermer"); if (b) b.focus({ preventScroll: true });
+    ouvrirComprendre('[data-a="an-question"][data-v="' + ui.analyste.q + '"]');
   };
   function fermerFeuilleEns() { if (ui.feuille) { ui.feuille = null; ui.pile = []; ui.retourFocus = null; rendreFeuille(); } }
   ACTIONS["ens-aller"] = function (el) { fermerFeuilleEns(); allerA(el.getAttribute("data-v"), el.getAttribute("data-s")); };
@@ -13167,9 +13173,9 @@ function filtrerChronologie(ev, f) {
      actions. Le filtre commun (UX07) reste en tête et vaut pour toutes.
      ============================================================ */
   var RUBRIQUES_AN = [
-    { id: "perf", nom: "Performance générale", court: "Performance" },
-    { id: "mej", nom: "Mises en jeu", court: "Mises en jeu" },
-    { id: "attaque", nom: "Attaque de green", court: "Attaque de green" },
+    { id: "perf", nom: "Résultats et progression", court: "Résultats" },
+    { id: "mej", nom: "Mises en jeu", court: "Départs" },
+    { id: "attaque", nom: "Attaque de green", court: "Attaque" },
     { id: "petit", nom: "Petit jeu", court: "Petit jeu" },
     { id: "putting", nom: "Putting", court: "Putting" },
     { id: "erreurs", nom: "Erreurs récurrentes", court: "Erreurs" },
@@ -13186,19 +13192,50 @@ function filtrerChronologie(ev, f) {
     "rb-perf": "perf", "rb-mej": "mej", "rb-attaque": "attaque", "rb-petit": "petit", "rb-parcours": "parcours", "rb-trous": "trous", "rb-comprendre": "comprendre" };
   function rubriqueDeSection(s) { return SECTION_RUBRIQUE[s] || null; }
   function rubriqueCourante() { var r = ui.rubrique; return RUBRIQUES_AN.some(function (x) { return x.id === r; }) ? r : "perf"; }
-  function rubriquesNavHTML(actif) {
-    return '<nav class="rubriques" aria-label="Rubriques d\'analyse">' + RUBRIQUES_AN.map(function (r) {
+  /* V4-07 : cinq familles. Les rubriques restent les unités de contenu (liens profonds inchangés) ; une famille à
+     plusieurs rubriques montre une seconde rangée de pastilles. Clubs → Sac (S05) ; qualité des données → profil (09) :
+     en attendant, ces deux rubriques restent joignables par leurs liens, hors familles. */
+  var FAMILLES_AN = [
+    { id: "resultats", nom: "Résultats et progression", court: "Résultats", rub: ["perf"] },
+    { id: "secteurs", nom: "Secteurs de jeu", court: "Secteurs", rub: ["mej", "attaque", "petit", "putting"] },
+    { id: "erreurs", nom: "Erreurs et coups perdus", court: "Erreurs", rub: ["erreurs", "sg"] },
+    { id: "parcours", nom: "Parcours et trous", court: "Parcours", rub: ["parcours", "trous"] },
+    { id: "comprendre", nom: "Comprendre mon jeu", court: "Comprendre", rub: ["comprendre"] }
+  ];
+  function familleDe(rb) { return FAMILLES_AN.filter(function (f) { return f.rub.indexOf(rb) >= 0; })[0] || null; }
+  function pucesHTML(action, l, actif, label, cls) {
+    return '<nav class="' + cls + '" aria-label="' + at(label) + '">' + l.map(function (r) {
       var on = r.id === actif;
-      return '<button class="puce neutre" type="button" data-a="rubrique" data-v="' + r.id + '"' + (on ? ' aria-pressed="true" aria-current="true"' : ' aria-pressed="false"') + '>' + t(r.court) + '</button>';
+      return '<button class="puce neutre" type="button" data-a="' + action + '" data-v="' + r.id + '"' + (on ? ' aria-pressed="true" aria-current="true"' : ' aria-pressed="false"') + '>' + t(r.court) + '</button>';
     }).join("") + '</nav>';
   }
+  function rubriquesNavHTML(actif) {
+    var F = familleDe(actif);
+    var h = pucesHTML("famille", FAMILLES_AN, F ? F.id : null, "Familles d'analyse", "familles");
+    if (F && F.rub.length > 1) h += pucesHTML("rubrique", RUBRIQUES_AN.filter(function (r) { return F.rub.indexOf(r.id) >= 0; }), actif, F.nom, "rubriques");
+    else if (!F) h += pucesHTML("rubrique", RUBRIQUES_AN.filter(function (r) { return r.id === actif; }), actif, "Rubrique", "rubriques");
+    return h;
+  }
+  ACTIONS.famille = function (el) {
+    var F = FAMILLES_AN.filter(function (f) { return f.id === el.getAttribute("data-v"); })[0]; if (!F) return;
+    var mem = (ui.rubFamille || (ui.rubFamille = {}))[F.id];
+    ui.rubrique = mem && F.rub.indexOf(mem) >= 0 ? mem : F.rub[0]; rendre();
+    var b = app.querySelector('.familles [data-v="' + F.id + '"]'); if (b) b.focus({ preventScroll: true });
+  };
   /* Enseignements (UX05) qui concernent la rubrique, calculés sur toutes les parties comme sur Mon jeu. */
   var ENS_RUBRIQUE = { perf: /^(score-|record-)/, mej: /^(mej-|cote-mej|top-mej)/, attaque: /^top-gir/, petit: /^top-approche/, putting: /^(troisPutts-|putts-|top-troisPutts)/,
     erreurs: /^(cote-|top-|penalites-)/, sg: /^secteur/, parcours: /^parcours/, trous: /^trou/, clubs: /^(club|cote-direction)/, qualite: /^donnees-/ };
+  /* V4-07 : dans une rubrique, les enseignements liés sont listés en une ligne chacun (constat court) ; le détail
+     complet est dans la famille « Comprendre mon jeu » et dans la fiche. */
+  function ligneEnsHTML(e) {
+    var ouvert = ui.ensOuvert === e.id;
+    return '<li class="cat-' + e.cat + '"><button class="ligne" type="button" data-a="ens-deplier" data-v="' + at(e.id) + '" aria-expanded="' + ouvert + '"><span class="quoi"><small>' + t(e.catLib) + ' · ' + t(PROVENANCE_ENS[e.provenance] || e.provenance) + '</small><b>' + t(e.titre) + '</b></span><span class="chev" aria-hidden="true">' + (ouvert ? "−" : "+") + '</span></button>' +
+      (ouvert ? carteEnsHTML(e) : '') + '</li>';
+  }
   function ensRubriqueHTML(rb) {
     var re = ENS_RUBRIQUE[rb]; if (!re || !etat.parties.length) return '';
     var l = calculEns().liste.filter(function (e) { return re.test(e.id); });
-    return l.length ? '<div class="rb-ens"><h3 class="titre-bloc">' + t(l.length > 1 ? "Ce que disent tes données" : "Ce que disent tes données") + '</h3>' + l.map(carteEnsHTML).join("") + '</div>' : '';
+    return l.length ? '<div class="rb-ens"><h3 class="titre-bloc">' + t("Ce que disent tes données") + '</h3><ul class="liste-exos rb-ens-liste">' + l.map(ligneEnsHTML).join("") + '</ul></div>' : '';
   }
   /* Une réponse de Comprendre mon jeu, affichée dans la rubrique (sur le filtre commun). */
   function reponseRubriqueHTML(id) {
@@ -13240,15 +13277,14 @@ function filtrerChronologie(ev, f) {
     /* Sans partie dans le filtre : les blocs tirés du profil déclaré restent (palier, carte, défauts, objectif). */
     if (vide) {
       var sansPartie = '<p class="aide">' + t(etat.parties.length ? "Aucune partie dans cette période : élargis-la (« Toutes »)." : "Pas encore de partie : les chiffres de cette rubrique apparaîtront après ta première partie.") + '</p></section>';
-      if (rb === "perf") return tete + sansPartie + B.palier + '<div class="colonnes"><div class="col">' + B.prios + B.carte + B.pal + '</div><div class="col">' + B.notes + B.rep + '</div></div>';
+      if (rb === "perf") return tete + sansPartie + '<div class="colonnes"><div class="col">' + B.palier + B.prios + B.carte + B.pal + '</div><div class="col">' + B.notes + B.rep + '</div></div>' + liensResultatsHTML();
       if (rb === "erreurs") return tete + sansPartie + B.evit + B.def;
       if (rb === "sg") return tete + sansPartie + B.sg;
       if (rb === "putting") return tete + sansPartie + B.rel;
       return tete + sansPartie;
     }
-    if (rb === "perf") return tete + '</section>' + '<section class="bloc" id="st-tableau">' + tableauStatsHTML("contenu") + '</section>' + B.palier +
-      '<div class="colonnes"><div class="col">' + B.prios + B.carte + B.pal + '</div><div class="col">' + B.notes + B.rep + '</div></div>' +
-      '<section class="bloc"><div class="ligne-btn"><button class="btn" type="button" data-a="j-ouvrir">Bilans, journal et rapports</button></div></section>';
+    if (rb === "perf") return tete + '</section>' + '<section class="bloc" id="st-tableau">' + tableauStatsHTML("contenu") + '</section>' +
+      '<div class="colonnes"><div class="col">' + B.palier + B.prios + B.carte + B.pal + '</div><div class="col">' + B.notes + B.rep + '</div></div>' + liensResultatsHTML();
     if (rb === "mej") return tete + repartitionsStatsHTML(l, A) + reponseRubriqueHTML("mej") + reponseRubriqueHTML("cotes") + secteurEstimeHTML("depart") + actionExosHTML("drive", "Exercices : mise en jeu") + '</section>';
     if (rb === "attaque") { var Ra = erreursRecurrentes(l); return tete + '<ul class="constats">' + ligneErreurHTML(Ra, "gir") + ligneErreurHTML(Ra, "direction") + '</ul>' + secteurEstimeHTML("attaque") + actionExosHTML("fers", "Exercices : jeu de fers") + '</section>'; }
     if (rb === "petit") { var Rp = erreursRecurrentes(l); return tete + '<ul class="constats">' + ligneErreurHTML(Rp, "approche") + '</ul>' + secteurEstimeHTML("petit") + actionExosHTML("approche", "Exercices : approches") + '</section>'; }
@@ -13261,12 +13297,22 @@ function filtrerChronologie(ev, f) {
     }).join("") + '</ul>' : '') + '</section>';
     if (rb === "clubs") return tete + '</section>' + clubsStatsHTML();
     if (rb === "qualite") return tete + '<div class="ligne-btn"><button class="btn" type="button" data-a="md-ouvrir">Mes données : vérifier, corriger, sauvegarder</button></div></section>' + qualiteGolfHTML();
-    /* Comprendre mon jeu : les douze questions, ouvertes dans la fiche (période : filtre commun). */
-    return tete + '<p class="aide">' + t("Des réponses chiffrées, avec leur période et leur effectif, calculées sur la même période que les autres rubriques.") + '</p><ul class="liste-exos">' +
-      QUESTIONS_ANALYSTE.map(function (q) { return '<li><button class="ligne" type="button" data-a="an-ouvrir" data-v="' + q.id + '"><span class="quoi"><b>' + t(q.q) + '</b></span><span class="chev" aria-hidden="true">›</span></button></li>'; }).join("") +
-      '</ul><div class="ligne-btn"><button class="btn" type="button" data-a="ens-ouvrir">Tous les enseignements</button></div></section>';
+    /* V4-07 : Comprendre mon jeu = enseignements (toutes les parties) + questions (filtre commun), tout en place. */
+    var Re = etat.parties.length ? calculEns() : { liste: [], parties: 0 }, n = Re.liste.length, vus = ui.ensTout ? Re.liste : Re.liste.slice(0, 5);
+    var ens = '<div id="rb-ens"><h3 class="titre-bloc">' + t("Ce que disent tes données") + '</h3>' + (n ? '<ul class="liste-exos rb-ens-liste">' + vus.map(ligneEnsHTML).join("") + '</ul>' +
+        (n > 5 ? '<div class="ligne-btn"><button class="btn" type="button" data-a="ens-tout" aria-expanded="' + !!ui.ensTout + '">' + t(ui.ensTout ? "N'en montrer que cinq" : "Tous les enseignements (" + n + ")") + '</button></div>' : '')
+      : '<p class="aide">' + t(etat.parties.length ? "Rien de net pour l'instant : les enseignements apparaissent quand un écart dépasse les seuils prévus." : "Les enseignements apparaîtront après tes premières parties.") + '</p>') + '</div>';
+    return tete + ens + '<div id="rb-questions"><h3 class="titre-bloc">' + t("Pose une question") + '</h3>' + questionsComprendreHTML() + '</div>' +
+      aideHTML('<p>' + t("Enseignements : tirés de toutes tes parties par des règles fixes, sans IA ; une association n'est pas une cause. Questions : réponses chiffrées avec leur période et leur effectif, sur la période du filtre commun.") + '</p>', "D'où viennent ces réponses ?") + '</section>';
   }
-  ACTIONS.rubrique = function (el) { ui.rubrique = el.getAttribute("data-v"); rendre(); var b = app.querySelector('.rubriques [data-v="' + ui.rubrique + '"]'); if (b) { b.focus({ preventScroll: true }); if (b.scrollIntoView) b.scrollIntoView({ block: "nearest", inline: "center" }); } };
+  /* Liens de fin de « Résultats » : rapports, statistiques par club (bientôt dans Sac, S05), qualité des données. */
+  function liensResultatsHTML() {
+    return '<section class="bloc rb-liens"><ul class="liste-exos">' +
+      [["j-ouvrir", "", "", "Bilans, journal et rapports"], ["rubrique", "clubs", "", "Statistiques par club"], ["rubrique", "qualite", "", "Qualité de mes données"]].map(function (x) {
+        return '<li><button class="ligne" type="button" data-a="' + x[0] + '"' + (x[1] ? ' data-v="' + x[1] + '"' : '') + '><span class="quoi"><b>' + t(x[3]) + '</b></span><span class="chev" aria-hidden="true">›</span></button></li>';
+      }).join("") + '</ul></section>';
+  }
+  ACTIONS.rubrique = function (el) { ui.rubrique = el.getAttribute("data-v"); var Fr = familleDe(ui.rubrique); if (Fr) (ui.rubFamille || (ui.rubFamille = {}))[Fr.id] = ui.rubrique; rendre(); var b = app.querySelector('.rubriques [data-v="' + ui.rubrique + '"]'); if (b) { b.focus({ preventScroll: true }); if (b.scrollIntoView) b.scrollIntoView({ block: "nearest", inline: "center" }); } };
 
   /* ============================================================
      MON SAC, CÔTÉ DONNÉES (roadmap UX, UX08)

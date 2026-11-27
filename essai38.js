@@ -1,6 +1,7 @@
 /* UX13 : coaching repositionné — origine de chaque recommandation (données / questionnaire), passerelle constat →
    exercices filtrés avec bandeau, bibliothèque et programme libres d'accès, rien d'imposé à un carnet sans programme. */
 const { chromium } = require('playwright');
+const { allerRubrique } = require('./nav-essai');
 const CLE = 'coachgolf.v1';
 const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
 const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
@@ -38,7 +39,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.click('.filtre-donnees [data-a="filtre"][data-v="tous"]');
     verifie(await page.locator('.filtre-donnees').count() === 0 && await page.locator('#vue [data-a="filtre"][data-v="tous"][aria-pressed="true"]').count() === 1, nom + ' toute la bibliothèque, bandeau retiré');
     /* Priorités du profil : origine dite */
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .rubriques [data-v="perf"]');
+    await page.click('#barre [data-v="bilan"]'); await allerRubrique(page, 'perf');
     verifie(/D.après ton profil/.test(norm(await page.textContent('#priorites'))), nom + ' priorités : origine déclarée');
     verifie(await page.evaluate(() => document.documentElement.scrollWidth) <= w, nom + ' sans débordement');
     await ctx.close();
