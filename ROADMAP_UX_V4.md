@@ -27,7 +27,7 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | 07 | Regrouper Performance (5 familles) | P0 | 04, 05 | À faire | — |
 | 08 | Simplifier Jouer et le bilan | P1 | 05 | À faire | — |
 | 09 | Unifier Activité et le profil (coaching et Mes données dans le profil) | P1 | 05 | À faire | — |
-| S01 | Séparer références et observations | P0 | 01 | À faire | — |
+| S01 | Séparer références et observations | P0 | 01 | **En revue** | `ux4/s01-references` |
 | S02 | Trois onglets de Mon sac, configuration par une icône | P0 | 02–04 | À faire | — |
 | S03 | Graphique d'étagement | P0 | S01, S02 | À faire | — |
 | S04 | Fiches clubs individuelles | P0 | S01, S02 | À faire | — |
@@ -140,6 +140,8 @@ Fichier : `mesures-ux/texte-avant-v4.json`.
 2. Les défis « en série » du putting restent (ce ne sont pas des séries de practice).
 3. La PR #2 (brouillon « Reprise fiabilisée », du 20/11) peut être fermée : son contenu a été repris depuis.
 
+Confirmés par l'utilisateur le 27/11 (« OK pour les 3 ») ; PR #2 fermée.
+
 ## Journal des chantiers V4
 
 ### 01 — Audit de l'existant (27/11/2026)
@@ -150,3 +152,23 @@ Fichier : `mesures-ux/texte-avant-v4.json`.
 - Vérifications : aucune branche UX encore en revue (seule la PR #2, ancienne, reste ouverte) ; `npm test` et essais 3
   à 39 verts sur `app`.
 - Difficultés : la provenance des distances anciennes (`carnet.clubs`) n'est pas récupérable — d'où le point 1 ci-dessus.
+
+### S01 — Séparer références et observations (27/11/2026)
+
+- Objectif : qu'une distance saisie ne se fasse plus passer pour une distance observée.
+- Données : nouveau champ `carnet.references` (une valeur par club, 10 à 400 m), assaini à la lecture. `carnet.clubs`
+  n'est ni modifié ni supprimé : ses valeurs deviennent « héritées » (gardées, exportables, retirables une à une dans la
+  fiche, plus d'ajout). Format des parties inchangé. Migration non destructive (rien à convertir).
+- Moteur : `distancesDecision(observées, références, héritées)` dans `engine-plus.js` choisit, club par club, la valeur
+  utilisée pour l'aide au choix de club (stratégie, saisie de coup, étagement) : observées si au moins 3 coups, sinon la
+  référence, sinon les héritées, sinon les quelques observées ; la provenance est renvoyée. Testé par
+  `test-references.js` (10 vérifications).
+- Mon sac : la colonne « Distance » et la plage ne viennent que des coups joués (`mesuresParcours`) ; une référence
+  s'affiche « réf. X m », une valeur héritée « X m hérité », l'inconnu « – » (jamais zéro). La colonne « Coups » compte les
+  seuls coups observés. La fiche montre trois cases séparées : Distance observée, Référence, Mesures héritées.
+- Fiche club : le champ devient « Distance de référence (facultatif) » avec bouton « Effacer la référence » ; la saisie
+  balle par balle disparaît. Le loft d'un wedge ajouté déplace aussi sa référence.
+- Vérifications : `npm test` (3214 + suites, 949 noms, 0 doublon), `test-startup.js`, essais 3 à 39 verts ; tableau
+  sans débordement à 360 et 390 px (vérifié par mesure et capture). Essais adaptés : 3, 6, 7, 9 (saisie par référence),
+  33 (nouveau contrat).
+- Restent pour 02/03 : sac 3D et graphe de régularité (alimentés par les valeurs de décision), boutons de série.

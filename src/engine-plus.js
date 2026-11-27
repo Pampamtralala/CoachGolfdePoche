@@ -595,6 +595,26 @@ function fusionMesures(practice, parcours) {
   Object.keys(parcours || {}).forEach(function (k) { out[k] = (out[k] || []).concat(parcours[k]); });
   return out;
 }
+/* Roadmap V4, S01 — distances pour décider (choix de club, alertes d'étagement, stratégie), club par club :
+   - observées : coups réels du parcours (déclarés ou GPS de vol), dès MIN_OBS_DISTANCE mesures ;
+   - sinon la référence saisie pour ce club (aide au choix, valeur de secours, jamais une observation) ;
+   - sinon les mesures héritées (anciennes saisies et séries de practice mêlées : provenance indéterminable) ;
+   - sinon les quelques coups observés.
+   Une estimation n'y entre jamais. La provenance retenue est renvoyée avec chaque club. */
+var MIN_OBS_DISTANCE = 3;
+function distancesDecision(observees, references, heritees, min) {
+  min = min || MIN_OBS_DISTANCE;
+  var o = observees || {}, r = references || {}, h = heritees || {}, cles = {}, clubs = {}, provenance = {};
+  [o, r, h].forEach(function (src) { Object.keys(src).forEach(function (k) { cles[k] = true; }); });
+  Object.keys(cles).forEach(function (k) {
+    var obs = (o[k] || []).filter(estNombre), ref = estNombre(r[k]) ? r[k] : null, her = (h[k] || []).filter(estNombre);
+    if (obs.length >= min) { clubs[k] = obs.slice(); provenance[k] = { source: "observée", n: obs.length }; }
+    else if (ref != null) { clubs[k] = [ref]; provenance[k] = { source: "référence", n: 1, observees: obs.length }; }
+    else if (her.length) { clubs[k] = her.slice(); provenance[k] = { source: "héritée", n: her.length, observees: obs.length }; }
+    else if (obs.length) { clubs[k] = obs.slice(); provenance[k] = { source: "observée", n: obs.length, peu: true }; }
+  });
+  return { clubs: clubs, provenance: provenance };
+}
 /* Matrice de wedges : une case remplie à la main l'emporte ; sinon, la moyenne des coups du parcours. */
 function fusionWedges(manuel, parcours) {
   var out = {};
@@ -752,5 +772,5 @@ function scoreJoueur(scores, pars) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { couvertureMej, ajouterStats, RENS_MEJ, RENS_CLUB, RENS_PUTT1, renseigneTrou, misesEnJeu, statutDistance, distanceCoup, observationsGolf, qualiteObservations, coupPlein, bilanLies, COUPS_MAX, AMPLITUDES_COUP, mesuresParcours, fusionMesures, fusionWedges, distanceGPS, quantile, dispersion, pointsCles, topFlopTrous, scoreJoueur, DEFI, CLUB, CLUBS, WEDGES, WEDGES_BASE, LOFT_MIN, LOFT_MAX, definirWedges, wedgeAuLoft, estNombre, statsClub, SAC_ECART, analyseCarnet, analyseWedges, trouNote, scoreSuggere, scoreMini, statsTrous, cumulParties, indicateursParties, scorePartie, repereSG, puttsAttendus, cibleAuto, coupsGagnes, valeursStats, objectifs, statsFenetre, etatObjectif, differentiel, indexEstime, analyseParcours, causesTrou, coteDominant, releveDetail, defiNeuf, niveauVise, cibleDefi, defiCoup, defiFinSeance };
+  module.exports = { distancesDecision, MIN_OBS_DISTANCE, couvertureMej, ajouterStats, RENS_MEJ, RENS_CLUB, RENS_PUTT1, renseigneTrou, misesEnJeu, statutDistance, distanceCoup, observationsGolf, qualiteObservations, coupPlein, bilanLies, COUPS_MAX, AMPLITUDES_COUP, mesuresParcours, fusionMesures, fusionWedges, distanceGPS, quantile, dispersion, pointsCles, topFlopTrous, scoreJoueur, DEFI, CLUB, CLUBS, WEDGES, WEDGES_BASE, LOFT_MIN, LOFT_MAX, definirWedges, wedgeAuLoft, estNombre, statsClub, SAC_ECART, analyseCarnet, analyseWedges, trouNote, scoreSuggere, scoreMini, statsTrous, cumulParties, indicateursParties, scorePartie, repereSG, puttsAttendus, cibleAuto, coupsGagnes, valeursStats, objectifs, statsFenetre, etatObjectif, differentiel, indexEstime, analyseParcours, causesTrou, coteDominant, releveDetail, defiNeuf, niveauVise, cibleDefi, defiCoup, defiFinSeance };
 }

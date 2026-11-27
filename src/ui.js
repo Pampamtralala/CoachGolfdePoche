@@ -12,7 +12,7 @@
   var VERSION_APPLI = "/*VERSION*/";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
-      carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
+      carnet: { clubs: {}, references: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
   }
   function lireLocal() {
     try { var s = localStorage.getItem(CLE); var o = s ? JSON.parse(s) : null; return o && o.v === 1 ? o : null; } catch (e) { return null; }

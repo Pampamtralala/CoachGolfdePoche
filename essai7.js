@@ -47,7 +47,6 @@ const MOY = { dr: 225, b3: 205, b5: 190, f4: 168, f5: 163, f6: 150, f7: 140, f8:
     await page.fill('#sac-val', '157'); await page.waitForTimeout(150);
     res[nom].apercu = await page.$$eval('#sac-voisins li', l => l.map(x => x.className + '|' + x.textContent).join(' / '));
     await page.screenshot({ path: `${D}/${nom}-4-apercu.png` });
-    await page.click('.sac-balles summary'); await page.waitForTimeout(150);
     await page.evaluate(() => { const f = document.getElementById('feuille'); f.scrollTop = f.scrollHeight; });
     await page.screenshot({ path: `${D}/${nom}-5-fiche-bas.png` });
     await page.keyboard.press('Escape'); await page.waitForTimeout(250);
@@ -63,7 +62,7 @@ const MOY = { dr: 225, b3: 205, b5: 190, f4: 168, f5: 163, f6: 150, f7: 140, f8:
       await page.evaluate(() => document.querySelector('.sac-carte').scrollIntoView({ block: 'start' })); await page.waitForTimeout(300);
       await page.screenshot({ path: `${D}/${nom}-7-parfait.png` });
       /* Putter */
-      await page.click('#sac-scene [data-id="putter"]'); res.putter = await page.$eval('#sac-info', x => x.textContent.replace(/\s+/g, ' '));
+      await page.$eval('#sac-scene [data-id="putter"]', b => b.click()); res.putter = await page.$eval('#sac-info', x => x.textContent.replace(/\s+/g, ' '));
       await page.keyboard.press('Escape');
       /* Retirer un club */
       await fiche(page, 'b5'); await page.click('[data-a="sac-retirer"]');

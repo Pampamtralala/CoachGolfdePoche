@@ -74,7 +74,7 @@ const POLICES = [face('Barlow Condensed', 'barlow-condensed/files/barlow-condens
     await page.fill('#sac-loft-club', '50'); await page.press('#sac-loft-club', 'Enter'); await page.waitForTimeout(150);
     r.titreW50 = await page.textContent('#f-titre');
     e = await lire();
-    verifie(e.clubs.w50 && e.clubs.w50[0] === 90 && !e.clubs.w52, 'mesures déplacées : ' + JSON.stringify(e.clubs));
+    verifie(e.references && e.references.w50 === 90 && e.references.w52 == null, 'référence déplacée : ' + JSON.stringify(e.references));
     verifie(JSON.stringify(e.wedgesPerso) === '[50,60]' && e.lofts.sw === 56 && e.sac.includes('w50') && !e.sac.includes('w52'), 'loft changé : ' + JSON.stringify(e));
     await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' });
     r.ecarts = await page.$$eval('#sac-bilan .sac-ecarts li', l => l.map(x => x.querySelector('.sac-paire').textContent + ' ' + x.querySelector('.sac-val').textContent).slice(-4).join(' | '));
