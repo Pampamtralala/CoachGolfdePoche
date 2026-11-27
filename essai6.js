@@ -62,7 +62,7 @@ const { allerVue, menuAction } = require('./nav-essai');
   await allerVue(page, 'profil'); await vue('72-profil');
   await allerVue(page, 'distances');
   for (const [c, v] of [['dr', [210, 220, 200]], ['f7', [148, 152, 150]], ['f9', [122]], ['sw', [70]]]) {
-    await page.click(`#sac-scene [data-id="${c}"]`); if (!(await page.locator('#feuille').count())) await page.click('[data-a="sac-modifier"]');
+    await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${c}"]`); if (!(await page.locator('#feuille').count())) await page.click('[data-a="sac-modifier"]');
     await page.fill('#sac-val', String(Math.round(v.reduce((a, b) => a + b, 0) / v.length))); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' });
   }
   for (const [w, a, v] of [['sw', 'a1', 30], ['sw', 'a2', 45], ['gw', 'a2', 62], ['pw', 'a3', 92]]) { await page.fill(`#w-${w}-${a}`, String(v)); await page.dispatchEvent(`#w-${w}-${a}`, 'change'); }

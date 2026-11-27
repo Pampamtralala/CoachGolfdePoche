@@ -80,8 +80,6 @@
 .golf { container-type: inline-size; }
 
 /* Le sac, debout sur le départ */
-.golf-sac { position: absolute; left: 60%; top: 61.2%; width: 30%; z-index: 1; pointer-events: none; }
-.golf-sac .s3d { max-width: none; }
 
 /* Zones invisibles sur les lieux, et étiquettes */
 .golf-zone { position: absolute; z-index: 3; padding: 0; border: 0; border-radius: 18px; background: transparent; cursor: pointer; }

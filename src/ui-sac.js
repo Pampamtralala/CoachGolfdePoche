@@ -66,46 +66,8 @@
   }
   function alertesDe(an, id) { return an.alertes.filter(function (x) { return x.a.id === id || x.b.id === id; }); }
 
-  /* ---------- Le sac en perspective ---------- */
+  /* ---------- Noms ---------- */
   function nomCourt(c) { return c.nom.split(",")[0]; }
-  /* Les clubs du sac, décrits pour la scène : type de tête, numéro, distance, alerte. */
-  function clubsScene(an, mini) {
-    var clubs = clubsVus(), sel = ui.sacSel;
-    var l = sacActuel().map(function (id) {
-      var c = CLUB[id], v = moyenneClub(clubs, id), al = alertesDe(an, id);
-      var type = /^(dr|b\d)$/.test(id) ? "bois" : id.charAt(0) === "h" ? "hybride" : c.fam === "f" ? "fer" : "wedge";
-      var nm = id === "dr" ? 1 : parseInt(id.slice(1), 10) || 0;
-      var court = type === "bois" ? String(nm) : type === "hybride" ? "H" + nm : type === "fer" ? String(nm) : c.perso ? String(c.loft) : SAC_COURT[id];
-      var lib = nomCourt(c) + " : " + (v != null ? v + " mètres" : "distance à saisir") +
-        (al.length ? ". Attention : " + al.map(function (x) { return phraseSac(x, c); }).join(" ") : "") +
-        (sel === id ? ". Touche encore pour modifier la distance." : ".");
-      var fo = v != null ? fourchette(clubs[id]) : null, plage = fo && fo.bas !== fo.haut && !(ui.sacApercu && ui.sacApercu.id === id) ? fo.bas + "–" + fo.haut : null;
-      if (plage) lib = lib.replace(v + " mètres", "de " + fo.bas + " à " + fo.haut + " mètres");
-      return { id: id, nom: nomCourt(c), court: court, type: type, n: nm, distance: v, plage: plage, vide: v == null, alerte: !!al.length, titre: lib, attrs: 'data-a="sac-club" data-id="' + id + '"' };
-    });
-    l.push({ id: "putter", nom: "Putter", court: "", type: "putter", distance: null, titre: "Putter : hors étagement des distances.", attrs: 'data-a="sac-club" data-id="putter"' });
-    return mini ? l.map(function (c) { c.attrs = ""; return c; }) : l;
-  }
-  function sacScene(an) {
-    return Sac3D.scene(clubsScene(an), { pre: "s3", sel: ui.sacSel, fond: 'data-a="sac-vide"' });
-  }
-  /* Vignette de l'accueil : le même sac, sans bouton. */
-  function sacMiniHTML() {
-    return Sac3D.scene(clubsScene(analyseCarnet(mesuresTout(), sacActuel()), true), { pre: "s3m", mini: true });
-  }
-  /* Carte sous le sac : le club sorti, sa distance, ses voisins. */
-  function sacInfoHTML() {
-    var id = ui.sacSel;
-    if (!id) return '<p class="sac-info-vide">' + t("Touche un club : il sort du sac et affiche sa distance.") + '</p>';
-    if (id === "putter") return '<p class="surtitre">Putter</p><p class="sac-info-txt">' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans les Statistiques, avec l’estimation des coups gagnés.") + '</p>';
-    var c = CLUB[id], s = statsClub(clubsVus()[id]), fo = s ? fourchette(clubsVus()[id]) : null, plage = fo && fo.bas !== fo.haut;
-    return '<div class="sac-info-tete"><div><p class="surtitre">' + t(SAC_FAMILLES[c.fam]) + '</p><h3>' + t(nomCourt(c)) + '</h3></div>' +
-      '<p class="sac-info-dist">' + (s ? '<b class="main">' + (plage ? fo.bas + '–' + fo.haut : s.moy) + '</b><span>m</span>' : '<b class="main vide">?</b>') + '</p></div>' +
-      (s ? '<p class="aide">' + t(plage ? "Fourchette jouable" + (fo.provisoire ? " provisoire" : "") + " : la moitié de tes coups pleins y tombe. Distance habituelle " + fo.med + " m" + (fo.p10 ? ", fiable à 90 % : " + fo.p10 + " m" : "") + "." + (fo.ecartes ? " " + pluriel(fo.ecartes, "coup raté") + " écarté" + (fo.ecartes > 1 ? "s" : "") + "." : "")
-        : s.n > 1 ? "Moyenne de " + pluriel(s.n, "mesure") + "." : "Distance moyenne de vol.") + '</p>' : '') +
-      '<ul class="sac-voisins">' + sacVoisinsHTML(id) + '</ul>' +
-      '<button class="btn principal large" type="button" data-a="sac-modifier">' + (s ? "Modifier la distance" : "Saisir la distance") + '</button>';
-  }
 
   /* Dans la liste des écarts, un fer garde son nom (« Fer 4 ») : le chiffre seul ne se lit que dans le sac. */
   function nomEcart(c) { return c.fam === "f" ? c.nom : courtSac(c); }
@@ -131,19 +93,9 @@
       }).join("") + '</ol>' +
       '<p class="aide">' + t("Zone idéale : " + SAC_ECART.min + " à " + SAC_ECART.max + " m entre deux clubs voisins, jusqu'à " + SAC_ECART.maxBois + " m entre deux bois.") + '</p>';
   }
-  /* Carte complète du sac, placée en tête de la page Mon sac. */
+  /* V4-02 : le sac 3D est retiré ; reste le bilan des écarts entre clubs voisins. */
   function sacHTML() {
-    var an = analyseSac(), nb = sacActuel().length;
-    return '<div class="sac-carte">' +
-      '<div class="sac-scene" id="sac-scene">' + sacScene(an) + '</div>' +
-      '<div class="sac-info" id="sac-info" aria-live="polite">' + sacInfoHTML() + '</div>' +
-      '<div class="sac-pied"><span>' + t(pluriel(nb, "club") + " + putter") + '</span><button class="btn" type="button" data-a="sac-composer" data-id="sac">Composer mon sac</button></div></div>' +
-      '<div class="sac-bilan" id="sac-bilan"><h3>Écarts entre clubs voisins</h3>' + sacBilanHTML(an) + '</div>';
-  }
-  /* Mise à jour du sac et de sa carte, pendant la saisie dans la fiche. */
-  function majSacDirect() {
-    var sc = document.getElementById("sac-scene"); if (sc) sc.innerHTML = sacScene(analyseSac());
-    var inf = document.getElementById("sac-info"); if (inf) inf.innerHTML = sacInfoHTML();
+    return '<div class="sac-bilan" id="sac-bilan"><h3>Écarts entre clubs voisins</h3>' + sacBilanHTML(analyseSac()) + '</div>';
   }
 
   /* ---------- Fiche d'un club ---------- */
@@ -307,31 +259,12 @@
     ui.retourFocus = el; ui.sacApercu = null; ui.sacBalles = false; ui.feuille = f; ui.feuilleVue = false; rendreFeuille();
     if (f.sac && f.sac !== "putter") { var inp = document.getElementById("sac-val"); if (inp) { inp.focus(); inp.select(); } }
     else { var b = document.getElementById("f-fermer"); if (b) b.focus(); }
-    majSacDirect();
   }
-  /* Premier toucher : le club sort du sac et montre sa distance. Second toucher : la fiche de saisie. */
+  /* Un club touché ouvre directement sa fiche (anciens liens). */
   ACTIONS["sac-club"] = function (el) {
     var id = el.getAttribute("data-id");
-    if (id !== "putter" && !CLUB[id]) return;
-    if (ui.sacSel === id && id !== "putter") { ouvrirSac({ sac: id }, el); return; }
-    ui.sacSel = id; if (id !== "putter") ui.club = id;
-    var sc = document.getElementById("sac-scene");
-    if (sc) {
-      Sac3D.choisir(sc, id);
-      var an = analyseSac();
-      clubsScene(an).forEach(function (c) { var b = sc.querySelector('[data-id="' + c.id + '"]'); if (b) b.setAttribute("aria-label", c.titre); });
-      var inf = document.getElementById("sac-info"); if (inf) inf.innerHTML = sacInfoHTML();
-    } else rendre();
-  };
-  ACTIONS["sac-vide"] = function () {
-    if (!ui.sacSel) return;
-    ui.sacSel = null;
-    var sc = document.getElementById("sac-scene"); if (sc) Sac3D.choisir(sc, null);
-    var inf = document.getElementById("sac-info"); if (inf) inf.innerHTML = sacInfoHTML();
-  };
-  ACTIONS["sac-modifier"] = function (el) {
-    var id = ui.sacSel; if (!id || !CLUB[id]) return;
-    ouvrirSac({ sac: id }, app.querySelector('[data-a="sac-club"][data-id="' + id + '"]') || el);
+    if (!CLUB[id]) return;
+    ui.sacSel = id; ui.club = id; ouvrirSac({ sac: id }, el);
   };
   ACTIONS["sac-composer"] = function (el) { ouvrirSac({ sacComposer: true }, el); };
   function lireSacVal() {
@@ -346,7 +279,6 @@
     ui.sacApercu = v == null || isNaN(v) ? null : { id: id, v: v };
     var vs = document.getElementById("sac-voisins"); if (vs) vs.innerHTML = sacVoisinsHTML(id);
     var err = document.getElementById("sac-err"); if (err) err.hidden = true;
-    majSacDirect();
   }
   SAISIES["sac-val"] = apercuSac;
   ACTIONS["sac-pas"] = function (el) {

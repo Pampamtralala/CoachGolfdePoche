@@ -538,23 +538,6 @@ body:has(#calque-partie .pave) #message { bottom: calc(104px + env(safe-area-ins
   --acier: #C3CBD5; --acier-clair: #E6EAEF; --acier-fonce: #8C97A6; --tige: #9AA4B1; --halo: #D2691E; --halo-texte: #8F4A08; --halo-fond: #FCEBDD; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --halo: #F0954A; --halo-texte: #FFC08A; --halo-fond: #3A2412; --tige: #7C8796; } }
 :root[data-theme="dark"] { --halo: #F0954A; --halo-texte: #FFC08A; --halo-fond: #3A2412; --tige: #7C8796; }
-.sac-carte { container-type: inline-size; padding: 16px 12px 12px; background: var(--carte); border-radius: var(--rayon); box-shadow: var(--ombre); }
-.sac-scene { position: relative; margin: 0 auto; padding-top: 4px; }
-.sac-scene .s3d { max-width: 400px; }
-.sac-info { margin-top: 4px; padding: 14px 6px 4px; border-top: 1px solid var(--filet); min-height: 74px; }
-.sac-info-vide { margin: 6px 0; text-align: center; font-size: 15.5px; color: var(--encre-2); }
-.sac-info-tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.sac-info-tete h3 { margin: 2px 0 0; font-size: 24px; }
-.sac-info-dist { margin: 0; display: flex; align-items: baseline; gap: 3px; line-height: 1; }
-.sac-info-dist b { font-size: 44px; color: var(--stylo); }
-.sac-info-dist b.vide { color: var(--encre-2); }
-.sac-info-dist span { font-size: 18px; font-weight: 700; color: var(--encre-2); }
-.sac-info .aide { margin: 4px 0 0; }
-.sac-info .sac-voisins { margin: 10px 0 14px; }
-.sac-info-txt { margin: 6px 0; color: var(--encre-2); }
-.sac-pied { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; margin-top: 12px; padding: 0 4px; font-size: 15px; color: var(--encre-2); }
-.sac-pied span, .sac-pied .btn { white-space: nowrap; }
-.sac-pied .btn { min-height: 44px; }
 .sac-bilan, .sac-regularite { margin-top: 14px; padding: 14px 14px 8px; background: var(--carte); border-radius: var(--rayon); box-shadow: var(--ombre); }
 .sac-bilan h3, .sac-regularite h3 { margin: 0 0 8px; }
 .sac-score { display: flex; align-items: baseline; gap: 10px; margin: 0 0 8px; }
@@ -1059,7 +1042,6 @@ body:has(#calque-partie .pave) #message { bottom: calc(104px + env(safe-area-ins
 .ell-cle .rond { border-radius: 50%; background: var(--stylo); }
 .ell-cle .carre { margin-left: 10px; border-radius: 2px; background: var(--encre); }
 .serie #serie-poseur { margin: 4px 0 10px; }
-.c3d-bulle.plage > span { font-size: 6.2cqw; }
 
 /* ---------- Pavé : se joue comme, erreurs évitables ---------- */
 .pv-sjc { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; width: 100%; min-height: 60px; padding: 8px 14px; border: 0; border-radius: var(--rayon); background: var(--papier-2); color: var(--encre); text-align: left; }
@@ -1099,7 +1081,6 @@ body:has(#calque-partie .pave) #message { bottom: calc(104px + env(safe-area-ins
 .sjc-resultat ul { margin: 4px 0 0; padding-left: 18px; font-size: 14.5px; }
 .sjc-resultat .aide { margin: 6px 0 0; }
 .sjc-conseil { margin: 0; font-weight: 700; font-size: 17px; }
-.sjc-sac { width: 150px; max-width: 45%; margin: -4px auto 0; }
 .sjc-clubs { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; }
 .sjc-clubs li { display: flex; flex-direction: column; align-items: center; min-width: 58px; padding: 6px 8px; border-radius: var(--rayon-s); background: var(--carte); line-height: 1.1; }
 .sjc-clubs li b { font: 700 16px var(--f-titre); }

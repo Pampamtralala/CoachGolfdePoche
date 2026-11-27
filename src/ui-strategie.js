@@ -228,7 +228,6 @@
     if (!l.length) return '<p class="aide">' + t("Note des distances dans ton sac pour que l'appli conseille un club.") + '</p>';
     var club = k.club ? CLUB[k.club.id] : null;
     return '<p class="sjc-conseil">' + (club ? t((k.club.dans ? "Ton club : " : "Le plus proche : ") + nomClub(club.id) + " · " + libFourchette(fourchetteDe(club.id))) : "") + '</p>' +
-      '<div class="sjc-sac" aria-hidden="true">' + Sac3D.scene(clubsScene(analyseCarnet(mesuresTout(), sacActuel()), true), { pre: "s3j", mini: true, sel: k.club ? k.club.id : null }) + '</div>' +
       '<ol class="sjc-clubs">' + l.map(function (c) {
         var on = k.club && k.club.id === c.id;
         return '<li' + (on ? ' class="conseil"' : '') + '><b>' + t(courtSac(CLUB[c.id]).replace(/^(\d)$/, "Fer $1")) + '</b><span>' + t(libFourchette(c.f)) + '</span></li>';

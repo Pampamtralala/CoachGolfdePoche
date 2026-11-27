@@ -84,14 +84,12 @@ function partiePave(g, pars) {
 
     /* ---- 2. Sac : fourchette et ellipse, points touchables ---- */
     await allerVue(page, 'sac');
-    const toucher = async id => { const b = page.locator(`#sac-scene [data-id="${id}"]`); const bb = await b.boundingBox(); await b.click({ position: { x: bb.width * 0.68, y: bb.height * 0.3 } }); };
-    await toucher('f7'); await page.waitForTimeout(250);
+    const toucher = async id => { await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${id}"]`); };
     const fo = S.fourchette(e.carnet.clubs.f7);
-    r.bulle = await page.$eval('#sac-scene .c3d.sel .c3d-bulle', x => x.textContent);
-    verifie(r.bulle.includes(fo.bas + '–' + fo.haut), nom + ' bulle avec la fourchette ' + fo.bas + '–' + fo.haut + ' : ' + r.bulle);
-    r.info = await page.$eval('.sac-info', x => x.textContent.replace(/\s+/g, ' ').trim());
     await vue('02-sac-fourchette');
     await toucher('f7'); await page.waitForSelector('#feuille .sac-ellipse');
+    r.bulle = await page.$eval('#feuille .ell-fourchette', x => x.textContent);
+    verifie(r.bulle.includes(fo.bas + '–' + fo.haut), nom + ' fiche avec la fourchette ' + fo.bas + '–' + fo.haut + ' : ' + r.bulle);
     r.fourchetteFiche = await page.textContent('#feuille .ell-fourchette');
     r.pointsFiche = await page.$$eval('#feuille .sac-ellipse .ell-pt', l => l.length);
     verifie(r.pointsFiche === 11, nom + ' onze points sur l\'ellipse : ' + r.pointsFiche);
@@ -127,9 +125,8 @@ function partiePave(g, pars) {
     const conseil = S.clubPour(att.d, clubs);
     r.conseil = await page.textContent('.sjc-conseil');
     r.clubSurligne = await page.$$eval('.sjc-clubs li.conseil b', l => l.map(x => x.textContent).join(''));
-    r.sacSurligne = await page.$$eval('.sjc-sac .c3d.sel', l => l.length);
     verifie(r.clubSurligne === { f5: '5', f6: '6', f4: '4', b5: '5' }[conseil.id] || r.clubSurligne.includes(conseil.id.slice(1)), nom + ' club conseillé ' + conseil.id + ' : ' + r.conseil + ' / ' + r.clubSurligne);
-    verifie(r.sacSurligne === 1, nom + ' club sorti du petit sac');
+    verifie(await page.locator('.sjc-sac').count() === 0, nom + ' plus de petit sac 3D dans la stratégie');
     await vue('04-se-joue-comme');
     await page.evaluate(() => { const p = document.querySelector('.pv-panneau'); p.scrollTop = p.scrollHeight; }); await vue('04b-se-joue-comme-bas');
     /* Visée : eau à gauche, drapeau à gauche */

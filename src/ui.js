@@ -1380,7 +1380,6 @@
   });
 
   /*INCLURE:ui-carnet.js*/
-  /*INCLURE:sac3d.js*/
   /*INCLURE:ui-sac.js*/
   /*INCLURE:ui-menu.js*/
   /*INCLURE:ui-golf.js*/
