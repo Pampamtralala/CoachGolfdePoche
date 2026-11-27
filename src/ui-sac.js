@@ -21,7 +21,7 @@
   /* Clubs du sac, du plus long au plus court. */
   function sacActuel() {
     if (etat.carnet.sac) return etat.carnet.sac.slice();
-    return CLUBS.filter(function (c) { return SAC_DEFAUT.indexOf(c.id) >= 0 || etat.carnet.clubs[c.id]; }).map(function (c) { return c.id; }).slice(0, SAC_MAX);
+    return CLUBS.filter(function (c) { return SAC_DEFAUT.indexOf(c.id) >= 0 || etat.carnet.clubs[c.id] || referencesClubs()[c.id] != null; }).map(function (c) { return c.id; }).slice(0, SAC_MAX);
   }
   /* Clubs proposés pendant la partie : le sac composé ; sinon les clubs déjà mesurés (au moins trois) ; sinon le sac type. */
   function sacJeu() {
@@ -36,7 +36,14 @@
   /* Coups mesurés sur le parcours (parties notées et partie en cours). */
   function coupsDuParcours() { return mesuresParcours(etat.partie ? partiesAnalyse().concat([etat.partie]) : partiesAnalyse()); }
   /* Mesures du practice et du parcours réunies : la base des distances du sac. */
-  function mesuresTout() { return fusionMesures(etat.carnet.clubs, coupsDuParcours().clubs); }
+  /* V4 S01 : trois sources distinctes. Observées : coups réels du parcours. Références : une distance saisie par club.
+     Héritées : etat.carnet.clubs, où anciennes saisies et balles de séries sont mêlées (provenance indéterminable). */
+  function mesuresObservees() { return coupsDuParcours().clubs; }
+  function referencesClubs() { return etat.carnet.references || (etat.carnet.references = {}); }
+  function decisionDistances() { return distancesDecision(mesuresObservees(), referencesClubs(), etat.carnet.clubs); }
+  /* Distances pour décider (choix de club, alertes d'étagement, stratégie) : observées dès 3 coups, sinon référence,
+     sinon héritées. Les moyennes « observées » affichées n'utilisent que mesuresObservees(). */
+  function mesuresTout() { return decisionDistances().clubs; }
   /* Matrice de wedges : cases saisies, complétées par les coups du parcours. */
   function wedgesTout() { return fusionWedges(etat.carnet.wedges, coupsDuParcours().wedges); }
   /* Mesures, avec la distance en cours de saisie dans la fiche (aperçu en direct). */
@@ -166,9 +173,10 @@
     if (id === "putter") {
       return tete + entete("Putter", "Putter") + '<p>' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans les Statistiques, avec l’estimation des coups gagnés.") + '</p></section>';
     }
-    var c = CLUB[id], mes = etat.carnet.clubs[id] || [], parc = coupsDuParcours().clubs[id] || [], tout = mes.concat(parc);
-    var s = statsClub(tout), an = analyseCarnet(mesuresTout(), sacActuel());
-    var depart = s ? s.moy : sacEstimation(id), al = alertesDe(an, id);
+    var c = CLUB[id], mes = etat.carnet.clubs[id] || [], parc = coupsDuParcours().clubs[id] || [], tout = parc;
+    var s = statsClub(parc), an = analyseCarnet(mesuresTout(), sacActuel()), ref = referencesClubs()[id];
+    /* V4 S01 : le champ montre la référence saisie, ou rien ; une estimation n'apparaît qu'en indication. */
+    var depart = ref != null ? ref : null, sh = statsClub(mes), estim = sh ? sh.moy : sacEstimation(id), al = alertesDe(an, id);
     var h = tete + entete(SAC_FAMILLES[c.fam] + " · dans ton sac", nomLoft(c));
     h += ficheClubSyntheseHTML(id); /* UX08 : chiffres du club d'abord */
     if (c.fam === "w") {
@@ -180,25 +188,24 @@
     }
     if (al.length) h += '<ul class="constats">' + al.map(function (x) { return '<li class="alerte">' + t(phraseSac(x, c)) + '</li>'; }).join("") + '</ul>';
     h += '<form class="sac-saisie" data-f="sac-dist" novalidate>' +
-      '<label for="sac-val">Distance moyenne de vol, en mètres</label>' +
+      '<label for="sac-val">Distance de référence, en mètres <small>(facultatif)</small></label>' +
       '<div class="sac-reglage"><button class="pm" type="button" data-a="sac-pas" data-v="-1" aria-label="Un mètre de moins">−</button>' +
-      '<input id="sac-val" type="text" inputmode="numeric" autocomplete="off" maxlength="3" data-i="sac-val" value="' + (depart != null ? depart : "") + '" aria-describedby="sac-voisins">' +
+      '<input id="sac-val" type="text" inputmode="numeric" autocomplete="off" maxlength="3" data-i="sac-val" value="' + (depart != null ? depart : "") + '"' + (depart == null && estim != null ? ' placeholder="≈ ' + estim + '"' : '') + ' aria-describedby="sac-voisins sac-ref-aide">' +
       '<button class="pm" type="button" data-a="sac-pas" data-v="1" aria-label="Un mètre de plus">+</button></div>' +
       '<ul class="sac-voisins" id="sac-voisins" aria-live="polite">' + sacVoisinsHTML(id) + '</ul>' +
       '<p class="erreur" id="sac-err" role="alert" hidden></p>' +
-      (s && s.n > 1 ? '<p class="aide">' + t("Moyenne de " + pluriel(s.n, "mesure") + (parc.length ? " dont " + parc.length + " sur le parcours" : "") + ", de " + s.min + " à " + s.max + " m." + (mes.length > 1 ? " Enregistrer une autre moyenne remplace les mesures du practice." : "")) + '</p>' : '') +
+      '<p class="aide" id="sac-ref-aide">' + t("La référence t'aide à choisir ton club ; elle n'entre pas dans tes moyennes observées" + (s ? " (" + s.moy + " m sur " + pluriel(s.n, "coup") + " joué" + (s.n > 1 ? "s" : "") + ")." : ".")) + '</p>' +
       '<button class="btn principal large" type="submit">Enregistrer</button></form>';
     h += ellipseClubHTML(id) || dispersionClubHTML(tout);
     var nCoups = (clubsNotes(partiesAnalyse(), []).filter(function (x) { return x.club === id; })[0] || {}).n;
     if (nCoups) h += '<button class="lien voir-profil" type="button" data-a="st-voir-club" data-v="' + at(id) + '">' + t("Voir le profil de ce club : direction, résultat, tendance (" + pluriel(nCoups, "coup") + ")") + '</button>';
     if (parc.length) h += '<p class="sac-parcours">' + t("Sur le parcours : " + parc.slice(-8).join(", ") + " m" + (parc.length > 8 ? " (" + parc.length + " coups)" : "") + ".") + '</p>';
-    h += '<details class="sac-balles"' + (s && s.n > 1 || ui.sacBalles ? " open" : "") + '><summary>Mesurer balle par balle</summary>' +
-      '<p class="aide">' + t("Au practice, saisis chaque balle. À partir de cinq, la moyenne écarte la plus longue et la plus courte.") + '</p>' +
-      (mes.length ? '<ul class="releves">' + mes.map(function (v, i) { return '<li><button class="puce neutre" type="button" data-a="sac-balle-suppr" data-v="' + i + '" aria-label="' + at("Retirer la balle de " + v + " m") + '">' + v + ' m <span aria-hidden="true">×</span></button></li>'; }).join("") + '</ul>' : '') +
-      '<form class="sac-balle" data-f="sac-balle" novalidate><label class="vh" for="sac-balle">Distance d’une balle, en mètres</label>' +
-      '<input id="sac-balle" type="text" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="m"><button class="btn" type="submit">Ajouter la balle</button></form>' +
-      '<p class="erreur" id="sac-balle-err" role="alert" hidden></p></details>';
-    h += '<div class="ligne-btn sac-actions">' + (mes.length ? '<button class="btn" type="button" data-a="sac-effacer">Effacer les mesures du practice</button>' : '') +
+    /* V4 S01 : les mesures héritées restent visibles, à part, et peuvent être retirées une à une ; plus aucune saisie
+       balle par balle (les séries de practice disparaissent avec le chantier 03). */
+    if (mes.length) h += '<details class="sac-balles"' + (ui.sacBalles ? " open" : "") + '><summary>' + t("Mesures héritées (" + mes.length + ")") + '</summary>' +
+      '<p class="aide">' + t("Anciennes saisies et séries de practice, gardées et exportables, mais hors de tes moyennes observées : leur provenance n'est plus connue.") + '</p>' +
+      (mes.length ? '<ul class="releves">' + mes.map(function (v, i) { return '<li><button class="puce neutre" type="button" data-a="sac-balle-suppr" data-v="' + i + '" aria-label="' + at("Retirer la mesure héritée de " + v + " m") + '">' + v + ' m <span aria-hidden="true">×</span></button></li>'; }).join("") + '</ul>' : '') + '</details>';
+    h += '<div class="ligne-btn sac-actions">' + (ref != null ? '<button class="btn" type="button" data-a="sac-effacer">Effacer la référence</button>' : '') +
       '<button class="btn danger" type="button" data-a="sac-retirer">Retirer du sac</button></div>';
     return h + '</section>';
   }
@@ -281,6 +288,7 @@
         var cb = etat.carnet;
         cb.wedgesPerso = cb.wedgesPerso.filter(function (v) { return v !== c.loft; }).concat([l]).sort(function (x, y) { return x - y; });
         if (cb.clubs[id]) { cb.clubs[neuf] = cb.clubs[id]; delete cb.clubs[id]; }
+        if (cb.references && cb.references[id] != null) { cb.references[neuf] = cb.references[id]; delete cb.references[id]; }
         if (cb.wedges[id]) { cb.wedges[neuf] = cb.wedges[id]; delete cb.wedges[id]; }
         var ids = sacActuel().map(function (k) { return k === id ? neuf : k; });
         majWedges(); fixerSac(ids);
@@ -368,14 +376,14 @@
       document.getElementById("sac-val").focus(); return;
     }
     var avant = analyseCarnet(mesuresTout(), sacActuel());
-    etat.carnet.clubs[id] = [v];
-    apresSac(id, avant, CLUB[id].nom.split(",")[0] + " : " + v + " m.");
+    referencesClubs()[id] = v; /* V4 S01 : une référence, pas une mesure */
+    apresSac(id, avant, CLUB[id].nom.split(",")[0] + " : référence " + v + " m.");
   };
   ACTIONS["sac-effacer"] = function () {
     var id = ui.feuille && ui.feuille.sac; if (!id || !CLUB[id]) return;
     var avant = analyseCarnet(mesuresTout(), sacActuel());
-    delete etat.carnet.clubs[id];
-    apresSac(id, avant, CLUB[id].nom.split(",")[0] + " : mesures du practice effacées.");
+    delete referencesClubs()[id];
+    apresSac(id, avant, CLUB[id].nom.split(",")[0] + " : référence effacée.");
   };
   ACTIONS["sac-retirer"] = function () {
     var id = ui.feuille && ui.feuille.sac; if (!id || !CLUB[id]) return;
@@ -391,20 +399,13 @@
     ui.sacApercu = null; ui.sacBalles = true; sauver(); rendre(); rendreFeuille();
     var el = document.getElementById(focusId); if (el) el.focus({ preventScroll: true });
   }
-  FORMULAIRES["sac-balle"] = function (form) {
-    var id = ui.feuille && ui.feuille.sac; if (!id || !CLUB[id]) return;
-    var inp = form.querySelector("#sac-balle"), brut = inp.value.trim(), v = /^\d+$/.test(brut) ? parseInt(brut, 10) : NaN;
-    if (isNaN(v) || v < 5 || v > 400) { var err = document.getElementById("sac-balle-err"); err.textContent = "Entre une distance en mètres, entre 5 et 400."; err.hidden = false; inp.focus(); return; }
-    var l = etat.carnet.clubs[id] = etat.carnet.clubs[id] || [];
-    l.push(v); if (l.length > MESURES_MAX) l.splice(0, l.length - MESURES_MAX);
-    majFicheSac("sac-balle");
-  };
+  /* V4 S01 : plus d'ajout de mesure héritée ; on peut seulement en retirer. */
   ACTIONS["sac-balle-suppr"] = function (el) {
     var id = ui.feuille && ui.feuille.sac, l = id && etat.carnet.clubs[id], i = parseInt(el.getAttribute("data-v"), 10);
     if (!l || !(i >= 0 && i < l.length)) return;
     l.splice(i, 1); if (!l.length) delete etat.carnet.clubs[id];
     var reste = l.length ? Math.min(i, l.length - 1) : -1;
-    majFicheSac("sac-balle");
+    majFicheSac("sac-val");
     var suivant = reste >= 0 && document.querySelector('#feuille [data-a="sac-balle-suppr"][data-v="' + reste + '"]'); if (suivant) suivant.focus({ preventScroll: true });
   };
   ACTIONS["sac-basculer"] = function (el) {
@@ -413,7 +414,7 @@
     if (ids.indexOf(id) >= 0) {
       ids = ids.filter(function (k) { return k !== id; }); if (ui.sacSel === id) ui.sacSel = null;
       /* Un wedge ajouté qu'on sort du sac sans l'avoir mesuré disparaît de la liste. */
-      if (CLUB[id].perso && !etat.carnet.clubs[id] && !etat.carnet.wedges[id]) {
+      if (CLUB[id].perso && !etat.carnet.clubs[id] && referencesClubs()[id] == null && !etat.carnet.wedges[id]) {
         etat.carnet.wedgesPerso = etat.carnet.wedgesPerso.filter(function (v) { return v !== CLUB[id].loft; }); oubli = true;
       }
     }

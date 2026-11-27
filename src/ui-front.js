@@ -273,7 +273,7 @@
      débloque ; la carte disparaît dès trois parties complètes (mesures et index restent proposés ailleurs). */
   function premiersPasHTML() {
     var parties = etat.parties, completes = tableauStats(partiesAnalyse()).parPartie.length;
-    var mesure = (etat.carnet.series || []).length > 0 || Object.keys(etat.carnet.clubs || {}).some(function (k) { return (etat.carnet.clubs[k] || []).length; });
+    var mesure = (etat.carnet.series || []).length > 0 || Object.keys(etat.carnet.references || {}).length > 0 || Object.keys(etat.carnet.clubs || {}).some(function (k) { return (etat.carnet.clubs[k] || []).length; });
     var idx = indexDeclare(etat.profil) != null;
     var E = [
       { ok: parties.length > 0, t: "Noter une première partie", fait: "Ta première partie est notée : tes indicateurs sont calculés.", a: "partie-rapide", b: "Nouvelle partie" },

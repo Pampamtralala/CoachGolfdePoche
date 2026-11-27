@@ -116,6 +116,10 @@
       if (l.some(function (y) { return y != null; })) r.l = l;
       return r;
     }).filter(Boolean);
+    /* V4 S01 : distance de référence saisie par club (aide au choix, jamais une observation). */
+    var rf = objet(c.references); e.carnet.references = {};
+    CLUBS.forEach(function (k) { if (a(rf, k.id) && nombre(rf[k.id]) && rf[k.id] >= 10 && rf[k.id] <= 400) e.carnet.references[k.id] = Math.round(rf[k.id]); });
+    /* Mesures héritées (anciennes saisies et balles de séries mêlées) : gardées telles quelles. */
     CLUBS.forEach(function (k) {
       if (!a(cl, k.id)) return;
       var l = liste(cl[k.id]).filter(function (v) { return nombre(v) && v >= 5 && v <= 400; }).map(Math.round);

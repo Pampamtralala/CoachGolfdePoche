@@ -90,14 +90,14 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   const fermer = async () => { await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' }); };
   const ajouter = async (club, vals) => {
     await ficheClub(club);
-    if (!(await page.$eval('.sac-balles', d => d.open))) await page.click('.sac-balles summary');
-    for (const v of vals) { await page.fill('#sac-balle', String(v)); await page.click('.sac-balle button[type="submit"]'); }
-    await fermer();
+    /* V4 S01 : la fiche enregistre une distance de référence (plus de saisie balle par balle). */
+    await page.fill('#sac-val', String(Math.round(vals.reduce((a, b) => a + b, 0) / vals.length))); await page.press('#sac-val', 'Enter');
+    await page.waitForSelector('#feuille', { state: 'detached' });
   };
   await ajouter('f7', [150, 152, 148, 155, 140]);
   await ajouter('f5', [170]); await ajouter('f6', [168]); await ajouter('f9', [120]); await ajouter('dr', [215, 225, 205]); await ajouter('b3', [190]); await ajouter('pw', [105]);
-  await ficheClub('pw'); await page.click('.sac-balles summary'); await page.fill('#sac-balle', 'abc'); await page.click('.sac-balle button[type="submit"]');
-  res.erreurMesure = await page.textContent('#sac-balle-err');
+  await ficheClub('pw');
+  verifie(await page.locator('.sac-balles, #sac-balle').count() === 0, 'plus de saisie balle par balle dans la fiche');
   /* Moyenne directe avec aperçu en direct, puis annulation : rien n'est enregistré */
   await page.fill('#sac-val', '96');
   res.apercuVoisins = await page.$$eval('#sac-voisins li', l => l.map(x => x.className + '|' + x.textContent));
@@ -105,27 +105,27 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   await fermer();
   res.sacApresAnnulation = await page.$eval('#sac-scene .c3d.sel .c3d-bulle > span', x => x.textContent);
   e = await lire();
-  verifie(canon(e.carnet.clubs.pw) === '[105]', 'aperçu annulé : ' + canon(e.carnet.clubs.pw));
+  verifie(e.carnet.references.pw === 105 && !e.carnet.clubs.pw, 'aperçu annulé : ' + canon(e.carnet.references));
   await ficheClub('f8'); res.estimationF8 = await page.inputValue('#sac-val');
   await page.fill('#sac-val', '5'); await page.press('#sac-val', 'Enter');
   res.erreurMoyenne = await page.textContent('#sac-err');
   await page.fill('#sac-val', '136'); await page.press('#sac-val', 'Enter');
   await page.waitForSelector('#feuille', { state: 'detached' });
   e = await lire();
-  verifie(canon(e.carnet.clubs.f8) === '[136]', 'moyenne directe : ' + canon(e.carnet.clubs.f8));
+  verifie(e.carnet.references.f8 === 136 && !e.carnet.clubs.f8, 'référence directe : ' + canon(e.carnet.references));
   res.focusApresSaisie = await page.evaluate(() => document.activeElement && document.activeElement.dataset.id);
-  res.rangs = await page.$eval('#c-distances canvas', c => c.getAttribute('aria-label'));
+  res.rangs = await page.locator('#c-distances canvas').count() ? await page.$eval('#c-distances canvas', c => c.getAttribute('aria-label')) : 'graphe de régularité masqué : une référence par club';
   res.constatsClubs = await page.$$eval('#sac-bilan .sac-ecarts li', l => l.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
   res.alertesSac = await page.$$eval('#sac-scene .c3d.alerte .c3d-tete', l => l.map(b => b.dataset.id).join(' '));
   res.scoreSac = await page.$eval('#sac-bilan .sac-score', x => x.textContent);
   await ficheClub('f7');
   res.relevesF7 = await page.$$eval('#feuille .releves .puce', l => l.length);
   res.ficheF7 = await page.$eval('#feuille', x => x.textContent.replace(/\s+/g, ' ').slice(0, 260));
-  await page.click('#feuille .releves [data-v="4"]');
-  e = await lire();
-  verifie(canon(e.carnet.clubs.f7) === '[150,152,148,155]', 'mesure retirée : ' + canon(e.carnet.clubs.f7));
-  await page.fill('#sac-balle', '140'); await page.click('.sac-balle button[type="submit"]');
-  await fermer();
+  verifie(/référence/i.test(res.ficheF7) && await page.inputValue('#sac-val') === '149', 'fiche fer 7 : référence 149 m : ' + res.ficheF7.slice(0, 120));
+  await page.click('[data-a="sac-effacer"]'); e = await lire();
+  verifie(e.carnet.references.f7 == null, 'référence effacée : ' + canon(e.carnet.references));
+  if (!(await page.locator('#feuille').count())) await ficheClub('f7');
+  await page.fill('#sac-val', '149'); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' });
   /* Composition : sortir le bois 5, mettre le gap wedge et le lob wedge */
   await page.click('[data-a="sac-composer"]');
   await page.click('#feuille [data-a="sac-basculer"][data-id="b5"]'); await page.click('#feuille [data-a="sac-basculer"][data-id="gw"]'); await page.click('#feuille [data-a="sac-basculer"][data-id="lw"]');

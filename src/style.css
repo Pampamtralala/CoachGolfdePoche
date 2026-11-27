@@ -1706,7 +1706,9 @@ main.entree { animation: entreeVue .22s ease-out; }
 .plus-filtres > summary { cursor: pointer; color: var(--imprime); font-weight: 600; padding: 6px 0; }
 /* UX08 : synthèse du sac et en-tête chiffré de la fiche club. */
 .sac-synthese th .lien { font-weight: 700; text-align: left; }
-.sac-synthese tbody th { min-width: 8.5em; }
+.sac-synthese tbody th { min-width: 7em; }
+.sac-synthese thead th { letter-spacing: .02em; padding-left: .4em; padding-right: .4em; }
+.sac-synthese td { padding-left: .4em; padding-right: .4em; }
 .sac-synthese td small { display: block; color: var(--encre-2); font-size: .75rem; }
 .sac-synthese .sac-etat { display: block; font-size: .78rem; font-weight: 400; color: var(--encre-2); max-width: 16em; }
 .sac-synthese tr.alerte .sac-etat { color: var(--alerte); }
@@ -1743,3 +1745,5 @@ main.entree { animation: entreeVue .22s ease-out; }
 .pp-etapes .btn { flex: 0 0 auto; }
 /* UX14 : aucun texte sous 12 px dans les jauges du jeu sur 100. */
 .jn small { font-size: 12px; }
+/* V4 S01 : distances de référence et héritées, distinctes des observées. */
+.sac-synthese .marque.ref, .sac-synthese .marque.herit { font-size: .8rem; color: var(--encre-2); font-weight: 400; }

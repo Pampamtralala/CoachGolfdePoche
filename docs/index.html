@@ -1723,7 +1723,9 @@ main.entree { animation: entreeVue .22s ease-out; }
 .plus-filtres > summary { cursor: pointer; color: var(--imprime); font-weight: 600; padding: 6px 0; }
 /* UX08 : synthèse du sac et en-tête chiffré de la fiche club. */
 .sac-synthese th .lien { font-weight: 700; text-align: left; }
-.sac-synthese tbody th { min-width: 8.5em; }
+.sac-synthese tbody th { min-width: 7em; }
+.sac-synthese thead th { letter-spacing: .02em; padding-left: .4em; padding-right: .4em; }
+.sac-synthese td { padding-left: .4em; padding-right: .4em; }
 .sac-synthese td small { display: block; color: var(--encre-2); font-size: .75rem; }
 .sac-synthese .sac-etat { display: block; font-size: .78rem; font-weight: 400; color: var(--encre-2); max-width: 16em; }
 .sac-synthese tr.alerte .sac-etat { color: var(--alerte); }
@@ -1760,6 +1762,8 @@ main.entree { animation: entreeVue .22s ease-out; }
 .pp-etapes .btn { flex: 0 0 auto; }
 /* UX14 : aucun texte sous 12 px dans les jauges du jeu sur 100. */
 .jn small { font-size: 12px; }
+/* V4 S01 : distances de référence et héritées, distinctes des observées. */
+.sac-synthese .marque.ref, .sac-synthese .marque.herit { font-size: .8rem; color: var(--encre-2); font-weight: 400; }
 
 /* ---------- Sac de golf en perspective (fausse 3D) ----------
    Variables à surcharger : --s3-lueur (surbrillance du club sorti), --s3-alerte (halo d'écart),
@@ -4995,6 +4999,26 @@ function fusionMesures(practice, parcours) {
   Object.keys(parcours || {}).forEach(function (k) { out[k] = (out[k] || []).concat(parcours[k]); });
   return out;
 }
+/* Roadmap V4, S01 — distances pour décider (choix de club, alertes d'étagement, stratégie), club par club :
+   - observées : coups réels du parcours (déclarés ou GPS de vol), dès MIN_OBS_DISTANCE mesures ;
+   - sinon la référence saisie pour ce club (aide au choix, valeur de secours, jamais une observation) ;
+   - sinon les mesures héritées (anciennes saisies et séries de practice mêlées : provenance indéterminable) ;
+   - sinon les quelques coups observés.
+   Une estimation n'y entre jamais. La provenance retenue est renvoyée avec chaque club. */
+var MIN_OBS_DISTANCE = 3;
+function distancesDecision(observees, references, heritees, min) {
+  min = min || MIN_OBS_DISTANCE;
+  var o = observees || {}, r = references || {}, h = heritees || {}, cles = {}, clubs = {}, provenance = {};
+  [o, r, h].forEach(function (src) { Object.keys(src).forEach(function (k) { cles[k] = true; }); });
+  Object.keys(cles).forEach(function (k) {
+    var obs = (o[k] || []).filter(estNombre), ref = estNombre(r[k]) ? r[k] : null, her = (h[k] || []).filter(estNombre);
+    if (obs.length >= min) { clubs[k] = obs.slice(); provenance[k] = { source: "observée", n: obs.length }; }
+    else if (ref != null) { clubs[k] = [ref]; provenance[k] = { source: "référence", n: 1, observees: obs.length }; }
+    else if (her.length) { clubs[k] = her.slice(); provenance[k] = { source: "héritée", n: her.length, observees: obs.length }; }
+    else if (obs.length) { clubs[k] = obs.slice(); provenance[k] = { source: "observée", n: obs.length, peu: true }; }
+  });
+  return { clubs: clubs, provenance: provenance };
+}
 /* Matrice de wedges : une case remplie à la main l'emporte ; sinon, la moyenne des coups du parcours. */
 function fusionWedges(manuel, parcours) {
   var out = {};
@@ -7613,10 +7637,10 @@ function filtrerChronologie(ev, f) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-25T19:51:21.284Z";
+  var VERSION_APPLI = "2026-11-27T10:02:11.126Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
-      carnet: { clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
+      carnet: { clubs: {}, references: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
   }
   function lireLocal() {
     try { var s = localStorage.getItem(CLE); var o = s ? JSON.parse(s) : null; return o && o.v === 1 ? o : null; } catch (e) { return null; }
@@ -9101,6 +9125,10 @@ function filtrerChronologie(ev, f) {
       if (l.some(function (y) { return y != null; })) r.l = l;
       return r;
     }).filter(Boolean);
+    /* V4 S01 : distance de référence saisie par club (aide au choix, jamais une observation). */
+    var rf = objet(c.references); e.carnet.references = {};
+    CLUBS.forEach(function (k) { if (a(rf, k.id) && nombre(rf[k.id]) && rf[k.id] >= 10 && rf[k.id] <= 400) e.carnet.references[k.id] = Math.round(rf[k.id]); });
+    /* Mesures héritées (anciennes saisies et balles de séries mêlées) : gardées telles quelles. */
     CLUBS.forEach(function (k) {
       if (!a(cl, k.id)) return;
       var l = liste(cl[k.id]).filter(function (v) { return nombre(v) && v >= 5 && v <= 400; }).map(Math.round);
@@ -9659,7 +9687,7 @@ function filtrerChronologie(ev, f) {
   /* Clubs du sac, du plus long au plus court. */
   function sacActuel() {
     if (etat.carnet.sac) return etat.carnet.sac.slice();
-    return CLUBS.filter(function (c) { return SAC_DEFAUT.indexOf(c.id) >= 0 || etat.carnet.clubs[c.id]; }).map(function (c) { return c.id; }).slice(0, SAC_MAX);
+    return CLUBS.filter(function (c) { return SAC_DEFAUT.indexOf(c.id) >= 0 || etat.carnet.clubs[c.id] || referencesClubs()[c.id] != null; }).map(function (c) { return c.id; }).slice(0, SAC_MAX);
   }
   /* Clubs proposés pendant la partie : le sac composé ; sinon les clubs déjà mesurés (au moins trois) ; sinon le sac type. */
   function sacJeu() {
@@ -9674,7 +9702,14 @@ function filtrerChronologie(ev, f) {
   /* Coups mesurés sur le parcours (parties notées et partie en cours). */
   function coupsDuParcours() { return mesuresParcours(etat.partie ? partiesAnalyse().concat([etat.partie]) : partiesAnalyse()); }
   /* Mesures du practice et du parcours réunies : la base des distances du sac. */
-  function mesuresTout() { return fusionMesures(etat.carnet.clubs, coupsDuParcours().clubs); }
+  /* V4 S01 : trois sources distinctes. Observées : coups réels du parcours. Références : une distance saisie par club.
+     Héritées : etat.carnet.clubs, où anciennes saisies et balles de séries sont mêlées (provenance indéterminable). */
+  function mesuresObservees() { return coupsDuParcours().clubs; }
+  function referencesClubs() { return etat.carnet.references || (etat.carnet.references = {}); }
+  function decisionDistances() { return distancesDecision(mesuresObservees(), referencesClubs(), etat.carnet.clubs); }
+  /* Distances pour décider (choix de club, alertes d'étagement, stratégie) : observées dès 3 coups, sinon référence,
+     sinon héritées. Les moyennes « observées » affichées n'utilisent que mesuresObservees(). */
+  function mesuresTout() { return decisionDistances().clubs; }
   /* Matrice de wedges : cases saisies, complétées par les coups du parcours. */
   function wedgesTout() { return fusionWedges(etat.carnet.wedges, coupsDuParcours().wedges); }
   /* Mesures, avec la distance en cours de saisie dans la fiche (aperçu en direct). */
@@ -9804,9 +9839,10 @@ function filtrerChronologie(ev, f) {
     if (id === "putter") {
       return tete + entete("Putter", "Putter") + '<p>' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans les Statistiques, avec l’estimation des coups gagnés.") + '</p></section>';
     }
-    var c = CLUB[id], mes = etat.carnet.clubs[id] || [], parc = coupsDuParcours().clubs[id] || [], tout = mes.concat(parc);
-    var s = statsClub(tout), an = analyseCarnet(mesuresTout(), sacActuel());
-    var depart = s ? s.moy : sacEstimation(id), al = alertesDe(an, id);
+    var c = CLUB[id], mes = etat.carnet.clubs[id] || [], parc = coupsDuParcours().clubs[id] || [], tout = parc;
+    var s = statsClub(parc), an = analyseCarnet(mesuresTout(), sacActuel()), ref = referencesClubs()[id];
+    /* V4 S01 : le champ montre la référence saisie, ou rien ; une estimation n'apparaît qu'en indication. */
+    var depart = ref != null ? ref : null, sh = statsClub(mes), estim = sh ? sh.moy : sacEstimation(id), al = alertesDe(an, id);
     var h = tete + entete(SAC_FAMILLES[c.fam] + " · dans ton sac", nomLoft(c));
     h += ficheClubSyntheseHTML(id); /* UX08 : chiffres du club d'abord */
     if (c.fam === "w") {
@@ -9818,25 +9854,24 @@ function filtrerChronologie(ev, f) {
     }
     if (al.length) h += '<ul class="constats">' + al.map(function (x) { return '<li class="alerte">' + t(phraseSac(x, c)) + '</li>'; }).join("") + '</ul>';
     h += '<form class="sac-saisie" data-f="sac-dist" novalidate>' +
-      '<label for="sac-val">Distance moyenne de vol, en mètres</label>' +
+      '<label for="sac-val">Distance de référence, en mètres <small>(facultatif)</small></label>' +
       '<div class="sac-reglage"><button class="pm" type="button" data-a="sac-pas" data-v="-1" aria-label="Un mètre de moins">−</button>' +
-      '<input id="sac-val" type="text" inputmode="numeric" autocomplete="off" maxlength="3" data-i="sac-val" value="' + (depart != null ? depart : "") + '" aria-describedby="sac-voisins">' +
+      '<input id="sac-val" type="text" inputmode="numeric" autocomplete="off" maxlength="3" data-i="sac-val" value="' + (depart != null ? depart : "") + '"' + (depart == null && estim != null ? ' placeholder="≈ ' + estim + '"' : '') + ' aria-describedby="sac-voisins sac-ref-aide">' +
       '<button class="pm" type="button" data-a="sac-pas" data-v="1" aria-label="Un mètre de plus">+</button></div>' +
       '<ul class="sac-voisins" id="sac-voisins" aria-live="polite">' + sacVoisinsHTML(id) + '</ul>' +
       '<p class="erreur" id="sac-err" role="alert" hidden></p>' +
-      (s && s.n > 1 ? '<p class="aide">' + t("Moyenne de " + pluriel(s.n, "mesure") + (parc.length ? " dont " + parc.length + " sur le parcours" : "") + ", de " + s.min + " à " + s.max + " m." + (mes.length > 1 ? " Enregistrer une autre moyenne remplace les mesures du practice." : "")) + '</p>' : '') +
+      '<p class="aide" id="sac-ref-aide">' + t("La référence t'aide à choisir ton club ; elle n'entre pas dans tes moyennes observées" + (s ? " (" + s.moy + " m sur " + pluriel(s.n, "coup") + " joué" + (s.n > 1 ? "s" : "") + ")." : ".")) + '</p>' +
       '<button class="btn principal large" type="submit">Enregistrer</button></form>';
     h += ellipseClubHTML(id) || dispersionClubHTML(tout);
     var nCoups = (clubsNotes(partiesAnalyse(), []).filter(function (x) { return x.club === id; })[0] || {}).n;
     if (nCoups) h += '<button class="lien voir-profil" type="button" data-a="st-voir-club" data-v="' + at(id) + '">' + t("Voir le profil de ce club : direction, résultat, tendance (" + pluriel(nCoups, "coup") + ")") + '</button>';
     if (parc.length) h += '<p class="sac-parcours">' + t("Sur le parcours : " + parc.slice(-8).join(", ") + " m" + (parc.length > 8 ? " (" + parc.length + " coups)" : "") + ".") + '</p>';
-    h += '<details class="sac-balles"' + (s && s.n > 1 || ui.sacBalles ? " open" : "") + '><summary>Mesurer balle par balle</summary>' +
-      '<p class="aide">' + t("Au practice, saisis chaque balle. À partir de cinq, la moyenne écarte la plus longue et la plus courte.") + '</p>' +
-      (mes.length ? '<ul class="releves">' + mes.map(function (v, i) { return '<li><button class="puce neutre" type="button" data-a="sac-balle-suppr" data-v="' + i + '" aria-label="' + at("Retirer la balle de " + v + " m") + '">' + v + ' m <span aria-hidden="true">×</span></button></li>'; }).join("") + '</ul>' : '') +
-      '<form class="sac-balle" data-f="sac-balle" novalidate><label class="vh" for="sac-balle">Distance d’une balle, en mètres</label>' +
-      '<input id="sac-balle" type="text" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="m"><button class="btn" type="submit">Ajouter la balle</button></form>' +
-      '<p class="erreur" id="sac-balle-err" role="alert" hidden></p></details>';
-    h += '<div class="ligne-btn sac-actions">' + (mes.length ? '<button class="btn" type="button" data-a="sac-effacer">Effacer les mesures du practice</button>' : '') +
+    /* V4 S01 : les mesures héritées restent visibles, à part, et peuvent être retirées une à une ; plus aucune saisie
+       balle par balle (les séries de practice disparaissent avec le chantier 03). */
+    if (mes.length) h += '<details class="sac-balles"' + (ui.sacBalles ? " open" : "") + '><summary>' + t("Mesures héritées (" + mes.length + ")") + '</summary>' +
+      '<p class="aide">' + t("Anciennes saisies et séries de practice, gardées et exportables, mais hors de tes moyennes observées : leur provenance n'est plus connue.") + '</p>' +
+      (mes.length ? '<ul class="releves">' + mes.map(function (v, i) { return '<li><button class="puce neutre" type="button" data-a="sac-balle-suppr" data-v="' + i + '" aria-label="' + at("Retirer la mesure héritée de " + v + " m") + '">' + v + ' m <span aria-hidden="true">×</span></button></li>'; }).join("") + '</ul>' : '') + '</details>';
+    h += '<div class="ligne-btn sac-actions">' + (ref != null ? '<button class="btn" type="button" data-a="sac-effacer">Effacer la référence</button>' : '') +
       '<button class="btn danger" type="button" data-a="sac-retirer">Retirer du sac</button></div>';
     return h + '</section>';
   }
@@ -9919,6 +9954,7 @@ function filtrerChronologie(ev, f) {
         var cb = etat.carnet;
         cb.wedgesPerso = cb.wedgesPerso.filter(function (v) { return v !== c.loft; }).concat([l]).sort(function (x, y) { return x - y; });
         if (cb.clubs[id]) { cb.clubs[neuf] = cb.clubs[id]; delete cb.clubs[id]; }
+        if (cb.references && cb.references[id] != null) { cb.references[neuf] = cb.references[id]; delete cb.references[id]; }
         if (cb.wedges[id]) { cb.wedges[neuf] = cb.wedges[id]; delete cb.wedges[id]; }
         var ids = sacActuel().map(function (k) { return k === id ? neuf : k; });
         majWedges(); fixerSac(ids);
@@ -10006,14 +10042,14 @@ function filtrerChronologie(ev, f) {
       document.getElementById("sac-val").focus(); return;
     }
     var avant = analyseCarnet(mesuresTout(), sacActuel());
-    etat.carnet.clubs[id] = [v];
-    apresSac(id, avant, CLUB[id].nom.split(",")[0] + " : " + v + " m.");
+    referencesClubs()[id] = v; /* V4 S01 : une référence, pas une mesure */
+    apresSac(id, avant, CLUB[id].nom.split(",")[0] + " : référence " + v + " m.");
   };
   ACTIONS["sac-effacer"] = function () {
     var id = ui.feuille && ui.feuille.sac; if (!id || !CLUB[id]) return;
     var avant = analyseCarnet(mesuresTout(), sacActuel());
-    delete etat.carnet.clubs[id];
-    apresSac(id, avant, CLUB[id].nom.split(",")[0] + " : mesures du practice effacées.");
+    delete referencesClubs()[id];
+    apresSac(id, avant, CLUB[id].nom.split(",")[0] + " : référence effacée.");
   };
   ACTIONS["sac-retirer"] = function () {
     var id = ui.feuille && ui.feuille.sac; if (!id || !CLUB[id]) return;
@@ -10029,20 +10065,13 @@ function filtrerChronologie(ev, f) {
     ui.sacApercu = null; ui.sacBalles = true; sauver(); rendre(); rendreFeuille();
     var el = document.getElementById(focusId); if (el) el.focus({ preventScroll: true });
   }
-  FORMULAIRES["sac-balle"] = function (form) {
-    var id = ui.feuille && ui.feuille.sac; if (!id || !CLUB[id]) return;
-    var inp = form.querySelector("#sac-balle"), brut = inp.value.trim(), v = /^\d+$/.test(brut) ? parseInt(brut, 10) : NaN;
-    if (isNaN(v) || v < 5 || v > 400) { var err = document.getElementById("sac-balle-err"); err.textContent = "Entre une distance en mètres, entre 5 et 400."; err.hidden = false; inp.focus(); return; }
-    var l = etat.carnet.clubs[id] = etat.carnet.clubs[id] || [];
-    l.push(v); if (l.length > MESURES_MAX) l.splice(0, l.length - MESURES_MAX);
-    majFicheSac("sac-balle");
-  };
+  /* V4 S01 : plus d'ajout de mesure héritée ; on peut seulement en retirer. */
   ACTIONS["sac-balle-suppr"] = function (el) {
     var id = ui.feuille && ui.feuille.sac, l = id && etat.carnet.clubs[id], i = parseInt(el.getAttribute("data-v"), 10);
     if (!l || !(i >= 0 && i < l.length)) return;
     l.splice(i, 1); if (!l.length) delete etat.carnet.clubs[id];
     var reste = l.length ? Math.min(i, l.length - 1) : -1;
-    majFicheSac("sac-balle");
+    majFicheSac("sac-val");
     var suivant = reste >= 0 && document.querySelector('#feuille [data-a="sac-balle-suppr"][data-v="' + reste + '"]'); if (suivant) suivant.focus({ preventScroll: true });
   };
   ACTIONS["sac-basculer"] = function (el) {
@@ -10051,7 +10080,7 @@ function filtrerChronologie(ev, f) {
     if (ids.indexOf(id) >= 0) {
       ids = ids.filter(function (k) { return k !== id; }); if (ui.sacSel === id) ui.sacSel = null;
       /* Un wedge ajouté qu'on sort du sac sans l'avoir mesuré disparaît de la liste. */
-      if (CLUB[id].perso && !etat.carnet.clubs[id] && !etat.carnet.wedges[id]) {
+      if (CLUB[id].perso && !etat.carnet.clubs[id] && referencesClubs()[id] == null && !etat.carnet.wedges[id]) {
         etat.carnet.wedgesPerso = etat.carnet.wedgesPerso.filter(function (v) { return v !== CLUB[id].loft; }); oubli = true;
       }
     }
@@ -13511,11 +13540,12 @@ function filtrerChronologie(ev, f) {
      ouverte par un chiffre-clé de synthèse. Aucune distance estimée n'entre dans ces chiffres.
      ============================================================ */
   var MIN_MESURES_SAC = 3;
-  /* Mesures d'un club par provenance : practice (séries et saisies du carnet) et parcours (coups notés). */
+  /* V4 S01 : un club, trois sources séparées. Observées : coups réels du parcours. Référence : distance saisie.
+     Héritées : anciennes saisies et séries mêlées (hors moyennes). */
   function mesuresClubParSource(id) {
-    var prac = (etat.carnet.clubs[id] || []).length, parc = (coupsDuParcours().clubs[id] || []).length;
+    var obs = mesuresObservees()[id] || [], her = etat.carnet.clubs[id] || [], ref = referencesClubs()[id];
     var series = (etat.carnet.series || []).filter(function (s) { return s.c === id; });
-    return { practice: prac, parcours: parc, total: prac + parc, series: series };
+    return { observees: obs, heritees: her, reference: ref != null ? ref : null, n: obs.length, series: series };
   }
   /* Note courte d'un écart anormal, pour le tableau (la phrase complète est dans la fiche du club). */
   function noteEcartSac(x, id) {
@@ -13523,31 +13553,31 @@ function filtrerChronologie(ev, f) {
     return x.type === "trou" ? "Trou de " + x.ecart + " m avec le " + nomA : x.type === "doublon" ? "Seulement " + x.ecart + " m avec le " + nomA : "Ordre à vérifier avec le " + nomA;
   }
   function syntheseSacHTML() {
-    var ids = sacActuel(), clubs = mesuresTout(), an = analyseSac();
+    var ids = sacActuel(), an = analyseSac();
     if (!ids.length) return '';
     var peu = 0, alertes = 0;
     var lignes = ids.map(function (id) {
-      var c = CLUB[id], st = statsClub(clubs[id]), fo = st ? fourchette(clubs[id]) : null, M = mesuresClubParSource(id), al = alertesDe(an, id);
-      if (M.total < MIN_MESURES_SAC) peu++; if (al.length) alertes++;
-      var etatLib = al.length ? noteEcartSac(al[0], id) : M.total < MIN_MESURES_SAC ? (M.total ? "Peu documenté (" + M.total + "/" + MIN_MESURES_SAC + ")" : "À mesurer") : "";
-      return '<tr class="' + (al.length ? "alerte" : M.total < MIN_MESURES_SAC ? "peu" : "") + '"><th scope="row"><button class="lien" type="button" data-a="sac-fiche-club" data-id="' + id + '">' + t(nomCourt(c)) + '</button>' + (etatLib ? '<small class="sac-etat">' + t(etatLib) + '</small>' : '') + '</th>' +
-        '<td class="num">' + (st ? t(st.moy + " m") : '<span class="marque inconnu">–</span>') + '</td>' +
+      var c = CLUB[id], M = mesuresClubParSource(id), st = statsClub(M.observees), fo = M.n >= MIN_OBS_DISTANCE ? fourchette(M.observees) : null, al = alertesDe(an, id), sh = statsClub(M.heritees);
+      if (M.n < MIN_OBS_DISTANCE) peu++; if (al.length) alertes++;
+      var etatLib = al.length ? noteEcartSac(al[0], id) : M.n < MIN_OBS_DISTANCE ? (M.n ? "Peu de coups (" + M.n + "/" + MIN_OBS_DISTANCE + ")" : "Aucun coup mesuré") : "";
+      var dist = st ? t(st.moy + " m") : M.reference != null ? '<span class="marque ref">' + t("réf. " + M.reference + " m") + '</span>' : sh ? '<span class="marque herit">' + t(sh.moy + " m hérité") + '</span>' : '<span class="marque inconnu">–</span>';
+      return '<tr class="' + (al.length ? "alerte" : M.n < MIN_OBS_DISTANCE ? "peu" : "") + '"><th scope="row"><button class="lien" type="button" data-a="sac-fiche-club" data-id="' + id + '">' + t(nomCourt(c)) + '</button>' + (etatLib ? '<small class="sac-etat">' + t(etatLib) + '</small>' : '') + '</th>' +
+        '<td class="num">' + dist + '</td>' +
         '<td class="num">' + (fo ? t(fo.bas === fo.haut ? fo.bas + " m" : fo.bas + "–" + fo.haut + " m") : "–") + '</td>' +
-        '<td class="num">' + M.total + '<small>' + t((M.practice ? M.practice + " practice" : "") + (M.practice && M.parcours ? " · " : "") + (M.parcours ? M.parcours + " parcours" : "")) + '</small></td>' +
-        '</tr>';
+        '<td class="num">' + M.n + '</td></tr>';
     }).join("");
     return '<section class="bloc" id="c-synthese"><h2>Mes clubs</h2><p class="aide">' +
-      t("Distances observées (practice et parcours), jamais estimées. " + (alertes ? pluriel(alertes, "club") + " avec un écart anormal. " : "") + (peu ? pluriel(peu, "club") + " peu documenté" + (peu > 1 ? "s" : "") + " (moins de " + MIN_MESURES_SAC + " mesures)." : "Tous les clubs ont au moins " + MIN_MESURES_SAC + " mesures.")) + '</p>' +
-      '<div class="defile"><table class="carte-score sac-synthese"><thead><tr><th scope="col">Club</th><th scope="col" class="num">Distance typique</th><th scope="col" class="num">Fourchette</th><th scope="col" class="num">Mesures</th></tr></thead><tbody>' +
+      t("Distances des coups joués sur le parcours, jamais estimées. Une référence saisie ou une mesure héritée s'affiche à part et n'entre pas dans les moyennes. " + (alertes ? pluriel(alertes, "club") + " avec un écart anormal. " : "") + (peu ? pluriel(peu, "club") + " avec moins de " + MIN_OBS_DISTANCE + " coups mesurés." : "")) + '</p>' +
+      '<div class="defile"><table class="carte-score sac-synthese"><thead><tr><th scope="col">Club</th><th scope="col" class="num">Distance</th><th scope="col" class="num">Plage</th><th scope="col" class="num">Coups</th></tr></thead><tbody>' +
       lignes + '</tbody></table></div><div class="ligne-btn"><button class="btn" type="button" data-a="serie-ouvrir">Mesurer une série</button><button class="btn" type="button" data-a="sac-composer" data-id="sac">Composer mon sac</button></div></section>';
   }
   /* En tête de la fiche d'un club : ce que disent ses données, et la série en un toucher. */
   function ficheClubSyntheseHTML(id) {
-    var clubs = mesuresTout(), st = statsClub(clubs[id]), fo = st ? fourchette(clubs[id]) : null, M = mesuresClubParSource(id);
+    var M = mesuresClubParSource(id), st = statsClub(M.observees), fo = M.n >= MIN_OBS_DISTANCE ? fourchette(M.observees) : null, sh = statsClub(M.heritees);
     var P = profilClub(partiesAnalyse(), id), D = P.distance, dir = P.direction, cases = [];
-    cases.push({ t: "Distance typique", v: st ? st.moy + " m" : "–", x: st ? pluriel(M.total, "mesure") + (fo && fo.bas !== fo.haut ? ", habituellement " + fo.bas + " à " + fo.haut + " m" : "") : "Aucune mesure : fais une série au practice.", prov: st ? "Observé" : "Inconnu" });
-    cases.push({ t: "Practice / parcours", v: M.practice + " / " + M.parcours, x: "mesures au practice / coups notés sur le parcours", prov: "Observé" });
-    if (D && D.n) cases.push({ t: "Sur le parcours", v: D.valeur != null ? "≈ " + D.valeur + " m" : "–", x: D.valeur != null ? pluriel(D.n, "plein coup mesuré") + (D.gps ? ", dont " + D.gps + " au GPS (roulé compris)" : "") : "encore " + pluriel(Math.max(1, 3 - D.n), "mesure") + " sur le parcours", prov: D.gps ? "GPS" : "Observé" });
+    cases.push({ t: "Distance observée", v: st ? st.moy + " m" : "–", x: st ? pluriel(M.n, "coup") + " sur le parcours" + (D && D.gps ? ", dont " + D.gps + " au GPS" : "") + (fo && fo.bas !== fo.haut ? ", habituellement " + fo.bas + " à " + fo.haut + " m" : "") : "Aucun coup mesuré sur le parcours.", prov: st ? "Observé" : "Inconnu" });
+    cases.push({ t: "Référence", v: M.reference != null ? M.reference + " m" : "–", x: M.reference != null ? "saisie par toi, pour choisir ton club" : "facultative, à saisir plus bas", prov: "Référence" });
+    if (sh) cases.push({ t: "Mesures héritées", v: sh.moy + " m", x: pluriel(M.heritees.length, "mesure") + " ancienne" + (M.heritees.length > 1 ? "s" : "") + ", hors moyennes", prov: "Héritée" });
     if (dir && dir.n) cases.push({ t: "Direction", v: dir.partCentre + " % dans l'axe", x: dir.partGauche + " % à gauche · " + dir.partDroite + " % à droite, sur " + pluriel(dir.n, "coup"), prov: "Observé" });
     var h = '<div class="fiche-club-synthese"><div class="kpi-grille">' + cases.map(function (c) {
       return '<article class="kpi"><p class="kpi-t">' + t(c.t) + ' <span class="ens-prov">' + t(c.prov) + '</span></p><p class="kpi-v"><span class="main">' + t(c.v) + '</span></p><p class="kpi-x">' + t(c.x) + '</p></article>';
@@ -14784,7 +14814,7 @@ function filtrerChronologie(ev, f) {
      débloque ; la carte disparaît dès trois parties complètes (mesures et index restent proposés ailleurs). */
   function premiersPasHTML() {
     var parties = etat.parties, completes = tableauStats(partiesAnalyse()).parPartie.length;
-    var mesure = (etat.carnet.series || []).length > 0 || Object.keys(etat.carnet.clubs || {}).some(function (k) { return (etat.carnet.clubs[k] || []).length; });
+    var mesure = (etat.carnet.series || []).length > 0 || Object.keys(etat.carnet.references || {}).length > 0 || Object.keys(etat.carnet.clubs || {}).some(function (k) { return (etat.carnet.clubs[k] || []).length; });
     var idx = indexDeclare(etat.profil) != null;
     var E = [
       { ok: parties.length > 0, t: "Noter une première partie", fait: "Ta première partie est notée : tes indicateurs sont calculés.", a: "partie-rapide", b: "Nouvelle partie" },
