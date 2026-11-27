@@ -30,10 +30,9 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.waitForSelector('.tete');
     /* Carnet vide : pas de priorité, pas de faux enseignement */
     verifie(await page.locator('#mj-priorite').count() === 0, nom + ' carnet vide : pas de priorité');
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-a="ens-ouvrir"]');
-    r.vide = norm(await page.textContent('#feuille'));
-    verifie(/Enregistre une première partie/.test(r.vide) && await page.locator('#feuille .carte-ens').count() === 0, nom + ' fiche vide : ' + r.vide.slice(0, 120));
-    await page.keyboard.press('Escape');
+    await page.click('#barre [data-v="bilan"]'); await page.click('#vue [data-a="famille"][data-v="comprendre"]');
+    r.vide = norm(await page.textContent('#vue .rb-tete'));
+    verifie(/apparaîtront après tes premières parties/.test(r.vide) && await page.locator('#vue .rb-ens-liste li, #vue .carte-ens').count() === 0, nom + ' Comprendre vide : ' + r.vide.slice(0, 120));
     /* Deux parties : la priorité ne peut être que d'enrichir ses données */
     await charger(page, [partie(0, {}), partie(1, {})]);
     r.deux = norm(await page.textContent('#mj-priorite').catch(() => ''));
@@ -44,12 +43,12 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(await page.locator('#mj-priorite .carte-tb').count() === 1 && /Point de vigilance|Erreur récurrente|Opportunité/.test(r.priorite), nom + ' Accueil : une priorité : ' + r.priorite);
     await page.screenshot({ path: `${D}/${nom}-accueil.png`, fullPage: true });
     verifie(await page.evaluate(() => document.documentElement.scrollWidth) <= w, nom + ' Accueil sans débordement');
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-a="ens-ouvrir"]');
+    await page.click('#barre [data-v="bilan"]'); await page.click('#vue [data-a="famille"][data-v="comprendre"]'); await page.click('#vue [data-a="ens-ouvrir"]');
     r.meta = await page.$$eval('#feuille .ens-meta', l => l.map(x => x.textContent));
     verifie(r.meta.length > 0 && r.meta.every(x => /\d+ parties?/.test(x) && /(Du|Le|En) /.test(x)), nom + ' cartes : période et effectif : ' + r.meta.slice(0, 3).join(' | '));
     await page.keyboard.press('Escape');
     /* Fiche complète, regroupée par catégorie */
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-a="ens-ouvrir"]');
+    await page.click('#barre [data-v="bilan"]'); await page.click('#vue [data-a="famille"][data-v="comprendre"]'); await page.click('#vue [data-a="ens-ouvrir"]');
     r.groupes = await page.$$eval('#feuille .ens-groupe', l => l.map(x => x.textContent));
     r.total = await page.locator('#feuille .carte-ens').count();
     verifie(r.groupes.includes('Progression') && r.groupes.includes('Erreur récurrente') && r.total > 3, nom + ' fiche : ' + r.total + ' enseignements, ' + r.groupes.join(' | '));
@@ -61,7 +60,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(/Oui, plutôt/.test(r.detail), nom + ' détail du score : ' + r.detail);
     await page.keyboard.press('Escape');
     /* Passerelle vers les exercices : bibliothèque filtrée sur la mise en jeu */
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-a="ens-ouvrir"]');
+    await page.click('#barre [data-v="bilan"]'); await page.click('#vue [data-a="famille"][data-v="comprendre"]'); await page.click('#vue [data-a="ens-ouvrir"]');
     const pass = page.locator('#feuille .carte-ens[data-ens="cote-mej"] [data-a="exos-domaine"]');
     verifie(await pass.count() === 1, nom + ' passerelle vers les exercices présente');
     if (await pass.count()) {
@@ -70,7 +69,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
       verifie(r.filtre === 'Départ' && await page.locator('#feuille').count() === 0, nom + ' exercices filtrés : ' + r.filtre);
     }
     /* Lien vers les erreurs des statistiques */
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-a="ens-ouvrir"]');
+    await page.click('#barre [data-v="bilan"]'); await page.click('#vue [data-a="famille"][data-v="comprendre"]'); await page.click('#vue [data-a="ens-ouvrir"]');
     const ver = page.locator('#feuille [data-a="ens-aller"][data-s="st-erreurs"]').first();
     if (await ver.count()) { await ver.click(); await page.waitForTimeout(80); verifie(await page.locator('#vue #st-erreurs').count() === 1 && await page.locator('#feuille').count() === 0, nom + ' lien vers les erreurs'); }
     else verifie(false, nom + ' lien vers les erreurs absent');

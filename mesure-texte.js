@@ -33,10 +33,11 @@ const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
     await b.click(); await page.waitForTimeout(80); res.ecrans[nom] = await mesure();
   }
   /* V4-04 : quelques rubriques d'analyse en plus (KPI, aides). */
-  for (const r of ['mej', 'putting', 'comprendre']) {
+  for (const [r, fam] of [['mej', 'secteurs'], ['putting', 'secteurs'], ['comprendre', 'comprendre']]) {
     await page.click('#barre [data-v="bilan"]'); await page.waitForTimeout(60);
-    const c = await page.$(`[data-a="rubrique"][data-v="${r}"]`); if (!c) continue;
-    await c.click(); await page.waitForTimeout(80); res.ecrans['analyses-' + r] = await mesure();
+    const f = await page.$(`[data-a="famille"][data-v="${fam}"]`); if (f) { await f.click(); await page.waitForTimeout(60); }
+    const c = await page.$(`[data-a="rubrique"][data-v="${r}"]`);
+    if (c) { await c.click(); await page.waitForTimeout(80); } else if (r !== fam) continue; res.ecrans['analyses-' + r] = await mesure();
   }
   fs.writeFileSync(sortie, JSON.stringify(res, null, 1));
   console.log(JSON.stringify(res));

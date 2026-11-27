@@ -17,6 +17,15 @@ async function allerVue(page, n, section) {
   else if (n === 'practice' || n === 'exercices') { await page.click('.tete .ident'); await page.click(`#profil-coaching [data-a="onglet"][data-v="${n}"]`); }
   await page.waitForTimeout(60);
 }
+/* V4-07 : Performance en cinq familles ; une rubrique s'atteint par sa famille, puis sa pastille s'il y en a plusieurs. */
+const FAMILLE_DE = { perf: 'resultats', mej: 'secteurs', attaque: 'secteurs', petit: 'secteurs', putting: 'secteurs', erreurs: 'erreurs', sg: 'erreurs', parcours: 'parcours', trous: 'parcours', comprendre: 'comprendre' };
+async function allerRubrique(page, id) {
+  /* Clubs et qualité, hors familles : leurs liens sont en bas de « Résultats ». */
+  await page.click(`#vue [data-a="famille"][data-v="${FAMILLE_DE[id] || 'resultats'}"]`);
+  const b = page.locator(`#vue .rubriques [data-a="rubrique"][data-v="${id}"]`);
+  if (await b.count()) await b.click(); else if (!FAMILLE_DE[id]) await page.click(`#vue [data-a="rubrique"][data-v="${id}"]`);
+  await page.waitForTimeout(40);
+}
 async function menuAction(page, action) {
   await ouvrirMenu(page);
   await page.click(`#recherche-l [data-a="fonction"][data-v="${action}"]`);
@@ -67,4 +76,4 @@ async function modeDetail(page) {
   const b = page.locator('#calque-partie [data-a="mode-saisie"][data-v="detail"]');
   if (await b.count() && (await b.getAttribute('aria-pressed')) !== 'true') await b.click();
 }
-module.exports = { allerVue, menuAction, ouvrirMenu, lirePave, saisirTrou, trouPave, modeDetail };
+module.exports = { allerRubrique, allerVue, menuAction, ouvrirMenu, lirePave, saisirTrou, trouPave, modeDetail };

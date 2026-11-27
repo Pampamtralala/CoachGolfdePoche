@@ -1,6 +1,7 @@
 /* P10 : estimation des coups perdus — libellés explicites, méthode consultable, limites, départ inconnu non inventé,
    écart au jeu habituel. */
 const { chromium } = require('playwright');
+const { allerRubrique } = require('./nav-essai');
 const fs = require('fs');
 const CLE = 'coachgolf.v1';
 const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
@@ -33,7 +34,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
       e.parties = parties; e.maj = Date.now();
       await page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [CLE, e]);
       await page.reload(); await page.waitForSelector('.tete');
-      await page.click('#barre [data-a="onglet"][data-v="bilan"]'); await page.click('[data-a="rubrique"][data-v="sg"]'); /* UX06 */
+      await page.click('#barre [data-a="onglet"][data-v="bilan"]'); await allerRubrique(page, 'sg'); /* UX06 */
       const b = page.locator('[data-a="pli"][data-v="sg"]');
       if (await b.count() && (await b.getAttribute('aria-expanded')) !== 'true') await b.click();
       await page.waitForSelector('#sg .methode-estimation');

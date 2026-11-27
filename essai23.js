@@ -1,6 +1,7 @@
 /* P04 : Mes données — inventaire, distances à vérifier, exclusions réversibles, sauvegarde complète (fichier et texte),
    écriture impossible signalée, historique volumineux. */
 const { chromium } = require('playwright');
+const { allerRubrique } = require('./nav-essai');
 const fs = require('fs');
 const CLE = 'coachgolf.v1';
 const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
@@ -150,8 +151,8 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     const t1 = Date.now();
     r.echantillon = await echantillon(page);
     /* UX06 : putting et erreurs sont deux rubriques d'Analyses */
-    await page.click('[data-a="rubrique"][data-v="putting"]'); await page.waitForSelector('#st-putting');
-    await page.click('[data-a="rubrique"][data-v="erreurs"]'); await page.waitForSelector('#st-erreurs');
+    await allerRubrique(page, 'putting'); await page.waitForSelector('#st-putting');
+    await allerRubrique(page, 'erreurs'); await page.waitForSelector('#st-erreurs');
     r.statistiques = Date.now() - t1;
     const t2 = Date.now();
     await ouvrirMesDonnees(page);

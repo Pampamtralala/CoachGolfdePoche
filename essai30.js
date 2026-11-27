@@ -52,13 +52,13 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(await page.locator('#vue [data-a="st-derniers"]').count() === 0 && /10 parties/.test(r.accueil), nom + ' Accueil : fenêtre fixe de 10 parties (' + r.accueil + ')');
 
     /* Comprendre mon jeu : même choix, périmètre, et un changement ici vaut partout */
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-a="an-ouvrir"]');
+    await page.click('#barre [data-v="bilan"]'); await page.click('#vue [data-a="famille"][data-v="comprendre"]'); await page.click('#vue [data-a="an-ouvrir"][data-v="score"]');
     verifie(await choisi('#feuille .fenetres') === 'Saison', nom + ' Comprendre : période conservée');
     r.perimetre = norm(await page.textContent('#feuille .an-perimetre'));
     verifie(/^Sur 7 parties \(63 trous\)/.test(r.perimetre) && /Même période que les autres analyses/.test(r.perimetre), nom + ' Comprendre : périmètre : ' + r.perimetre);
     await page.click('#feuille [data-a="an-periode"][data-v="5"]');
     verifie(/^Sur 5 parties/.test(norm(await page.textContent('#feuille .an-perimetre'))), nom + ' Comprendre : 5 parties');
-    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape'); await page.click('#vue [data-a="famille"][data-v="resultats"]');
     verifie(await choisi('#vue .filtres-stats .fenetres[aria-label="Période"]') === '5 parties', nom + ' Statistiques suivent le choix fait dans Comprendre');
     await page.click('#vue .filtres-stats [data-a="st-derniers"][data-v="0"]');
     verifie(/^Sur 13 parties/.test(norm(await page.textContent('#vue .stats-echantillon'))), nom + ' Toutes : 13 parties');

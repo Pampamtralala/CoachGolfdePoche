@@ -1738,3 +1738,11 @@ main.entree { animation: entreeVue .22s ease-out; }
 .mon-jeu .mj-action { margin-top: 10px; }
 .mj-agir { padding-top: 4px; }
 .mj-priorite .carte-tb { position: relative; width: 100%; text-align: left; }
+/* V4-07 · Performance : cinq familles, puis les rubriques de la famille en pastilles plus discrètes. */
+.familles { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 6px; }
+.familles::-webkit-scrollbar { display: none; }
+.familles .puce { flex: 0 0 auto; white-space: nowrap; }
+.familles + .rubriques { margin-top: 0; }
+.familles + .rubriques .puce { min-height: 38px; font-size: 14px; background: transparent; border: 1.5px solid var(--filet-fort); }
+.familles + .rubriques .puce[aria-pressed="true"] { border-color: var(--action); color: var(--action-texte); background: var(--sauge-fond); }
+.rb-ens-liste small { display: block; font-size: 12.5px; color: var(--encre-2); }

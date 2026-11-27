@@ -28,8 +28,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.waitForSelector('.tete');
     /* V4-06 : plus de raccourcis sur l'accueil ; Comprendre mon jeu s'ouvre depuis Performance. */
     verifie(await page.locator('#vue .comprendre, #vue .an-raccourcis').count() === 0, nom + ' pas de raccourcis sur l\'accueil');
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-a="an-ouvrir"]');
-    await page.click('#feuille [data-a="an-question"][data-v="score"]');
+    await page.click('#barre [data-v="bilan"]'); await page.click('#vue [data-a="famille"][data-v="comprendre"]'); await page.click('#vue [data-a="an-ouvrir"][data-v="score"]');
     await page.waitForSelector('#feuille.analyste #an-rep-score');
     r.vide = norm(await page.textContent('#an-rep-score'));
     verifie(/aucune partie/.test(r.vide) && /Pour commencer Enregistre une partie/.test(r.vide), nom + ' carnet vide : ' + r.vide);
@@ -43,13 +42,12 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [CLE, e]);
     await page.reload(); await page.waitForSelector('.tete');
     /* Depuis les statistiques */
-    await page.click('#barre [data-a="onglet"][data-v="bilan"]');
-    await page.click('[data-a="an-ouvrir"]');
+    await page.click('#barre [data-a="onglet"][data-v="bilan"]'); await page.click('#vue [data-a="famille"][data-v="comprendre"]');
+    await page.click('#vue [data-a="an-ouvrir"][data-v="score"]');
     await page.waitForSelector('#feuille.analyste');
     /* UX07 : la période est le filtre commun (10 parties par défaut) ; ici, toutes les parties. */
     verifie(await page.locator('#feuille [data-a="an-periode"][data-v="10"][aria-pressed="true"]').count() === 1, nom + ' période commune par défaut : 10 parties');
     await page.click('#feuille [data-a="an-periode"][data-v="0"]');
-    await page.click('#feuille [data-a="an-question"][data-v="score"]');
     r.score = norm(await page.textContent('#an-rep-score .an-phrase'));
     r.scoreSource = norm(await page.textContent('#an-rep-score .an-source'));
     r.scoreChiffres = await page.$$eval('#an-rep-score .an-chiffres tr', l => l.map(x => [...x.children].map(c => [...c.childNodes].map(n => n.textContent).join(' ')).join(' | ').replace(/[\s  ]+/g, ' ')));

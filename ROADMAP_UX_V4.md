@@ -21,10 +21,10 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | 01 | Audit de l'existant | P0 | — | Terminé | `ux4/01-audit` · #31 |
 | 02 | Retirer le sac 3D | P0 | 01 | Terminé | `ux4/02-sac3d` · #33 |
 | 03 | Retirer les séries de practice (archivage des données) | P0 | 01, S01 | Terminé | `ux4/03-series` · #34 |
-| 04 | Unifier les composants visuels (titre / section / KPI / contexte / aide) | P0 | 01 | **En revue** | `ux4/04-composants` |
-| 05 | Arborescence et navigation (Accueil · Performance · Jouer · Sac · Activité) | P0 | 02–04 | **En revue** | `ux4/05-navigation` |
-| 06 | Refaire l'accueil | P0 | 04, 05 | **En revue** | `ux4/06-accueil` |
-| 07 | Regrouper Performance (5 familles) | P0 | 04, 05 | À faire | — |
+| 04 | Unifier les composants visuels (titre / section / KPI / contexte / aide) | P0 | 01 | Terminé | `ux4/04-composants` · #35 |
+| 05 | Arborescence et navigation (Accueil · Performance · Jouer · Sac · Activité) | P0 | 02–04 | Terminé | `ux4/05-navigation` · #36 |
+| 06 | Refaire l'accueil | P0 | 04, 05 | Terminé | `ux4/06-accueil` · #37 |
+| 07 | Regrouper Performance (5 familles) | P0 | 04, 05 | **En revue** | `ux4/07-performance` |
 | 08 | Simplifier Jouer et le bilan | P1 | 05 | À faire | — |
 | 09 | Unifier Activité et le profil (coaching et Mes données dans le profil) | P1 | 05 | À faire | — |
 | S01 | Séparer références et observations | P0 | 01 | Terminé | `ux4/s01-references` · #32 |
@@ -261,3 +261,24 @@ _01, S01, 02 et 03 fusionnés dans `app` le 27/11 (PR #31 à #34), déploiement 
   (`mesures-ux/texte-apres-06.json`). Performance attend le chantier 07.
 - Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts ; essais 12, 27, 29, 30, 31, 32, 37 adaptés.
   Capture 390 px vérifiée (carnet vide et rempli).
+
+_04, 05 et 06 fusionnés dans `app` le 27/11 (PR #35 à #37), déploiement Pages vérifié._
+
+### 07 — Regrouper Performance (27/11/2026)
+
+- Cinq familles en pastilles (sur deux lignes au besoin, toutes visibles) : **Résultats** (score, index, régularité,
+  repères), **Secteurs** (Départs · Attaque · Petit jeu · Putting, en seconde rangée), **Erreurs** (Erreurs · Coups
+  perdus), **Parcours** (Parcours · Trous), **Comprendre**. Les douze rubriques restent les unités de contenu : liens
+  profonds, recherche et KPI de l'accueil inchangés ; chaque famille retient la dernière rubrique ouverte.
+- Fusion Enseignements / Comprendre : la sous-navigation disparaît ; « Comprendre mon jeu » montre les enseignements
+  (cinq en une ligne chacun, « Tous les enseignements (n) ») puis les douze questions, avec une aide repliée sur leur
+  provenance. Dans les autres rubriques, les enseignements liés tiennent aussi en une ligne (détail au clic).
+- Résultats : chiffres et graphique d'abord ; le palier (déclaré) devient un pli comme les priorités, la carte, les
+  repères ; « Tes trois priorités » n'est plus ouvert d'office. En bas : Bilans et rapports, **Statistiques par club**
+  (déménagent dans Sac en S05) et **Qualité de mes données** (profil en 09), hors familles d'ici là.
+- Filtre commun inchangé, en tête de toutes les familles sauf Comprendre (les questions ont leur propre sélecteur,
+  synchronisé).
+- Texte visible de Performance (référence V4 → maintenant) : 2245 → 1217 caractères (**−46 %**)
+  (`mesures-ux/texte-apres-07.json`).
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts. `nav-essai.js` gagne `allerRubrique` (famille
+  puis rubrique) ; essais 21, 22, 23, 25, 27, 28, 29, 30, 31, 32, 38 adaptés. Captures 390 px vérifiées.
