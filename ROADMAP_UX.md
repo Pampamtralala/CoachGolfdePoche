@@ -15,12 +15,12 @@ fonctionnement hors ligne restent inchangés sauf justification écrite dans la 
 | 5 | UX04 Tableau de bord « Mon jeu » | P0 | **Terminé** | `ux/ux04-mon-jeu` · PR #22 (fusionnée) |
 | 6 | UX06 Espace Analyses | P0 | **Terminé** | `ux/ux06-analyses` · PR #23 (fusionnée) |
 | 7 | UX08 Mon sac | P1 | **Terminé** | `ux/ux08-mon-sac` · PR #24 (fusionnée) |
-| 8 | UX09 Saisie sur le parcours | P1 | **En revue** | `ux/ux09-saisie` |
-| 9 | UX10 Journal chronologique | P1 | **En revue** | `ux/ux10-chronologie` (après #25) |
-| 10 | UX11 Après partie | P1 | **En revue** | `ux/ux11-apres-partie` (après #26) |
-| 11 | UX12 Premier lancement et états vides | P1 | **En revue** | `ux/ux12-premiers-pas` (après #27) |
-| 12 | UX13 Repositionnement du coaching | P2 | **En revue** | `ux/ux13-coaching` (après #28) |
-| 13 | UX14 Accessibilité (partie fonctionnelle : clavier, lecteur d'écran, zones tactiles) | P2 | **En revue** | `ux/ux14-accessibilite` (après #29) |
+| 8 | UX09 Saisie sur le parcours | P1 | **Terminé** | `ux/ux09-saisie` · PR #25 (fusionnée) |
+| 9 | UX10 Journal chronologique | P1 | **Terminé** | `ux/ux10-chronologie` · PR #26 (fusionnée) |
+| 10 | UX11 Après partie | P1 | **Terminé** | `ux/ux11-apres-partie` · PR #27 (fusionnée) |
+| 11 | UX12 Premier lancement et états vides | P1 | **Terminé** | `ux/ux12-premiers-pas` · PR #28 (fusionnée) |
+| 12 | UX13 Repositionnement du coaching | P2 | **Terminé** | `ux/ux13-coaching` · PR #29 (fusionnée) |
+| 13 | UX14 Accessibilité (partie fonctionnelle : clavier, lecteur d'écran, zones tactiles) | P2 | **Terminé** | `ux/ux14-accessibilite` · PR #30 (fusionnée) |
 | — | UX15 Tests et non-régression | P0 | Après chaque chantier | — |
 | Reporté | UX02 Identité visuelle et design system ; finitions visuelles d'UX14 | — | Reporté à la demande du propriétaire (25/11) | — |
 
@@ -462,3 +462,6 @@ Encore utiles pour les chantiers UX : 4, 5, 7 et 8 — appliquées telles que pr
 - Reporté avec la refonte graphique : thème plein soleil, cohérence des icônes, transitions, finitions visuelles.
 - Tests : `npm test` (944 noms, 0 doublon), `test-startup.js`, **essais 3 à 39 tous verts** sur la branche qui empile
   UX09 à UX14.
+
+
+**27/11/2026 :** roadmap V3 terminée (UX01 à UX14 fusionnés, refonte graphique reportée). La suite est suivie dans `ROADMAP_UX_V4.md`.
