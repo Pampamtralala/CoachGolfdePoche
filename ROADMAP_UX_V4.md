@@ -22,7 +22,7 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | 02 | Retirer le sac 3D | P0 | 01 | Terminé | `ux4/02-sac3d` · #33 |
 | 03 | Retirer les séries de practice (archivage des données) | P0 | 01, S01 | Terminé | `ux4/03-series` · #34 |
 | 04 | Unifier les composants visuels (titre / section / KPI / contexte / aide) | P0 | 01 | **En revue** | `ux4/04-composants` |
-| 05 | Arborescence et navigation (Accueil · Performance · Jouer · Sac · Activité) | P0 | 02–04 | À faire | — |
+| 05 | Arborescence et navigation (Accueil · Performance · Jouer · Sac · Activité) | P0 | 02–04 | **En revue** | `ux4/05-navigation` |
 | 06 | Refaire l'accueil | P0 | 04, 05 | À faire | — |
 | 07 | Regrouper Performance (5 familles) | P0 | 04, 05 | À faire | — |
 | 08 | Simplifier Jouer et le bilan | P1 | 05 | À faire | — |
@@ -226,3 +226,20 @@ _01, S01, 02 et 03 fusionnés dans `app` le 27/11 (PR #31 à #34), déploiement 
   `texte-apres-04.json`) : Performance −7 %, Mon sac −17 % (−47 % depuis la référence V4), autres écrans inchangés —
   la réduction forte viendra de la refonte des écrans (06, 07), qui s'appuiera sur ces briques.
 - Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts (essais 5, 13, 18, 33 adaptés au nouveau balisage).
+
+### 05 — Arborescence et navigation (27/11/2026)
+
+- Barre : **Accueil · Performance · Jouer · Sac · Activité** (Jouer reste l'action principale, au centre). Les
+  identifiants internes des pages ne changent pas (`accueil`, `bilan`, `parcours`, `sac`, `journal`) : aucun lien
+  interne ni aucune sauvegarde n'est touché.
+- Coaching (programme, exercices et défis, badges) rangé dans le **profil** : section « Coaching » du profil,
+  sous-navigation « ‹ Profil · Programme · Exercices et défis » ; le bouton du profil (en-tête) est marqué sur ces pages.
+  La sous-navigation de Performance ne garde que Statistiques, Enseignements, Comprendre mon jeu (leur fusion : 07).
+- Adresses : publiques `#performance`, `#activite`, `#jouer` ; tous les anciens noms restent des alias (`#bilan`,
+  `#analyses`, `#journal`, `#parties`, `#plan`, `#distances`…), plus `#perf`, `#activité`, `#defis`.
+- Routes de fonctions supprimées redirigées explicitement, avec un message : `#series`, `#serie`,
+  `#historique-mesures` → Sac, séries archivées ; `#sac3d`, `#sac-3d` → Sac, tableau des clubs.
+- Titres de page courts : « Performance », « Sac », « Activité ». Recherche regroupée selon la nouvelle arborescence ;
+  l'entrée « Composer mon sac » de la recherche, cassée depuis longtemps (`sac-modifier`), ouvre bien la composition.
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts. `nav-essai.js` passe par le profil pour le
+  coaching ; essais 12, 24, 28 (barre, alias, adresses publiques, routes retirées), 31, 38 adaptés.

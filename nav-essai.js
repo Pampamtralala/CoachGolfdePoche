@@ -1,6 +1,6 @@
 /* Navigation commune aux parcours de test : le menu latéral (tiroir sur téléphone, colonne sur grand écran). */
 const ANCIENS = { jour: 'accueil', plan: 'practice', entrainement: 'practice', distances: 'sac', parties: 'journal', carnet: 'parcours' };
-/* Navigation (UX03) : Mon jeu, Analyses, Jouer, Mon sac, Journal ; le coaching par la sous-navigation d'Analyses ;
+/* Navigation (V4-05) : Accueil, Performance, Jouer, Sac, Activité ; le coaching par le profil ;
    le profil par l'en-tête ; la recherche mène à chaque fonction. */
 const ONGLETS = ['accueil', 'bilan', 'parcours', 'sac', 'journal'];
 async function ouvrirMenu(page) {
@@ -13,7 +13,8 @@ async function allerVue(page, n, section) {
     await page.evaluate(([v, s]) => { const b = document.createElement('button'); b.setAttribute('data-a', 'aller-a'); b.setAttribute('data-v', v); b.setAttribute('data-s', s); b.hidden = true; document.getElementById('app').appendChild(b); b.click(); }, [n, section]);
   } else if (ONGLETS.includes(n)) await page.click(`#barre [data-a="onglet"][data-v="${n}"]`);
   else if (n === 'profil') await page.click('.tete .ident');
-  else if (n === 'practice' || n === 'exercices') { await page.click('#barre [data-a="onglet"][data-v="bilan"]'); await page.click(`#vue .sous-nav [data-a="onglet"][data-v="${n}"]`); }
+  /* V4-05 : le coaching est rangé dans le profil (en-tête). */
+  else if (n === 'practice' || n === 'exercices') { await page.click('.tete .ident'); await page.click(`#profil-coaching [data-a="onglet"][data-v="${n}"]`); }
   await page.waitForTimeout(60);
 }
 async function menuAction(page, action) {

@@ -40,11 +40,11 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
 
     /* Barre : ordre, Jouer au centre en action principale */
     r.barre = await page.$$eval('#barre .barre-item', l => l.map(b => b.textContent.trim() + (b.classList.contains('principal') ? '*' : '')).join(' | '));
-    verifie(r.barre === 'Mon jeu | Analyses | Jouer* | Mon sac | Journal', nom + ' barre : ' + r.barre);
-    verifie(await courant() === 'Mon jeu', nom + ' ouverture sur Mon jeu');
+    verifie(r.barre === 'Accueil | Performance | Jouer* | Sac | Activité', nom + ' barre : ' + r.barre);
+    verifie(await courant() === 'Accueil', nom + ' ouverture sur Accueil');
 
     /* Chaque entrée */
-    const attendu = { accueil: ['Mon jeu', 'h1'], bilan: ['Analyses', '.sous-nav'], parcours: ['Jouer', '#c-partie'], sac: ['Mon sac', '#c-wedges'], journal: ['Journal', '.carte-score.parties'] };
+    const attendu = { accueil: ['Accueil', 'h1'], bilan: ['Performance', '.sous-nav'], parcours: ['Jouer', '#c-partie'], sac: ['Sac', '#c-wedges'], journal: ['Activité', '.carte-score.parties'] };
     for (const [v, [lib, sel]] of Object.entries(attendu)) {
       await page.click(`#barre [data-a="onglet"][data-v="${v}"]`);
       const c = await courant(), ok = await page.locator('#vue ' + sel).count();
@@ -65,13 +65,16 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.click('#barre [data-a="onglet"][data-v="parcours"]');
     verifie(await page.locator('#vue .journal-lien [data-v="journal"]').count() === 1, nom + ' Jouer : lien vers mes parties');
 
-    /* Analyses : sous-navigation et coaching */
-    for (const [v, lib] of [['bilan', 'Statistiques'], ['practice', 'Programme'], ['exercices', 'Exercices et défis']]) {
-      await page.click('#barre [data-a="onglet"][data-v="bilan"]');
-      if (v !== 'bilan') await page.click(`#vue .sous-nav [data-v="${v}"]`);
+    /* Performance : sous-navigation (statistiques, enseignements, comprendre) ; le coaching est dans le profil */
+    await page.click('#barre [data-a="onglet"][data-v="bilan"]');
+    r.sousNav = await page.$$eval('#vue .sous-nav button', l => l.map(b => b.textContent.trim()).join(' | '));
+    verifie(r.sousNav === 'Statistiques | Enseignements | Comprendre mon jeu' && await courant() === 'Performance', nom + ' Performance : ' + r.sousNav);
+    for (const [v, lib] of [['practice', 'Programme'], ['exercices', 'Exercices et défis']]) {
+      await page.click('.tete .ident'); await page.click(`#profil-coaching [data-v="${v}"]`);
       const act = await page.$eval('#vue .sous-nav [aria-current="page"]', b => b.textContent.trim()).catch(() => '');
-      verifie(act === lib && await courant() === 'Analyses', nom + ' Analyses › ' + v + ' : ' + act + ' / ' + await courant());
+      verifie(act === lib && await courant() === '' && await page.locator('.tete .ident[aria-current="page"]').count() === 1, nom + ' Profil › Coaching › ' + v + ' : ' + act + ' / barre « ' + await courant() + ' »');
     }
+    await page.click('#barre [data-a="onglet"][data-v="bilan"]');
     await page.click('#vue .sous-nav [data-a="an-ouvrir"]');
     verifie(await page.locator('#feuille.analyste').count() === 1, nom + ' Analyses › Comprendre mon jeu');
     await page.keyboard.press('Escape');
@@ -81,9 +84,9 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(await page.locator('#vue #donnees').count() === 1 && await courant() === '', nom + ' profil depuis l\'en-tête, barre neutre : ' + await courant());
 
     /* Anciens noms et alias : chacun mène à une page et marque la bonne entrée */
-    const liens = { accueil: 'Mon jeu', jour: 'Mon jeu', monjeu: 'Mon jeu', bilan: 'Analyses', statistiques: 'Analyses', analyses: 'Analyses', practice: 'Analyses', plan: 'Analyses',
-      entrainement: 'Analyses', progresser: 'Analyses', exercices: 'Analyses', parcours: 'Jouer', carnet: 'Jouer', jouer: 'Jouer', sac: 'Mon sac', distances: 'Mon sac',
-      parties: 'Journal', journal: 'Journal', profil: '' };
+    const liens = { accueil: 'Accueil', jour: 'Accueil', monjeu: 'Accueil', bilan: 'Performance', statistiques: 'Performance', analyses: 'Performance', performance: 'Performance',
+      practice: '', plan: '', entrainement: '', progresser: '', exercices: '', parcours: 'Jouer', carnet: 'Jouer', jouer: 'Jouer', sac: 'Sac', distances: 'Sac',
+      parties: 'Activité', journal: 'Activité', activite: 'Activité', profil: '' };
     r.liens = {};
     for (const [hsh, lib] of Object.entries(liens)) {
       await page.evaluate(x => { location.hash = 'accueil'; }, hsh); await page.waitForTimeout(30);
@@ -92,18 +95,29 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
       verifie(c === lib && (hsh === 'accueil' || hsh === 'jour' || hsh === 'monjeu' || await page.evaluate(() => location.hash !== '#accueil')), nom + ' #' + hsh + ' → ' + c + ' (attendu ' + lib + ')');
     }
 
+    /* V4-05 : adresses publiques et routes retirées redirigées avec un message */
+    await page.click('#barre [data-a="onglet"][data-v="bilan"]'); r.hashPerf = await page.evaluate(() => location.hash);
+    await page.click('#barre [data-a="onglet"][data-v="journal"]'); r.hashAct = await page.evaluate(() => location.hash);
+    verifie(r.hashPerf === '#performance' && r.hashAct === '#activite', nom + ' adresses publiques : ' + r.hashPerf + ' ' + r.hashAct);
+    for (const [hsh, sel, mot] of [['series', '#c-historique, #c-synthese', 'séries'], ['sac3d', '#c-synthese', '3D']]) {
+      await page.evaluate(() => { location.hash = 'accueil'; }); await page.waitForTimeout(30);
+      await page.evaluate(x => { location.hash = x; }, hsh); await page.waitForTimeout(80);
+      const msg = norm(await page.textContent('#message').catch(() => ''));
+      verifie(await courant() === 'Sac' && new RegExp(mot).test(msg), nom + ' route retirée #' + hsh + ' → ' + await courant() + ' · « ' + msg + ' »');
+    }
+
     /* Touche retour : revient à la page précédente */
     await page.click('#barre [data-a="onglet"][data-v="sac"]');
     await page.click('#barre [data-a="onglet"][data-v="journal"]');
     await page.goBack(); await page.waitForTimeout(80);
     r.retour = await courant();
-    verifie(r.retour === 'Mon sac', nom + ' retour : ' + r.retour);
+    verifie(r.retour === 'Sac', nom + ' retour : ' + r.retour);
 
     /* Recherche : chaque fonction aboutit sans erreur (aucune fonction orpheline) */
     await page.click('.tete [data-a="recherche"]');
     const nb = await page.locator('#recherche-l [data-a="fonction"]').count();
     r.groupes = await page.$$eval('#recherche-l .recherche-groupe h3', l => l.map(x => x.textContent.trim()).join(' | '));
-    verifie(r.groupes === 'Mon jeu | Analyses | Coaching | Jouer | Mon sac | Journal | Profil', nom + ' groupes de la recherche : ' + r.groupes);
+    verifie(r.groupes === 'Accueil | Performance | Profil · Coaching | Jouer | Sac | Activité | Profil', nom + ' groupes de la recherche : ' + r.groupes);
     await page.keyboard.press('Escape');
     let echecs = [];
     for (let i = 0; i < nb; i++) {
