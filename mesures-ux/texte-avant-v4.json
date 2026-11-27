@@ -1,0 +1,31 @@
+{
+ "date": "2026-11-27",
+ "largeur": 390,
+ "ecrans": {
+  "accueil": {
+   "caracteres": 2411,
+   "mots": 467,
+   "hauteur": 3722
+  },
+  "analyses-performance": {
+   "caracteres": 2245,
+   "mots": 459,
+   "hauteur": 3418
+  },
+  "jouer": {
+   "caracteres": 639,
+   "mots": 121,
+   "hauteur": 1288
+  },
+  "sac": {
+   "caracteres": 1264,
+   "mots": 265,
+   "hauteur": 3029
+  },
+  "journal": {
+   "caracteres": 1638,
+   "mots": 409,
+   "hauteur": 2653
+  }
+ }
+}
