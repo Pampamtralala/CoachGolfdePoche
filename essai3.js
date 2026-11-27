@@ -70,7 +70,7 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   res.onglets = await page.$$eval('#menu .menu-item', l => l.map(b => b.textContent + (b.scrollWidth > b.clientWidth ? ' DÉBORDE' : '')).join(' | '));
   await onglet('plan'); await page.click('[data-a="fait"][data-id="c1-m1"]'); await page.click('[data-a="fait"][data-id="c1-m1"]');
   e = await lire();
-  verifie(canon(e.carnet) === canon({ clubs: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }) && Array.isArray(e.parties) && e.partie === null && e.profil.indexVise === null && canon(e.defis) === '{}', 'valeurs par défaut des outils');
+  verifie(canon(e.carnet) === canon({ clubs: {}, references: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }) && Array.isArray(e.parties) && e.partie === null && e.profil.indexVise === null && canon(e.defis) === '{}', 'valeurs par défaut des outils');
   verifie(canon(e.parcours) === '[]' && e.detail === false, 'valeurs par défaut de la carte de score');
   const reste = JSON.parse(JSON.stringify(e)); ['carnet', 'defis', 'parties', 'partie', 'cibleSG', 'parcours', 'detail'].forEach(k => delete reste[k]); delete reste.profil.indexVise; delete reste.modeSaisie; delete reste.indexHist;
   /* P04 : toute valeur de l'ancienne sauvegarde est retrouvée à l'identique. Le plan d'entraînement, déduit du profil,
