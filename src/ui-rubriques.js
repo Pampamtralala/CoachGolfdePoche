@@ -60,8 +60,9 @@
   /* V4-07 : dans une rubrique, les enseignements liés sont listés en une ligne chacun (constat court) ; le détail
      complet est dans la famille « Comprendre mon jeu » et dans la fiche. */
   function ligneEnsHTML(e) {
-    var cible = e.lien ? 'data-a="' + e.lien.a + '"' + (e.lien.v ? ' data-v="' + at(e.lien.v) + '"' : '') + (e.lien.s ? ' data-s="' + at(e.lien.s) + '"' : '') : 'data-a="ens-ouvrir"';
-    return '<li class="cat-' + e.cat + '"><button class="ligne" type="button" ' + cible + '><span class="quoi"><small>' + t(e.catLib) + ' · ' + t(PROVENANCE_ENS[e.provenance] || e.provenance) + '</small><b>' + t(e.titre) + '</b></span><span class="chev" aria-hidden="true">›</span></button></li>';
+    var ouvert = ui.ensOuvert === e.id;
+    return '<li class="cat-' + e.cat + '"><button class="ligne" type="button" data-a="ens-deplier" data-v="' + at(e.id) + '" aria-expanded="' + ouvert + '"><span class="quoi"><small>' + t(e.catLib) + ' · ' + t(PROVENANCE_ENS[e.provenance] || e.provenance) + '</small><b>' + t(e.titre) + '</b></span><span class="chev" aria-hidden="true">' + (ouvert ? "−" : "+") + '</span></button>' +
+      (ouvert ? carteEnsHTML(e) : '') + '</li>';
   }
   function ensRubriqueHTML(rb) {
     var re = ENS_RUBRIQUE[rb]; if (!re || !etat.parties.length) return '';
@@ -128,14 +129,13 @@
     }).join("") + '</ul>' : '') + '</section>';
     if (rb === "clubs") return tete + '</section>' + clubsStatsHTML();
     if (rb === "qualite") return tete + '<div class="ligne-btn"><button class="btn" type="button" data-a="md-ouvrir">Mes données : vérifier, corriger, sauvegarder</button></div></section>' + qualiteGolfHTML();
-    /* V4-07 : Comprendre mon jeu = enseignements (toutes les parties) + questions (filtre commun), fusionnés. */
-    var Re = etat.parties.length ? calculEns() : { liste: [] };
-    var ens = Re.liste.length ? '<h3 class="titre-bloc">' + t("Ce que disent tes données") + '</h3><ul class="liste-exos rb-ens-liste">' + Re.liste.slice(0, 5).map(ligneEnsHTML).join("") + '</ul>' +
-        '<div class="ligne-btn"><button class="btn" type="button" data-a="ens-ouvrir">' + t("Tous les enseignements (" + Re.liste.length + ")") + '</button></div>'
-      : '<p class="aide">' + t(etat.parties.length ? "Rien de net pour l'instant : les enseignements apparaissent quand un écart dépasse les seuils prévus." : "Les enseignements apparaîtront après tes premières parties.") + '</p>';
-    return tete + ens + '<h3 class="titre-bloc">' + t("Pose une question") + '</h3><ul class="liste-exos">' +
-      QUESTIONS_ANALYSTE.map(function (q) { return '<li><button class="ligne" type="button" data-a="an-ouvrir" data-v="' + q.id + '"><span class="quoi"><b>' + t(q.q) + '</b></span><span class="chev" aria-hidden="true">›</span></button></li>'; }).join("") +
-      '</ul>' + aideHTML('<p>' + t("Enseignements : tirés de toutes tes parties par des règles fixes, sans IA ; une association n'est pas une cause. Questions : réponses chiffrées avec leur période et leur effectif, sur la période du filtre commun.") + '</p>', "D'où viennent ces réponses ?") + '</section>';
+    /* V4-07 : Comprendre mon jeu = enseignements (toutes les parties) + questions (filtre commun), tout en place. */
+    var Re = etat.parties.length ? calculEns() : { liste: [], parties: 0 }, n = Re.liste.length, vus = ui.ensTout ? Re.liste : Re.liste.slice(0, 5);
+    var ens = '<div id="rb-ens"><h3 class="titre-bloc">' + t("Ce que disent tes données") + '</h3>' + (n ? '<ul class="liste-exos rb-ens-liste">' + vus.map(ligneEnsHTML).join("") + '</ul>' +
+        (n > 5 ? '<div class="ligne-btn"><button class="btn" type="button" data-a="ens-tout" aria-expanded="' + !!ui.ensTout + '">' + t(ui.ensTout ? "N'en montrer que cinq" : "Tous les enseignements (" + n + ")") + '</button></div>' : '')
+      : '<p class="aide">' + t(etat.parties.length ? "Rien de net pour l'instant : les enseignements apparaissent quand un écart dépasse les seuils prévus." : "Les enseignements apparaîtront après tes premières parties.") + '</p>') + '</div>';
+    return tete + ens + '<div id="rb-questions"><h3 class="titre-bloc">' + t("Pose une question") + '</h3>' + questionsComprendreHTML() + '</div>' +
+      aideHTML('<p>' + t("Enseignements : tirés de toutes tes parties par des règles fixes, sans IA ; une association n'est pas une cause. Questions : réponses chiffrées avec leur période et leur effectif, sur la période du filtre commun.") + '</p>', "D'où viennent ces réponses ?") + '</section>';
   }
   /* Liens de fin de « Résultats » : rapports, statistiques par club (bientôt dans Sac, S05), qualité des données. */
   function liensResultatsHTML() {

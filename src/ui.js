@@ -818,7 +818,7 @@
     var rb = rubriqueCourante();
     /* V4-07 : plus de sous-navigation (Enseignements et Comprendre fusionnés dans la famille « Comprendre mon jeu »). */
     var h = '<section class="bloc premier">' + '<h1>Performance</h1>' + rubriquesNavHTML(rb) +
-      (rb === "comprendre" ? '' : tableauStatsHTML("filtres")) + '</section>';
+      tableauStatsHTML("filtres") /* V4-07 : aussi pour Comprendre (questions en place) */ + '</section>';
     /* V4-07 : le palier (déclaré, coaching) passe en pli : les chiffres des parties d'abord. */
     var sPalier = pliHTML("palier-bloc", "Palier " + pal + " · " + P.nom, ("Palier des index " + P.plage.replace(/^Index /, "").replace(/^inférieur à/, "inférieurs à")).toLowerCase(),
       '<p class="chapo">' + t(P.resume) + '</p>' + uneBilanHTML(prios, sc, pal), 0);
@@ -976,8 +976,6 @@
     if (f && f.conditions && etat.profil) { c.innerHTML = conditionsHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.donnees && etat.profil) { c.innerHTML = mesDonneesHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.journal && etat.profil) { c.innerHTML = journalHTML(); entreeFeuille(); majFige(); monterGraphes(); return; }
-    if (f && f.analyste && etat.profil) { c.innerHTML = analysteHTML(); entreeFeuille(); majFige(); return; }
-    if (f && f.enseignements && etat.profil) { c.innerHTML = ensHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.sac && (f.sac === "putter" || CLUB[f.sac]) && etat.profil) { c.innerHTML = sacFeuilleHTML(f.sac); entreeFeuille(); majFige(); return; }
     if (f && f.sacComposer && etat.profil) { c.innerHTML = sacComposerHTML(); entreeFeuille(); majFige(); return; }
     if (f && f.recherche && etat.profil) { c.innerHTML = rechercheHTML(); entreeFeuille(); majFige(); return; }
@@ -1026,7 +1024,7 @@
       return;
     }
     /* Le sac a pu être redessiné en aperçu pendant la saisie : il est remis à l'état enregistré. */
-    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.carte || ui.feuille.donnees || ui.feuille.journal || ui.feuille.analyste || ui.feuille.enseignements);
+    var defi = ui.feuille && (ui.feuille.defi || ui.feuille.parcours || ui.feuille.partie != null || ui.feuille.conditions || ui.feuille.sac || ui.feuille.sacComposer || ui.feuille.carte || ui.feuille.donnees || ui.feuille.journal);
     var carteF = ui.feuille && ui.feuille.carte;
     ui.sacApercu = null;
     ui.feuille = null; ui.pile = []; ui.defiEvt = null; rendreFeuille();

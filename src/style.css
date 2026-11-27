@@ -1746,3 +1746,8 @@ main.entree { animation: entreeVue .22s ease-out; }
 .familles + .rubriques .puce { min-height: 38px; font-size: 14px; background: transparent; border: 1.5px solid var(--filet-fort); }
 .familles + .rubriques .puce[aria-pressed="true"] { border-color: var(--action); color: var(--action-texte); background: var(--sauge-fond); }
 .rb-ens-liste small { display: block; font-size: 12.5px; color: var(--encre-2); }
+/* V4-07 · Comprendre en place : questions et enseignements en accordéon, dans la page. */
+.an-q { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.an-q::after { content: "+"; flex: none; font-size: 20px; line-height: 1; color: var(--encre-2); }
+.an-q[aria-expanded="true"]::after { content: "−"; }
+.rb-ens-liste .carte-ens { margin: 6px 0 4px; }

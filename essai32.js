@@ -56,7 +56,7 @@ const IDS = ['perf', 'mej', 'attaque', 'petit', 'putting', 'erreurs', 'sg', 'par
       await rub(id);
       const titre = norm(await page.textContent('#vue .rb-tete h2')), filtre = await page.locator('#vue .filtres-stats').count();
       r.rempli[id] = titre + (filtre ? ' + filtre' : '');
-      verifie(titre === NOMS[k] && (id === 'comprendre' ? filtre === 0 : filtre === 1), nom + ' rubrique ' + id + ' : ' + r.rempli[id]);
+      verifie(titre === NOMS[k] && filtre === 1, nom + ' rubrique ' + id + ' : ' + r.rempli[id]);
       verifie(await largeur() <= w, nom + ' ' + id + ' sans débordement (' + await largeur() + ')');
       if (['perf', 'mej', 'putting', 'erreurs'].includes(id)) await page.screenshot({ path: `${D}/${nom}-${id}.png` });
     }
@@ -66,10 +66,9 @@ const IDS = ['perf', 'mej', 'attaque', 'petit', 'putting', 'erreurs', 'sg', 'par
     verifie(await page.locator('#vue [data-a="exos-domaine"][data-v="drive"]').count() >= 1, nom + ' Mises en jeu : exercices liés');
     await rub('putting'); verifie(await page.locator('#vue #st-putting').count() === 1 && await page.locator('#vue .rb-ens .rb-ens-liste li').count() >= 1, nom + ' Putting : analyse et enseignement lié, en une ligne (trois-putts en hausse)');
     await rub('erreurs'); verifie(await page.locator('#vue #st-erreurs').count() === 1 && await page.locator('#vue #defauts').count() === 1, nom + ' Erreurs : erreurs et défauts');
-    await rub('comprendre'); verifie(await page.locator('#vue .rb-tete [data-a="an-ouvrir"]').count() === 12 && await page.locator('#vue .rb-tete .rb-ens-liste li').count() >= 1 && await page.locator('#vue .rb-tete [data-a="ens-ouvrir"]').count() === 1, nom + ' Comprendre : enseignements et douze questions');
-    await page.click('#vue .rb-tete [data-a="an-ouvrir"][data-v="score"]'); await page.waitForSelector('#feuille.analyste');
-    verifie(await page.locator('#feuille [aria-expanded="true"][data-v="score"]').count() === 1, nom + ' Comprendre : la question s\'ouvre');
-    await page.keyboard.press('Escape');
+    await rub('comprendre'); verifie(await page.locator('#vue .rb-tete [data-a="an-question"]').count() === 12 && await page.locator('#vue .rb-tete .rb-ens-liste li').count() >= 1, nom + ' Comprendre : enseignements et douze questions');
+    await page.click('#vue .rb-tete [data-a="an-question"][data-v="score"]');
+    verifie(await page.locator('#vue [aria-expanded="true"][data-v="score"]').count() === 1 && await page.locator('#vue #an-rep-score').count() === 1 && await page.locator('#feuille').count() === 0, nom + ' Comprendre : la question s\'ouvre en place');
 
     /* Rubrique conservée quand on revient dans Analyses */
     await rub('clubs'); await page.click('#barre [data-v="sac"]'); await page.click('#barre [data-v="bilan"]');

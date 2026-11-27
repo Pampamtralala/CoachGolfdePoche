@@ -30,29 +30,29 @@
       return '<li><button class="an-q" type="button" data-a="an-question" data-v="' + id + '" aria-expanded="' + ouvert + '"' + (ouvert ? ' aria-controls="an-rep-' + id + '"' : '') + '>' + t(q.q) + '</button>' + (ouvert ? reponseHTML(repondre(id, l, ctx)) : '') + '</li>';
     }).join("") + '</ul>';
   }
-  function analysteHTML() {
+  /* V4-07 (retour utilisateur) : plus de fiche par-dessus l'écran. Les questions et leurs réponses s'ouvrent en place,
+     dans la famille « Comprendre mon jeu » de Performance, sous le filtre commun. */
+  function questionsComprendreHTML() {
     var A = etatAnalyste();
-    return '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer" tabindex="-1"></button>' +
-      '<section class="feuille analyste" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
-      '<header><p class="surtitre">Tes questions, tes chiffres</p><h2 id="f-titre">Comprendre mon jeu</h2><button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>' +
-      '<p class="aide">' + t("Les réponses sont calculées à partir de ton carnet seulement : chaque chiffre est cité avec sa période et le nombre de parties, de trous ou de coups étudiés. Pas d'IA : rien n'est inventé.") + '</p>' +
-      pastillesPeriodeHTML("an-periode") + '<p class="aide an-perimetre">' + t(perimetreTexte(partiesAnalyste()) + " Même période que les autres analyses.") + '</p>' +
-      '<div class="champ"><label for="an-recherche">Cherche une question</label><input id="an-recherche" type="search" autocomplete="off" placeholder="putts, driver, trou, forme…" value="' + at(A.recherche) + '" data-i="an-recherche"></div>' +
-      '<div id="an-liste" aria-live="polite">' + listeAnalysteHTML() + '</div></section>';
+    return '<div class="champ"><label for="an-recherche">Cherche une question</label><input id="an-recherche" type="search" autocomplete="off" placeholder="putts, driver, trou, forme…" value="' + at(A.recherche) + '" data-i="an-recherche"></div>' +
+      '<div id="an-liste" class="analyste" aria-live="polite">' + listeAnalysteHTML() + '</div>';
   }
-  function rendreAnalyste(focusSel) {
-    var f = document.getElementById("feuille"), y = f ? f.scrollTop : 0;
-    rendreFeuille(); f = document.getElementById("feuille"); if (f) f.scrollTop = y;
-    var b = focusSel && document.querySelector("#feuille " + focusSel); if (b) b.focus({ preventScroll: true });
+  /* Ouvre Performance › Comprendre mon jeu (depuis n'importe où), puis amène l'élément visé à l'écran. */
+  function ouvrirComprendre(sel) {
+    ui.rubrique = "comprendre"; (ui.rubFamille || (ui.rubFamille = {})).comprendre = "comprendre";
+    if (ui.feuille) { ui.feuille = null; ui.pile = []; ui.retourFocus = null; rendreFeuille(); }
+    if (ui.onglet !== "bilan") allerOnglet("bilan", false); else rendre();
+    var c = sel && document.querySelector("#vue " + sel);
+    if (c) { if (c.scrollIntoView) c.scrollIntoView({ block: "start" }); var f = c.matches("button") ? c : c.querySelector("button"); if (f) f.focus({ preventScroll: true }); }
   }
   ACTIONS["an-ouvrir"] = function (el) {
-    ui.retourFocus = el; etatAnalyste(); var v = el.getAttribute("data-v"); if (v) ui.analyste.q = v;
-    ui.feuille = { analyste: true }; rendreFeuille(); var b = document.getElementById("f-fermer"); if (b) b.focus();
+    etatAnalyste(); var v = el.getAttribute("data-v"); if (v) { ui.analyste.q = v; ui.analyste.recherche = ""; }
+    ouvrirComprendre(v ? '[data-a="an-question"][data-v="' + v + '"]' : '#rb-questions');
   };
-  ACTIONS["an-periode"] = function (el) { var v = el.getAttribute("data-v"); appliquerPeriode(v); rendre(); rendreAnalyste('[data-a="an-periode"][data-v="' + v + '"]'); };
+  ACTIONS["an-periode"] = function (el) { appliquerPeriode(el.getAttribute("data-v")); rendre(); };
   ACTIONS["an-question"] = function (el) {
     var A = etatAnalyste(), id = el.getAttribute("data-v"); A.q = A.q === id ? null : id;
-    rendreAnalyste('[data-a="an-question"][data-v="' + id + '"]');
+    rendre(); var b = document.querySelector('#vue [data-a="an-question"][data-v="' + id + '"]'); if (b) b.focus({ preventScroll: true });
   };
   SAISIES["an-recherche"] = function (el) {
     etatAnalyste().recherche = el.value;

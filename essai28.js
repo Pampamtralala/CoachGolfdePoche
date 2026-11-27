@@ -75,9 +75,8 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
       verifie(act === lib && await courant() === '' && await page.locator('.tete .ident[aria-current="page"]').count() === 1, nom + ' Profil › Coaching › ' + v + ' : ' + act + ' / barre « ' + await courant() + ' »');
     }
     await page.click('#barre [data-a="onglet"][data-v="bilan"]');
-    await page.click('#vue [data-a="famille"][data-v="comprendre"]'); await page.click('#vue [data-a="an-ouvrir"][data-v="score"]');
-    verifie(await page.locator('#feuille.analyste').count() === 1, nom + ' Analyses › Comprendre mon jeu');
-    await page.keyboard.press('Escape');
+    await page.click('#vue [data-a="famille"][data-v="comprendre"]'); if (await page.getAttribute('#vue [data-a="an-question"][data-v="score"]', 'aria-expanded') !== 'true') await page.click('#vue [data-a="an-question"][data-v="score"]');
+    verifie(await page.locator('#feuille').count() === 0 && await page.locator('#vue [aria-expanded="true"][data-v="score"]').count() === 1, nom + ' Performance › Comprendre mon jeu, en place');
 
     /* Profil : depuis l'en-tête, aucune entrée marquée */
     await page.click('.tete .ident');

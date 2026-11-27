@@ -282,3 +282,10 @@ _04, 05 et 06 fusionnés dans `app` le 27/11 (PR #35 à #37), déploiement Pages
   (`mesures-ux/texte-apres-07.json`).
 - Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts. `nav-essai.js` gagne `allerRubrique` (famille
   puis rubrique) ; essais 21, 22, 23, 25, 27, 28, 29, 30, 31, 32, 38 adaptés. Captures 390 px vérifiées.
+- **Retour utilisateur (28/11)** : la fiche « Comprendre mon jeu » s'ouvrait par-dessus l'écran (« une surcouche qui
+  n'a rien à faire avec le reste de l'appli »). Corrigé : plus aucune fiche pour l'analyse. Les questions s'ouvrent en
+  accordéon, en place, sous le filtre commun (désormais affiché aussi pour Comprendre) ; les enseignements aussi (une
+  ligne → la carte complète), avec « Tous les enseignements (n) » en place. Les accès venus d'ailleurs (accueil,
+  recherche, « Voir le détail ») mènent à Performance › Comprendre, question ouverte et amenée à l'écran. Supprimés :
+  `analysteHTML`, `ensHTML` et leurs branches de `rendreFeuille`. Essais 27, 28, 29, 30, 32 réécrits pour ce modèle ;
+  essais 3 à 39 verts.

@@ -43,36 +43,44 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(await page.locator('#mj-priorite .carte-tb').count() === 1 && /Point de vigilance|Erreur récurrente|Opportunité/.test(r.priorite), nom + ' Accueil : une priorité : ' + r.priorite);
     await page.screenshot({ path: `${D}/${nom}-accueil.png`, fullPage: true });
     verifie(await page.evaluate(() => document.documentElement.scrollWidth) <= w, nom + ' Accueil sans débordement');
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue [data-a="famille"][data-v="comprendre"]'); await page.click('#vue [data-a="ens-ouvrir"]');
-    r.meta = await page.$$eval('#feuille .ens-meta', l => l.map(x => x.textContent));
-    verifie(r.meta.length > 0 && r.meta.every(x => /\d+ parties?/.test(x) && /(Du|Le|En) /.test(x)), nom + ' cartes : période et effectif : ' + r.meta.slice(0, 3).join(' | '));
-    await page.keyboard.press('Escape');
-    /* Fiche complète, regroupée par catégorie */
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue [data-a="famille"][data-v="comprendre"]'); await page.click('#vue [data-a="ens-ouvrir"]');
-    r.groupes = await page.$$eval('#feuille .ens-groupe', l => l.map(x => x.textContent));
-    r.total = await page.locator('#feuille .carte-ens').count();
-    verifie(r.groupes.includes('Progression') && r.groupes.includes('Erreur récurrente') && r.total > 3, nom + ' fiche : ' + r.total + ' enseignements, ' + r.groupes.join(' | '));
-    await page.screenshot({ path: `${D}/${nom}-fiche.png` });
-    /* Lien vers le détail : la question de Comprendre mon jeu, ouverte */
-    await page.click('#feuille .carte-ens[data-ens="score-mieux"] [data-a="ens-detail"]');
-    await page.waitForSelector('#feuille.analyste #an-rep-score');
+    /* V4-07 : tout en place dans Performance › Comprendre mon jeu (plus de fiche par-dessus) */
+    const comprendre = async () => {
+      await page.click('#barre [data-v="bilan"]'); await page.click('#vue [data-a="famille"][data-v="comprendre"]');
+      const tout = page.locator('#vue [data-a="ens-tout"][aria-expanded="false"]'); if (await tout.count()) await tout.click();
+    };
+    const deplier = async id => { const b = page.locator(`#vue [data-a="ens-deplier"][data-v="${id}"]`); if (await b.getAttribute('aria-expanded') !== 'true') await b.click(); };
+    await comprendre();
+    r.lignes = await page.$$eval('#vue .rb-ens-liste li small', l => l.map(x => x.textContent.split(' · ')[0]));
+    verifie(r.lignes.length > 3 && r.lignes.includes('Progression') && r.lignes.includes('Erreur récurrente'), nom + ' Comprendre : ' + r.lignes.length + ' enseignements, ' + [...new Set(r.lignes)].join(' | '));
+    const premier = await page.$eval('#vue [data-a="ens-deplier"]', b => b.getAttribute('data-v'));
+    await deplier(premier);
+    r.meta = await page.$$eval('#vue .carte-ens .ens-meta', l => l.map(x => x.textContent));
+    verifie(r.meta.length === 1 && /\d+ parties?/.test(r.meta[0]) && /(Du|Le|En) /.test(r.meta[0]) && await page.locator('#feuille').count() === 0, nom + ' carte dépliée en place : période et effectif : ' + r.meta[0]);
+    await page.screenshot({ path: `${D}/${nom}-comprendre.png` });
+    /* Lien vers le détail : la question correspondante, ouverte en place */
+    await deplier('score-mieux');
+    await page.click('#vue .carte-ens[data-ens="score-mieux"] [data-a="ens-detail"]');
+    await page.waitForSelector('#vue #an-rep-score');
     r.detail = norm(await page.textContent('#an-rep-score .an-phrase'));
-    verifie(/Oui, plutôt/.test(r.detail), nom + ' détail du score : ' + r.detail);
-    await page.keyboard.press('Escape');
+    verifie(/Oui, plutôt/.test(r.detail) && await page.locator('#feuille').count() === 0, nom + ' détail du score, en place : ' + r.detail);
     /* Passerelle vers les exercices : bibliothèque filtrée sur la mise en jeu */
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue [data-a="famille"][data-v="comprendre"]'); await page.click('#vue [data-a="ens-ouvrir"]');
-    const pass = page.locator('#feuille .carte-ens[data-ens="cote-mej"] [data-a="exos-domaine"]');
+    await comprendre(); await deplier('cote-mej');
+    const pass = page.locator('#vue .carte-ens[data-ens="cote-mej"] [data-a="exos-domaine"]');
     verifie(await pass.count() === 1, nom + ' passerelle vers les exercices présente');
     if (await pass.count()) {
       await pass.click(); await page.waitForTimeout(80);
       r.filtre = await page.$eval('#vue [data-a="filtre"][aria-pressed="true"]', b => b.textContent).catch(() => '');
-      verifie(r.filtre === 'Départ' && await page.locator('#feuille').count() === 0, nom + ' exercices filtrés : ' + r.filtre);
+      verifie(r.filtre === 'Départ', nom + ' exercices filtrés : ' + r.filtre);
     }
     /* Lien vers les erreurs des statistiques */
-    await page.click('#barre [data-v="bilan"]'); await page.click('#vue [data-a="famille"][data-v="comprendre"]'); await page.click('#vue [data-a="ens-ouvrir"]');
-    const ver = page.locator('#feuille [data-a="ens-aller"][data-s="st-erreurs"]').first();
-    if (await ver.count()) { await ver.click(); await page.waitForTimeout(80); verifie(await page.locator('#vue #st-erreurs').count() === 1 && await page.locator('#feuille').count() === 0, nom + ' lien vers les erreurs'); }
-    else verifie(false, nom + ' lien vers les erreurs absent');
+    await comprendre();
+    let trouve = false;
+    for (const id of await page.$$eval('#vue [data-a="ens-deplier"]', l => l.map(b => b.getAttribute('data-v')))) {
+      await deplier(id);
+      const ver = page.locator('#vue [data-a="ens-aller"][data-s="st-erreurs"]').first();
+      if (await ver.count()) { await ver.click(); await page.waitForTimeout(80); trouve = true; verifie(await page.locator('#vue #st-erreurs').count() === 1, nom + ' lien vers les erreurs'); break; }
+    }
+    if (!trouve) verifie(false, nom + ' lien vers les erreurs absent');
     /* Recherche */
     await page.click('.tete [data-a="recherche"]'); await page.fill('#recherche-q', 'enseignements');
     verifie(await page.locator('#recherche-l [data-a="fonction"][data-v="ens-ouvrir"], #recherche-l [data-a="ens-ouvrir"]').count() >= 1 || /Enseignements/.test(await page.textContent('#recherche-l')), nom + ' recherche : enseignements');
