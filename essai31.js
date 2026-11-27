@@ -25,13 +25,10 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     const titres = () => page.$$eval('#vue h2', l => l.map(x => x.textContent.trim()));
     const largeur = () => page.evaluate(() => document.documentElement.scrollWidth);
 
-    /* Carnet vide, sans index : rien d'inventé */
+    /* Carnet vide, sans index (V4-06) : les premiers pas seuls, rien d'inventé, pas de carte vide en double */
     r.vide = await titres();
-    verifie(JSON.stringify(r.vide) === JSON.stringify(['Premiers pas', 'Performance générale', 'Indicateurs clés', 'Actions rapides', 'Comprendre mon jeu']), nom + ' vide : blocs ' + r.vide.join(' | '));
-    r.videIndex = norm(await page.innerText('#mj-perf'));
-    verifie(/Index déclaré – Non renseigné/i.test(r.videIndex) && /Index estimé – Inconnu/i.test(r.videIndex) && /Objectif – À définir/i.test(r.videIndex), nom + ' vide : index : ' + r.videIndex);
-    verifie(await page.locator('#mj-kpi .kpi-lien').count() === 0 && await page.locator('#mj-kpi .etat-vide').count() === 1, nom + ' vide : pas d\'indicateur fictif');
-    verifie(await page.locator('#c-enseignements, .carte-tb.derniere').count() === 0, nom + ' vide : ni enseignement ni dernière partie');
+    verifie(JSON.stringify(r.vide) === JSON.stringify(['Premiers pas']), nom + ' vide : blocs ' + r.vide.join(' | '));
+    verifie(await page.locator('#mj-perf, #mj-kpi, .carte-tb.derniere, #mj-priorite').count() === 0, nom + ' vide : ni index vide, ni indicateur, ni priorité, ni dernière partie');
     await page.screenshot({ path: `${D}/${nom}-vide.png`, fullPage: true });
 
     /* Carnet rempli : index 18 déclaré avec historique, 12 parties (6 moins bonnes puis 6 meilleures) */
@@ -42,23 +39,23 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [CLE, e]);
     await page.reload(); await page.waitForSelector('.tete');
     r.blocs = await titres();
-    verifie(JSON.stringify(r.blocs.slice(0, 5)) === JSON.stringify(['Performance générale', 'Indicateurs clés', 'Ce que disent tes données', 'Dernière partie', 'Actions rapides']), nom + ' blocs dans l\'ordre : ' + r.blocs.join(' | '));
+    verifie(r.blocs[0] === 'Performance' && r.blocs.includes('Dernière partie') && !r.blocs.some(x => /Actions rapides|Comprendre mon jeu|Ce que disent/.test(x)), nom + ' blocs (index, performance, priorité, dernière partie) : ' + r.blocs.join(' | '));
     r.perf = norm(await page.innerText('#mj-perf'));
     verifie(/Index déclaré 18 ▼ 2,4 depuis le 1(er)? mars/i.test(r.perf), nom + ' index déclaré et évolution : ' + r.perf.slice(0, 90));
-    verifie(/Index estimé \d+,\d 12 parties, barème WHS\. Pas ton index officiel/i.test(r.perf), nom + ' index estimé distinct : ' + r.perf);
+    verifie(!/Index estimé/.test(r.perf), nom + ' index estimé masqué quand l\'index réel est connu : ' + r.perf);
     verifie(/Objectif 15 Encore 3 à gagner/i.test(r.perf) && await page.locator('#mj-perf .courbe-index').count() === 1, nom + ' objectif et courbe');
-    /* Indicateurs */
-    r.kpi = await page.$$eval('#mj-kpi .kpi-lien', l => l.map(b => b.querySelector('.kpi-t').textContent + ' = ' + b.querySelector('.kpi-v').textContent + ' | ' + b.querySelector('.kpi-n').textContent));
-    verifie(r.kpi.length === 6 && r.kpi.every(x => /\d/.test(x.split(' = ')[1])), nom + ' six indicateurs : ' + r.kpi.join(' / '));
-    verifie(/Score.*=.*▼/.test(r.kpi[0]) && /Greens en régulation Déduit/.test(r.kpi[2]), nom + ' évolution du score et GIR « déduit » : ' + r.kpi[0] + ' / ' + r.kpi[2]);
+    /* Quatre indicateurs cliquables */
+    r.kpi = await page.$$eval('#mj-kpi .kpi-lien', l => l.map(b => b.querySelector('.kpi-t').textContent + ' = ' + b.querySelector('.kpi-v').textContent + ' | ' + b.querySelector('.kpi-u').textContent));
+    verifie(r.kpi.length === 4 && r.kpi.every(x => /\d/.test(x.split(' = ')[1])), nom + ' quatre indicateurs : ' + r.kpi.join(' / '));
+    verifie(/^Score.*=.*▼/.test(r.kpi[0]) && /^Départs jouables/.test(r.kpi[1]) && /^Greens en rég\..*déduit/.test(r.kpi[2]) && /^Putts/.test(r.kpi[3]), nom + ' score, départs, greens (déduit), putts : ' + r.kpi.join(' / '));
     r.perimetre = norm(await page.textContent('#mj-kpi .mj-perimetre'));
-    verifie(/^Sur 10 parties \(90 trous\)/.test(r.perimetre) && /par rapport aux 2 parties précédentes/.test(r.perimetre), nom + ' périmètre et comparaison : ' + r.perimetre);
-    /* Dernière partie : parcours et faits marquants */
+    verifie(/par rapport aux 2 parties précédentes/.test(r.perimetre) && /10 parties/.test(norm(await page.textContent('#mj-kpi .section-tete'))), nom + ' périmètre et comparaison : ' + r.perimetre);
+    /* Dernière partie : parcours et comparaison à la moyenne, sans liste de faits */
     r.derniere = norm(await page.textContent('.carte-tb.derniere'));
-    verifie(/Golf des Essais/.test(r.derniere) && /Meilleur trou : le 4 \(−1\) · plus coûteux : le 7 \(\+2\)/.test(r.derniere) && /que ta moyenne|dans ta moyenne/.test(r.derniere), nom + ' dernière partie : ' + r.derniere);
-    /* Actions rapides */
-    r.actions = await page.$$eval('#vue .acces-rapides button', l => l.map(b => b.textContent.trim()).join(' | '));
-    verifie(/^Nouvelle partie \| Explorer mes statistiques \| Mes parties$/.test(r.actions), nom + ' actions : ' + r.actions);
+    verifie(/Golf des Essais/.test(r.derniere) && /que ta moyenne|dans ta moyenne/.test(r.derniere) && !/Meilleur trou/.test(r.derniere), nom + ' dernière partie : ' + r.derniere);
+    /* Une action dominante, pas de catalogue */
+    r.actions = await page.$$eval('#vue .mj-action', l => l.map(b => b.textContent.trim()).join(' | '));
+    verifie(r.actions === 'Nouvelle partie' && await page.locator('#vue .acces-rapides, #vue .an-raccourcis').count() === 0, nom + ' action : ' + r.actions);
     verifie(await largeur() <= w, nom + ' Mon jeu sans débordement (' + await largeur() + ')');
     await page.screenshot({ path: `${D}/${nom}-rempli.png`, fullPage: true });
     /* Clic sur un indicateur : l'analyse correspondante */

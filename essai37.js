@@ -28,7 +28,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(r.etapes.length === 3 && r.etapes.every(x => x.startsWith('·')) && /facultatif/.test(r.etapes[2]), nom + ' premiers pas : ' + r.etapes.join(' | '));
     verifie(await page.locator('#premiers-pas [data-a="partie-rapide"]').count() >= 1 && await page.locator('[data-a="serie-ouvrir"]').count() === 0, nom + ' chaque étape propose son action (plus de série)');
     /* États vides */
-    verifie(/Note une partie/.test(norm(await page.textContent('#mj-kpi'))), nom + ' Mon jeu : état vide utile');
+    verifie(await page.locator('#mj-kpi, #mj-perf').count() === 0 && await page.locator('#premiers-pas').count() === 1, nom + ' Accueil vide : les premiers pas seuls, sans carte vide');
     await page.click('#barre [data-v="sac"]');
     verifie(/Aucun coup mesuré/.test(norm(await page.textContent('#vue'))) && await page.locator('#vue [data-a="serie-ouvrir"]').count() === 0, nom + ' Mon sac : inconnu affiché, plus de série');
     await page.click('#barre [data-v="journal"]');

@@ -47,8 +47,9 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
 
     /* Mon jeu, tendances : même choix */
     await page.click('#barre [data-v="accueil"]');
-    r.accueil = await page.$eval('#vue [data-a="st-derniers"][aria-pressed="true"]', b => b.textContent.trim()).catch(() => '');
-    verifie(r.accueil === 'Saison', nom + ' Mon jeu : période conservée (' + r.accueil + ')');
+    /* V4-06 : l'accueil montre toujours les 10 dernières parties, sans filtre (le filtre commun est dans Performance). */
+    r.accueil = norm(await page.textContent('#mj-kpi .section-tete'));
+    verifie(await page.locator('#vue [data-a="st-derniers"]').count() === 0 && /10 parties/.test(r.accueil), nom + ' Accueil : fenêtre fixe de 10 parties (' + r.accueil + ')');
 
     /* Comprendre mon jeu : même choix, périmètre, et un changement ici vaut partout */
     await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-a="an-ouvrir"]');

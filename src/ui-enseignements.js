@@ -1,7 +1,7 @@
   /* ============================================================
      ENSEIGNEMENTS PERSONNALISÉS (roadmap UX, UX05)
-     Calculés par le moteur déterministe à partir des autres moteurs ; trois au plus sur Mon jeu,
-     tous dans la fiche. Chaque carte : constat chiffré, période, effectif, fiabilité, lien, action éventuelle.
+     Calculés par le moteur déterministe à partir des autres moteurs ; tous dans la fiche (Performance),
+     le premier point de vigilance sert de « priorité actuelle » sur l'accueil (V4-06). Chaque carte : constat chiffré, période, effectif, fiabilité, lien, action éventuelle.
      ============================================================ */
   var cacheEns = {};
   function ctxEns() { var c = ctxAnalyste(); c.nomDomaine = function (d) { var x = DOMAINES.filter(function (y) { return y.id === d; })[0]; return x ? x.nom : d; }; return c; }
@@ -23,14 +23,6 @@
       '<h3>' + t(e.titre) + '</h3><p>' + t(e.constat) + '</p>' +
       '<p class="ens-meta">' + t([per, eff].filter(Boolean).join(" · ")) + '</p><p class="ens-fiab ' + e.fiabilite.niveau + '">' + t(e.fiabilite.texte) + '</p>' +
       (lien || act ? '<div class="ligne-btn">' + act + lien + '</div>' : '') + '</article>';
-  }
-  /* Bloc de Mon jeu : trois enseignements au plus, catégories distinctes, rotation quotidienne. */
-  function enseignementsAccueilHTML() {
-    if (!etat.parties.length) return '';
-    var R = calculEns(), choix = choisirEnseignements(R.liste, 3, graineEns());
-    var h = '<section class="bloc enseignements" id="c-enseignements"><h2>Ce que disent tes données</h2>';
-    if (!choix.length) return h + '<p class="aide">' + t("Rien de net pour l'instant : les enseignements apparaissent quand un écart dépasse les seuils prévus, sur assez de parties.") + '</p></section>';
-    return h + choix.map(carteEnsHTML).join("") + (R.liste.length > choix.length ? '<button class="lien" type="button" data-a="ens-ouvrir">' + t("Tous les enseignements (" + R.liste.length + ")") + '</button>' : '') + '</section>';
   }
   function ensHTML() {
     var R = calculEns();

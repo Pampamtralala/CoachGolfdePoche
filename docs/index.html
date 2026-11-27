@@ -1678,7 +1678,7 @@ main.entree { animation: entreeVue .22s ease-out; }
 /* Cinq pastilles de période : elles passent à la ligne plutôt que de couper leur texte. */
 .fenetres.periode .opt { flex: 1 0 auto; }
 /* UX04 : tableau de bord Mon jeu (jetons existants). */
-.mj-perf-grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 8px 0; }
+.mj-perf-grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 8px 0; }
 .mj-index { display: block; min-width: 0; padding: 12px; border: 0; border-radius: var(--rayon-s); background: var(--carte); box-shadow: var(--ombre); color: var(--encre); font: inherit; text-align: left; }
 .mj-index p { margin: 0 0 4px; }
 .mj-index .mj-val { font: 800 26px/1.1 var(--f-display); letter-spacing: -.02em; }
@@ -1689,7 +1689,7 @@ main.entree { animation: entreeVue .22s ease-out; }
 .kpi-lien { position: relative; width: 100%; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .kpi-lien > .ico { position: absolute; right: 10px; top: 14px; width: 16px; height: 16px; color: var(--encre-2); }
 .kpi-lien .kpi-t { padding-right: 18px; }
-@media (max-width: 520px) { .mj-perf-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mj-obj { grid-column: span 2; } }
+
 /* UX06 : rubriques d'Analyses (pastilles défilantes). */
 .rubriques { display: flex; gap: 6px; overflow-x: auto; margin: 8px -4px 10px; padding: 2px 4px 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .rubriques::-webkit-scrollbar { display: none; }
@@ -1750,6 +1750,11 @@ main.entree { animation: entreeVue .22s ease-out; }
 .section-tete { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .section-tete h2 { margin-bottom: 8px; }
 .section-tete .lien.detail { flex: none; min-height: 44px; white-space: nowrap; }
+/* V4-06 · accueil : une action dominante, une priorité. */
+.mj-action { width: 100%; justify-content: center; }
+.mon-jeu .mj-action { margin-top: 10px; }
+.mj-agir { padding-top: 4px; }
+.mj-priorite .carte-tb { position: relative; width: 100%; text-align: left; }
 
 /* ---------- Accueil en paysage de golf ----------
    Jour en clair, soirée après 17 h, nuit en mode sombre. Les couleurs du dessin sont des variables. */
@@ -7547,7 +7552,7 @@ function filtrerChronologie(ev, f) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-27T11:43:36.805Z";
+  var VERSION_APPLI = "2026-11-27T11:55:56.761Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, references: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -13105,8 +13110,8 @@ function filtrerChronologie(ev, f) {
 
   /* ============================================================
      ENSEIGNEMENTS PERSONNALISÉS (roadmap UX, UX05)
-     Calculés par le moteur déterministe à partir des autres moteurs ; trois au plus sur Mon jeu,
-     tous dans la fiche. Chaque carte : constat chiffré, période, effectif, fiabilité, lien, action éventuelle.
+     Calculés par le moteur déterministe à partir des autres moteurs ; tous dans la fiche (Performance),
+     le premier point de vigilance sert de « priorité actuelle » sur l'accueil (V4-06). Chaque carte : constat chiffré, période, effectif, fiabilité, lien, action éventuelle.
      ============================================================ */
   var cacheEns = {};
   function ctxEns() { var c = ctxAnalyste(); c.nomDomaine = function (d) { var x = DOMAINES.filter(function (y) { return y.id === d; })[0]; return x ? x.nom : d; }; return c; }
@@ -13128,14 +13133,6 @@ function filtrerChronologie(ev, f) {
       '<h3>' + t(e.titre) + '</h3><p>' + t(e.constat) + '</p>' +
       '<p class="ens-meta">' + t([per, eff].filter(Boolean).join(" · ")) + '</p><p class="ens-fiab ' + e.fiabilite.niveau + '">' + t(e.fiabilite.texte) + '</p>' +
       (lien || act ? '<div class="ligne-btn">' + act + lien + '</div>' : '') + '</article>';
-  }
-  /* Bloc de Mon jeu : trois enseignements au plus, catégories distinctes, rotation quotidienne. */
-  function enseignementsAccueilHTML() {
-    if (!etat.parties.length) return '';
-    var R = calculEns(), choix = choisirEnseignements(R.liste, 3, graineEns());
-    var h = '<section class="bloc enseignements" id="c-enseignements"><h2>Ce que disent tes données</h2>';
-    if (!choix.length) return h + '<p class="aide">' + t("Rien de net pour l'instant : les enseignements apparaissent quand un écart dépasse les seuils prévus, sur assez de parties.") + '</p></section>';
-    return h + choix.map(carteEnsHTML).join("") + (R.liste.length > choix.length ? '<button class="lien" type="button" data-a="ens-ouvrir">' + t("Tous les enseignements (" + R.liste.length + ")") + '</button>' : '') + '</section>';
   }
   function ensHTML() {
     var R = calculEns();
@@ -14315,46 +14312,51 @@ function filtrerChronologie(ev, f) {
      ACCUEIL : trois portes (le sac, le parcours, le practice), puis l'essentiel du jour
      ============================================================ */
   /* Accueil centré sur les données du joueur : le coaching est rangé dans Analyses. */
-  /* ============================================================
-     MON JEU (roadmap UX, UX04) : tableau de bord en cinq blocs, résultats d'abord.
-     1 performance générale (index déclaré, estimé, objectif, évolution) · 2 indicateurs clés cliquables
-     (filtre commun, évolution, périmètre) · 3 enseignements · 4 dernière partie · 5 actions rapides.
-     Aucune valeur affichée sans donnée réelle ; un carnet vide montre ce qu'il faut faire, pas des chiffres.
-     ============================================================ */
+  /* V4-06 : ACCUEIL « cockpit ». Index réel si disponible, 4 KPI cliquables sur les 10 dernières parties, une priorité,
+     la dernière partie, une action dominante (nouvelle partie ou reprise). Aucun catalogue de fonctions, pas de coaching :
+     tout le reste est dans Performance, Sac, Activité et le profil. Aucune valeur sans donnée réelle. */
+  var FENETRE_ACCUEIL = 10;
+  /* 1 · Index : déclaré (officiel) en grand ; estimé seulement s'il n'y a pas d'index déclaré ; objectif ; courbe. */
   function performanceHTML() {
     var p = etat.profil, idx = indexDeclare(p), obj = indexVise(), ev = evolutionIndex(), courbe = courbeIndexHTML(null, 160, 44);
-    var est = etat.parties.length ? indexEstime(partiesAnalyse(), function (pt) { return parcoursDe(pt.pc); }, idx) : null;
-    var h = '<section class="bloc mj-perf" id="mj-perf"><h2>Performance générale</h2><div class="mj-perf-grille">' +
-      '<div class="mj-index"><p class="surtitre">Index déclaré</p><p class="mj-val main">' + t(idx == null ? "–" : indexLib(idx)) + '</p>' +
-      '<p class="aide">' + t(idx == null ? "Non renseigné." : ev ? (ev.ecart < 0 ? "▼ " + indexLib(-ev.ecart) + " depuis le " + dateCourte(ev.depuis) : ev.ecart > 0 ? "▲ " + indexLib(ev.ecart) + " depuis le " + dateCourte(ev.depuis) : "Stable depuis le " + dateCourte(ev.depuis)) : "Ton index officiel, tel que tu l'as saisi.") + '</p>' +
+    var est = idx == null && etat.parties.length ? indexEstime(partiesAnalyse(), function (pt) { return parcoursDe(pt.pc); }, idx) : null;
+    var principal = idx != null ? { lib: "Index déclaré", v: indexLib(idx), ctx: ev ? (ev.ecart < 0 ? "▼ " + indexLib(-ev.ecart) : ev.ecart > 0 ? "▲ " + indexLib(ev.ecart) : "stable") + " depuis le " + dateCourte(ev.depuis) : "" }
+      : est && est.v != null ? { lib: "Index estimé", v: indexLib(est.v), ctx: "barème WHS, " + pluriel(est.n, "partie") + " · pas ton index officiel" }
+      : { lib: "Index", v: "–", ctx: "" };
+    var h = '<section class="bloc mj-perf" id="mj-perf"><div class="mj-perf-grille">' +
+      '<div class="mj-index"><p class="surtitre">' + t(principal.lib) + '</p><p class="mj-val main">' + t(principal.v) + '</p>' + (principal.ctx ? '<p class="aide">' + t(principal.ctx) + '</p>' : '') +
       (idx == null ? '<button class="lien" type="button" data-a="aller-a" data-v="profil" data-s="objectif-index">Renseigner mon index</button>' : '') + '</div>' +
-      '<div class="mj-index"><p class="surtitre">Index estimé</p>';
-    if (est && est.v != null) h += '<p class="mj-val main">' + t(indexLib(est.v)) + '</p><p class="aide">' + t(pluriel(est.n, "partie") + ", barème WHS. Pas ton index officiel.") + '</p>';
-    else h += '<p class="mj-val main">–</p><p class="aide">' + t(est && est.n ? "Inconnu : encore " + pluriel(Math.max(1, 3 - est.n), "partie") + " avec un score à chaque trou." : "Inconnu : il faut au moins 3 parties avec un score à chaque trou.") + '</p>';
-    h += '</div><button class="mj-index mj-obj" type="button" data-a="aller-a" data-v="profil" data-s="objectif-index"><p class="surtitre">Objectif</p><p class="mj-val main">' + t(idx == null && p.indexVise == null ? "–" : obj === 0 ? "Scratch" : String(obj).replace(".", ",")) + '</p>' +
-      '<p class="aide">' + t(idx == null && p.indexVise == null ? "À définir dans ton profil." : idx != null && idx > obj ? "Encore " + indexLib(Math.round((idx - obj) * 10) / 10) + " à gagner." : "Ton index visé.") + '</p></button></div>' +
-      (courbe ? '<div class="mj-courbe">' + courbe + '<p class="aide">' + t("Évolution de ton index déclaré (12 dernières mises à jour).") + '</p></div>' : '') + '</section>';
+      '<button class="mj-index mj-obj" type="button" data-a="aller-a" data-v="profil" data-s="objectif-index"><p class="surtitre">Objectif</p><p class="mj-val main">' + t(idx == null && p.indexVise == null ? "–" : obj === 0 ? "Scratch" : String(obj).replace(".", ",")) + '</p>' +
+      (idx != null && idx > obj ? '<p class="aide">' + t("Encore " + indexLib(Math.round((idx - obj) * 10) / 10) + " à gagner") + '</p>' : '') + '</button></div>' +
+      (courbe ? '<div class="mj-courbe">' + courbe + '<p class="aide">' + t("Historique d'index déclaré") + '</p></div>' : '') + '</section>';
     return h;
   }
-  /* Indicateurs clés : filtre commun, évolution par rapport à la période comparable, périmètre, accès à l'analyse. */
+  /* 2 · Quatre indicateurs sur les 10 dernières parties, comparés aux 10 précédentes ; chacun ouvre son analyse. */
   function indicateursClesHTML() {
-    var F = filtresStats(), l = partiesFiltrees(), A = tableauStats(l);
-    var h = '<section class="bloc mj-kpi" id="mj-kpi"><h2>Indicateurs clés</h2>' + pastillesPeriodeHTML();
-    if (!A.parties) return h + etatVideHTML("stats", etat.parties.length ? "Aucune partie dans cette période" : "Pas encore d'indicateurs", etat.parties.length ? "Élargis la période : « Toutes » reprend tout ton carnet." : "Note une partie : score, putts et pénalités suffisent pour voir tes premiers indicateurs.", etat.parties.length ? "" : "partie-rapide", "Lancer une partie") + '</section>';
-    var PP = !F.derniers ? periodePrecedente(F.debut, F.fin || (F.debut ? auj() : "")) : null;
-    var B = F.derniers || PP ? tableauStats(selectionStats(F, true)) : null, C = B && B.parties ? comparerStats(A, B) : null;
-    h += '<p class="aide mj-perimetre">' + t(perimetreTexte(l) + (C ? " Évolution : par rapport " + (F.derniers ? "aux " + pluriel(B.parties, "partie") + " précédentes." : "à la période de même durée juste avant.") : " Pas de période précédente à comparer.")) + '</p>';
+    var F = { derniers: FENETRE_ACCUEIL }, l = selectionStats(F), A = tableauStats(l);
+    var h = '<section class="bloc mj-kpi" id="mj-kpi">';
+    if (!A.parties) return h + sectionTeteHTML("Performance") + etatVideHTML("stats", "Pas encore d'indicateurs", "Note une partie : score et putts suffisent.", "", "") + '</section>';
+    var B = tableauStats(selectionStats(F, true)), C = B.parties ? comparerStats(A, B) : null;
+    h += sectionTeteHTML("Performance", { lien: { a: "onglet", v: "bilan", lib: pluriel(A.parties, "partie") } });
     var cartes = [
-      { t: "Score", v: nbStat(A.ecart18, true), u: "écart au par, ramené à 18 trous", tend: C && tendanceStat(C.ecart18), n: A.trousScore + " trous avec score", s: "rb-perf", prov: "Déclaré" },
-      { t: "Mises en jeu", v: A.mej.part == null ? "–" : A.mej.part + " %", u: "jouables, par 4 et 5", tend: C && tendanceStat(C.mej), n: A.mej.n ? A.mej.n + " départs renseignés" : "aucun départ renseigné", s: "rb-mej", prov: "Observé" },
-      { t: "Greens en régulation", v: nbStat(A.gir18), u: "par 18 trous", tend: C && tendanceStat(C.gir18), n: A.trous + " trous", s: "rb-attaque", prov: "Déduit" },
-      { t: "Putts", v: nbStat(A.putts18), u: "par 18 trous", tend: C && tendanceStat(C.putts18), n: A.trous + " trous", s: "st-putting", prov: "Observé" },
-      { t: "Trois-putts", v: nbStat(A.troisPutts18), u: "par 18 trous", tend: C && tendanceStat(C.troisPutts18), n: A.trous + " trous", s: "st-putting", prov: "Observé" },
-      { t: "Pénalités", v: nbStat(A.penalites18), u: "coups par 18 trous", tend: C && tendanceStat(C.penalites18), n: A.trous + " trous", s: "st-erreurs", prov: "Observé" }];
+      { t: "Score", v: nbStat(A.ecart18, true), u: "écart au par / 18 trous", tend: C && tendanceStat(C.ecart18), s: "rb-perf" },
+      { t: "Départs jouables", v: A.mej.part == null ? "–" : A.mej.part + " %", u: A.mej.n ? A.mej.n + " départs" : "non renseignés", tend: C && tendanceStat(C.mej), s: "rb-mej" },
+      { t: "Greens en rég.", v: nbStat(A.gir18), u: "par 18 trous · déduit", tend: C && tendanceStat(C.gir18), s: "rb-attaque" },
+      { t: "Putts", v: nbStat(A.putts18), u: "par 18 trous", tend: C && tendanceStat(C.putts18), s: "st-putting" }];
     h += kpisHTML(cartes.map(function (x) {
       x.lien = { a: "aller-a", v: "bilan", s: x.s }; x.label = x.t + " : " + x.v + " " + x.u + ". Voir l'analyse"; return x;
-    }), "mj-kpis") + '<button class="lien" type="button" data-a="aller-a" data-v="bilan" data-s="qualite-donnees">' + t("Qualité de mes données") + '</button></section>';
+    }), "mj-kpis") + '<p class="aide mj-perimetre">' + t(C ? "Évolution par rapport aux " + pluriel(B.parties, "partie") + " précédentes." : "Pas encore de parties précédentes à comparer.") + '</p></section>';
     return h;
+  }
+  /* 3 · Une seule priorité : le premier point de vigilance, erreur ou opportunité du moteur d'enseignements. */
+  function prioriteAccueilHTML() {
+    if (!etat.parties.length) return '';
+    var R = calculEns(), l = R.liste || [];
+    var e = l.filter(function (x) { return ["vigilance", "erreur", "opportunite"].indexOf(x.cat) >= 0; })[0] || l.filter(function (x) { return x.cat !== "record" && x.cat !== "fort"; })[0];
+    if (!e) return '';
+    var cible = e.lien ? 'data-a="' + e.lien.a + '"' + (e.lien.v ? ' data-v="' + at(e.lien.v) + '"' : '') + (e.lien.s ? ' data-s="' + at(e.lien.s) + '"' : '') : 'data-a="ens-ouvrir"';
+    return '<section class="bloc mj-priorite" id="mj-priorite"><h2>Priorité actuelle</h2><button class="carte-tb lien-tb" type="button" ' + cible + '>' +
+      '<p class="surtitre">' + t(e.catLib) + ' · <span class="ens-prov">' + t(PROVENANCE_ENS[e.provenance] || e.provenance) + '</span></p><p class="tb-titre">' + t(e.titre) + '</p>' + icone("chevron") + '</button></section>';
   }
   /* Dernière partie : score, parcours, indicateurs, faits marquants (meilleur et pire trou, écart à la moyenne). */
   function dernierePartieHTML() {
@@ -14374,7 +14376,7 @@ function filtrerChronologie(ev, f) {
       '<p class="surtitre">' + t(dateCourte(der.d) + (pc ? " · " + pc.nom : "")) + '</p><p class="tb-titre">' +
       t(sc.complet ? sc.coups + " coups · " + ecartLib(sc.ecart) : st.T + " trous saisis") +
       '</p><p class="tb-meta">' + t(st.G + " GIR · " + st.P + " putts · " + st.X + " pénalités") + '</p>' +
-      (faits.length ? '<p class="tb-meta mj-faits">' + t(faits.join(" · ").replace(/^./, function (c) { return c.toUpperCase(); }) + ".") + '</p>' : '') + icone("chevron") + '</button></section>';
+      (faits.some(function (f) { return /moyenne/.test(f); }) ? '<p class="tb-meta mj-faits">' + t(faits.filter(function (f) { return /moyenne/.test(f); }).join("").replace(/^./, function (c) { return c.toUpperCase(); }) + ".") + '</p>' : '') + icone("chevron") + '</button></section>';
   }
   /* UX12 : premiers pas, tant que le carnet n'a pas de quoi montrer des tendances. Chaque étape cochée dit ce qu'elle
      débloque ; la carte disparaît dès trois parties complètes (mesures et index restent proposés ailleurs). */
@@ -14394,22 +14396,14 @@ function filtrerChronologie(ev, f) {
     }).join("") + '</ol></section>';
   }
   VUES.accueil = function () {
-    var p = etat.profil, pt = etat.partie, parties = etat.parties;
-    var totalTrous = parties.reduce(function (n, x) { return n + (x.trous || []).length; }, 0);
-    var h = '<section class="bloc premier mon-jeu"><p class="surtitre">Carnet golfique personnel</p><h1>' + t(p.prenom ? "Mon jeu · " + p.prenom : "Mon jeu") + '</h1>' +
-      '<p class="aide">' + t(parties.length ? pluriel(parties.length, "partie") + " conservée" + (parties.length > 1 ? "s" : "") + " · " + totalTrous + " trous" : "Ton carnet est vide : ta première partie fera apparaître tes indicateurs.") + '</p>' +
-      (pt ? '<button class="btn principal" type="button" data-a="pt-reprendre">' + icone("drapeau") + t(" Reprendre ma partie au trou " + numeroTrou(pt, pt.i)) + '</button>' : '') + '</section>';
-    h += premiersPasHTML() + performanceHTML() + indicateursClesHTML() + enseignementsAccueilHTML() + dernierePartieHTML();
-    /* Bloc 5 : actions rapides. */
-    h += '<section class="bloc"><h2>Actions rapides</h2><div class="acces-rapides">' +
-      '<button class="btn principal" type="button" data-a="' + (pt ? "pt-reprendre" : "partie-rapide") + '">' + icone("drapeau") + t(pt ? " Reprendre ma partie" : " Nouvelle partie") + '</button>' +
-      '<button class="btn" type="button" data-a="onglet" data-v="bilan">' + icone("stats") + ' Explorer mes statistiques</button>' +
-      '<button class="btn" type="button" data-a="onglet" data-v="journal">Mes parties</button></div>' +
-      '<button class="lien" type="button" data-a="onglet" data-v="practice">' + t("Coaching (facultatif) : programme et exercices") + '</button></section>';
-    /* P12 : poser une question à son carnet (raccourcis). */
-    h += '<section class="bloc comprendre"><h2>Comprendre mon jeu</h2><div class="an-raccourcis">' +
-      ["score", "troisPutts", "cotes", "trous"].map(function (id) { var q = QUESTIONS_ANALYSTE.filter(function (x) { return x.id === id; })[0]; return '<button class="btn" type="button" data-a="an-ouvrir" data-v="' + id + '">' + t(q.q) + '</button>'; }).join("") +
-      '<button class="lien" type="button" data-a="an-ouvrir">Toutes les questions</button></div></section>';
+    var p = etat.profil, pt = etat.partie;
+    var action = '<button class="btn principal large mj-action" type="button" data-a="' + (pt ? "pt-reprendre" : "partie-rapide") + '">' + icone("drapeau") + t(pt ? " Reprendre ma partie au trou " + numeroTrou(pt, pt.i) : " Nouvelle partie") + '</button>';
+    /* Partie en cours : l'action dominante passe en tête. */
+    var h = '<section class="bloc premier mon-jeu"><h1>' + t(p.prenom ? "Mon jeu · " + p.prenom : "Mon jeu") + '</h1>' + (pt ? action : '') + '</section>';
+    /* Carnet vide : les premiers pas portent les actions (partie, index) ; pas de cartes vides en double. */
+    var vide = !etat.parties.length;
+    h += premiersPasHTML() + (vide && indexDeclare(p) == null ? '' : performanceHTML()) + (vide ? '' : indicateursClesHTML() + prioriteAccueilHTML() + dernierePartieHTML());
+    if (!pt && !vide) h += '<section class="bloc mj-agir">' + action + '</section>';
     return h;
   };
 

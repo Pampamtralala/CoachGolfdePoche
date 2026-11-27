@@ -26,9 +26,10 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     /* Premier lancement « carnet », carnet vide */
     await page.click('[data-a="ac-sans-index"]'); await page.click('.carnet-form button[type="submit"]');
     await page.waitForSelector('.tete');
-    r.raccourcis = await page.$$eval('.comprendre [data-a="an-ouvrir"]', l => l.map(x => x.textContent.trim()));
-    verifie(r.raccourcis.length === 5 && /Est-ce que je score mieux/.test(r.raccourcis[0]), nom + ' raccourcis sur l\'accueil : ' + r.raccourcis.join(' | '));
-    await page.click('.comprendre [data-a="an-ouvrir"][data-v="score"]');
+    /* V4-06 : plus de raccourcis sur l'accueil ; Comprendre mon jeu s'ouvre depuis Performance. */
+    verifie(await page.locator('#vue .comprendre, #vue .an-raccourcis').count() === 0, nom + ' pas de raccourcis sur l\'accueil');
+    await page.click('#barre [data-v="bilan"]'); await page.click('#vue .sous-nav [data-a="an-ouvrir"]');
+    await page.click('#feuille [data-a="an-question"][data-v="score"]');
     await page.waitForSelector('#feuille.analyste #an-rep-score');
     r.vide = norm(await page.textContent('#an-rep-score'));
     verifie(/aucune partie/.test(r.vide) && /Pour commencer Enregistre une partie/.test(r.vide), nom + ' carnet vide : ' + r.vide);

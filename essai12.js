@@ -53,10 +53,10 @@ function partie(g, pars) {
     r.barre = await page.$$eval('#barre .barre-item', l => l.map(b => b.textContent + (b.getAttribute('aria-current') ? ' ●' : '')).join(' | '));
     verifie(/^Accueil ● \| Performance \| Jouer \| Sac \| Activité$/.test(r.barre), nom + ' barre : ' + r.barre);
     r.statut = await page.textContent('#statut-tete');
-    /* Accueil « Mon jeu » (UX04) : performance, indicateurs clés, enseignements, dernière partie, actions rapides. */
-    r.accueil = (await page.textContent('.mon-jeu h1')).replace(/\s+/g, ' ').trim() + ' · ' + await page.$$eval('#vue .acces-rapides button', l => l.map(b => b.textContent.trim()).join(' | '));
+    /* Accueil (V4-06) : index, 4 KPI, une priorité, dernière partie, une action dominante. */
+    r.accueil = (await page.textContent('.mon-jeu h1')).replace(/\s+/g, ' ').trim() + ' · ' + await page.$$eval('#vue .mj-action', l => l.map(b => b.textContent.trim()).join(' | '));
     r.cartes = await page.$$eval('#vue h2', l => l.map(x => x.textContent));
-    verifie(/^Mon jeu/.test(r.accueil) && /Nouvelle partie|Reprendre/.test(r.accueil) && r.cartes.includes('Dernière partie') && r.cartes.includes('Performance générale') && r.cartes.includes('Indicateurs clés'), nom + ' accueil Mon jeu : ' + r.accueil + ' · ' + r.cartes.join(' | '));
+    verifie(/^Mon jeu/.test(r.accueil) && /Nouvelle partie|Reprendre/.test(r.accueil) && r.cartes.includes('Dernière partie') && r.cartes.includes('Performance') && await page.locator('#mj-kpi .kpi').count() === 4, nom + ' accueil Mon jeu : ' + r.accueil + ' · ' + r.cartes.join(' | '));
     await vue('01-accueil');
     await page.evaluate(() => document.querySelector('#mj-kpi').scrollIntoView({ block: 'start' })); await page.waitForTimeout(80);
     await vue('02-tableau-de-bord');
@@ -130,7 +130,7 @@ function partie(g, pars) {
     await page.click('#calque-partie [data-a="pt-fermer"]');
     r.bandeau = await page.textContent('.bandeau-partie');
     await allerVue(page, 'accueil');
-    r.accesReprendre = await page.textContent('.acces-rapides .btn.principal');
+    r.accesReprendre = await page.textContent('#vue .mj-action');
     verifie(/Reprendre ma partie/.test(r.accesReprendre), nom + ' accès rapide reprend la partie : ' + r.accesReprendre);   /* libellé de l'accueil « Mon jeu » */
 
     /* ---- Profil : objectif et données ---- */

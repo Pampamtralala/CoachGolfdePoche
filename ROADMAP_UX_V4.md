@@ -23,7 +23,7 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | 03 | Retirer les séries de practice (archivage des données) | P0 | 01, S01 | Terminé | `ux4/03-series` · #34 |
 | 04 | Unifier les composants visuels (titre / section / KPI / contexte / aide) | P0 | 01 | **En revue** | `ux4/04-composants` |
 | 05 | Arborescence et navigation (Accueil · Performance · Jouer · Sac · Activité) | P0 | 02–04 | **En revue** | `ux4/05-navigation` |
-| 06 | Refaire l'accueil | P0 | 04, 05 | À faire | — |
+| 06 | Refaire l'accueil | P0 | 04, 05 | **En revue** | `ux4/06-accueil` |
 | 07 | Regrouper Performance (5 familles) | P0 | 04, 05 | À faire | — |
 | 08 | Simplifier Jouer et le bilan | P1 | 05 | À faire | — |
 | 09 | Unifier Activité et le profil (coaching et Mes données dans le profil) | P1 | 05 | À faire | — |
@@ -243,3 +243,21 @@ _01, S01, 02 et 03 fusionnés dans `app` le 27/11 (PR #31 à #34), déploiement 
   l'entrée « Composer mon sac » de la recherche, cassée depuis longtemps (`sac-modifier`), ouvre bien la composition.
 - Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts. `nav-essai.js` passe par le profil pour le
   coaching ; essais 12, 24, 28 (barre, alias, adresses publiques, routes retirées), 31, 38 adaptés.
+
+### 06 — Refaire l'accueil (27/11/2026)
+
+- Accueil « cockpit », dans cet ordre : titre ; **index** (déclaré en grand avec son évolution ; l'estimé n'apparaît
+  que s'il n'y a pas d'index déclaré, marqué « pas ton index officiel » ; objectif ; historique d'index s'il existe) ;
+  **4 KPI cliquables** sur les 10 dernières parties, comparés aux 10 précédentes (score, départs jouables, greens en
+  régulation — déduit —, putts), chacun ouvre sa rubrique ; **une priorité** (premier point de vigilance, erreur ou
+  opportunité du moteur d'enseignements, sinon « données à enrichir ») ; **dernière partie** (parcours, score, GIR,
+  putts, pénalités, comparaison à la moyenne) ; **une action dominante** (« Nouvelle partie », ou « Reprendre » en
+  tête quand une partie est en cours).
+- Retiré de l'accueil : catalogue d'actions rapides, raccourcis « Comprendre mon jeu », lien coaching, six KPI avec
+  filtre de période, trois cartes d'enseignements, lien « Qualité de mes données » (tout reste dans Performance,
+  Activité et le profil). L'accueil n'a plus de filtre : fenêtre fixe de 10 parties, annoncée dans l'en-tête de section.
+- Carnet vide : seulement les premiers pas (partie, trois parties, index facultatif) ; plus de cartes vides en double.
+- Texte visible (référence V4 → maintenant) : accueil 2411 → 480 caractères (**−80 %**), Sac 1264 → 645 (−49 %)
+  (`mesures-ux/texte-apres-06.json`). Performance attend le chantier 07.
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts ; essais 12, 27, 29, 30, 31, 32, 37 adaptés.
+  Capture 390 px vérifiée (carnet vide et rempli).
