@@ -17,19 +17,18 @@
       (recordPartie(pt) ? ' <span class="tampon">record ' + TRAIT + '</span>' : '') + '</p>';
     if (pts.length) {
       h += '<p class="xp-intro">' + t("Trois points à retenir, face à ton objectif d'index " + cible + " :") + '</p><ol class="xp-points">' + pts.map(function (x) {
-        var exos = x.type === "travail" ? exosDuDomaine(x.d, 1) : [], df = x.type === "travail" ? DEFIS.filter(function (d) { return d.d === x.d; })[0] : null;
+        /* V4-08 : bilan court — le constat et son poids ; exercices et défis sont dans le profil (coaching). */
         return '<li class="' + x.type + '"><b>' + t((x.type === "fort" ? "Ce qui a marché · " : "À travailler · ") + x.nom) + '</b>' +
-          '<p>' + t(x.fait) + '</p><small>' + t(x.sg > 0 ? "environ " + coupsLib(x.sg, "gagné") : x.sg < 0 ? "environ " + coupsLib(x.sg, "perdu") : "à égalité") + '</small>' +
-          (exos.length || df ? '<div class="exos-lies">' + exos.map(function (e) { return '<button class="puce" type="button" data-a="exo" data-id="' + e.id + '">' + L("Exercice : " + e.t.toLowerCase()) + '</button>'; }).join("") +
-            (df ? '<button class="puce" type="button" data-a="defi" data-id="' + df.id + '">' + t("Défi : " + df.t.toLowerCase()) + '</button>' : '') + '</div>' : '') + '</li>';
+          '<p>' + t(x.fait) + '</p><small>' + t(x.sg > 0 ? "environ " + coupsLib(x.sg, "gagné") : x.sg < 0 ? "environ " + coupsLib(x.sg, "perdu") : "à égalité") + '</small></li>';
       }).join("") + '</ol>';
     }
     if (pt.joueurs && pt.joueurs.length) {
       var pars = pt.trous.map(function (x) { return x[5]; });
       h += '<p class="xp-joueurs">' + t("Partenaires : " + pt.joueurs.map(function (j) { var r = scoreJoueur(j.s, pars); return j.nom + (r.n ? " " + r.coups + " (" + ecartLib(r.ecart) + ")" : " –"); }).join(", ") + ".") + '</p>';
     }
-    h += apresComparaisonHTML(pt) + apresTrousClubsHTML(pt); /* UX11 */
-    h += erreursPartieHTML(pt);
+    /* V4-08 : le reste (habitudes, trous marquants, clubs, erreurs) est replié : pas de long rapport imposé. */
+    var plus = apresComparaisonHTML(pt) + apresTrousClubsHTML(pt) + erreursPartieHTML(pt);
+    if (plus) h += '<details class="aide-pli xp-plus"><summary><span class="ico-info" aria-hidden="true">i</span>' + t("Plus de détails sur cette partie") + '</summary><div>' + plus + '</div></details>';
     var i = etat.parties.indexOf(pt);
     return h + '<div class="xp-actions">' + (ui.partage && i >= 0 ? '<button class="btn large" type="button" data-a="pt-image" data-id="' + i + '">Partager ma carte en image</button>' : '') +
       '<button class="lien" type="button" data-a="pt-express-chiffres">Voir la partie en chiffres</button></div>' +

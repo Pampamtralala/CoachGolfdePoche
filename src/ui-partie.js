@@ -50,6 +50,9 @@
     var d = ui.depart, nouveau = d.pc === "nouveau", pc = nouveau ? null : parcoursDe(d.pc), L = pc ? pc.pars.length : d.L;
     function opt(k, v, lib, cur) { return '<button class="opt" type="button" data-a="dp-set" data-k="' + k + '" data-v="' + v + '" aria-pressed="' + (String(cur) === v) + '">' + t(lib) + '</button>'; }
     var h = '<div class="depart">';
+    /* V4-08 : ancienne partie → la date d'abord ; partie du jour → la date en dernier, déjà remplie. */
+    var champDate = '<div class="champ"><label for="dp-date">' + t(d.ancienne ? "Date de la partie" : "Date") + '</label><input id="dp-date" type="date" max="' + jourLocal() + '" value="' + at(d.date || jourLocal()) + '" data-c="dp-date"></div>';
+    if (d.ancienne) h += champDate;
     if (etat.parcours.length) {
       h += '<div class="champ"><label for="dp-pc">Parcours</label><select id="dp-pc" data-c="dp-pc">' +
         etat.parcours.map(function (x) { return '<option value="' + x.id + '"' + (x.id === d.pc ? " selected" : "") + '>' + t(x.nom) + '</option>'; }).join("") +
@@ -59,13 +62,14 @@
       h += '<div class="champ"><label for="dp-nom">Nom du parcours</label><input id="dp-nom" type="text" maxlength="40" autocomplete="off" data-i="dp-nom" value="' + at(d.nom) + '"></div>' +
         '<fieldset class="champ"><legend>Ce parcours compte</legend><div class="choix-ligne">' + opt("L", "18", "18 trous", L) + opt("L", "9", "9 trous", L) + '</div></fieldset>';
     }
-    h += '<fieldset class="champ"><legend>Aujourd’hui, tu joues</legend><div class="choix-ligne">' +
+    h += '<fieldset class="champ"><legend>' + t(d.ancienne ? "Tu as joué" : "Aujourd’hui, tu joues") + '</legend><div class="choix-ligne">' +
       (L === 18 ? opt("jeu", "18", "Les 18 trous", d.jeu) + opt("jeu", "aller", "L'aller, 1 à 9", d.jeu) + opt("jeu", "retour", "Le retour, 10 à 18", d.jeu)
         : opt("jeu", "9", "9 trous", d.jeu) + opt("jeu", "2x9", "18 trous, en deux tours", d.jeu)) + '</div></fieldset>' +
       (nouveau ? '<p class="aide">Tu indiques le par de chaque trou en jouant. L’appli s’en souvient pour les parties suivantes.</p>' : '') +
       (pc && pc.reps && pc.reps.length > 1 ? '<div class="champ"><label for="dp-rep">Tes repères de départ</label><select id="dp-rep" data-c="dp-rep">' +
         pc.reps.map(function (r, i) { return '<option value="' + i + '"' + (i === d.rep ? " selected" : "") + '>' + t(r.n || "Repère " + (i + 1)) + '</option>'; }).join("") + '</select></div>' : '') +
       joueursDepartHTML() +
+      (d.ancienne ? '' : champDate) +
       '<p class="erreur" id="dp-err" role="alert" hidden></p>' +
       '<div class="ligne-btn"><button class="btn principal" type="button" data-a="pt-nouvelle">Commencer</button><button class="btn" type="button" data-a="dp-annuler">Annuler</button></div></div>';
     return h;
@@ -84,14 +88,9 @@
   }
 
   /* UX03 : la partie en cours reste dans Jouer ; la liste des parties passe dans Journal. */
-  function partiesHTML() {
-    var l = etat.parties;
-    return partieEnDirectHTML() + (l.length ? '<section class="bloc journal-lien"><h2>Mes parties</h2><p class="aide">' +
-      t(pluriel(l.length, "partie") + " dans ton journal, avec leur carte de score.") + '</p><button class="btn" type="button" data-a="onglet" data-v="journal">Voir mes parties dans le journal</button></section>' : '');
-  }
   function partieEnDirectHTML() {
     var p = etat.partie;
-    var h = '<section class="bloc" id="c-partie" style="border-top:0;padding-top:0">' + (p || ui.depart ? '<h2>Partie en direct</h2>' : '');
+    var h = '<section class="bloc" id="c-partie" style="border-top:0;padding-top:0">' + (p ? '<h2>Partie en direct</h2>' : ui.depart ? '<h2>' + t(ui.depart.ancienne ? "Ancienne partie" : "Nouvelle partie") + '</h2>' : '');
     if (p) {
       var n = nbSaisis(p), pc = parcoursDe(p.pc);
       h += '<p>' + t("Partie commencée le " + dateCourte(p.d) + (pc ? " sur " + pc.nom : "") + " : " + n + " trou" + (n > 1 ? "s saisis" : " saisi") + " sur " + p.n + ".") + '</p>' +
@@ -99,9 +98,7 @@
         '<button class="btn" type="button" data-a="pt-abandonner">Abandonner</button></div>';
     } else if (ui.depart) {
       h += departHTML();
-    } else {
-      h += comment('<p>Sur le parcours, note chaque trou en marchant vers le départ suivant : mise en jeu, green, putts, pénalités et score. Les réponses les plus courantes sont déjà cochées. Tes chiffres mettent à jour ton bilan, tes objectifs et l’estimation de tes coups gagnés.</p>');
-    }
+    } else return ''; /* V4-08 : rien tant qu'aucune partie n'est en cours ni préparée */
     return h + '</section>';
   }
   /* Tableau des parties (Journal), de la plus récente à la plus ancienne. */
@@ -315,10 +312,17 @@
     if (etat.partie) return;
     var pc = null;
     for (var i = etat.parties.length - 1; i >= 0 && !pc; i--) if (parcoursDe(etat.parties[i].pc)) pc = etat.parties[i].pc;
-    ui.depart = { pc: pc || (etat.parcours.length ? etat.parcours[0].id : "nouveau"), nom: "", L: 18, jeu: "" };
+    ui.depart = { pc: pc || (etat.parcours.length ? etat.parcours[0].id : "nouveau"), nom: "", L: 18, jeu: "", date: jourLocal() };
     normaliserDepart(); rendre();
     var c = document.getElementById("dp-pc") || document.getElementById("dp-nom"); if (c) c.focus({ preventScroll: true });
   };
+  /* V4-08 : saisir une ancienne partie = le même départ, avec sa date (jamais dans le futur). */
+  ACTIONS["dp-ancienne"] = function (el) {
+    ACTIONS["dp-ouvrir"](el); if (!ui.depart) return;
+    ui.depart.ancienne = true; rendre();
+    var c = document.getElementById("dp-date"); if (c) c.focus({ preventScroll: true });
+  };
+  CHANGEMENTS["dp-date"] = function (el) { if (ui.depart) ui.depart.date = el.value; };
   ACTIONS["dp-annuler"] = function () {
     ui.depart = null; rendre();
     var b = app.querySelector('[data-a="dp-ouvrir"]'); if (b) b.focus({ preventScroll: true });
@@ -348,9 +352,15 @@
       pc = { id: "p" + num, nom: nom, pars: pars, sss: null, slope: null };
       etat.parcours.push(pc);
     }
+    /* Date : aujourd'hui (heure réelle) ou une date passée choisie (ancienne partie, à midi) ; jamais dans le futur. */
+    var dateP = auj();
+    if (d.date && /^\d{4}-\d{2}-\d{2}$/.test(d.date) && d.date !== jourLocal()) {
+      if (d.date > jourLocal()) { if (err) { err.textContent = "La date ne peut pas être dans le futur."; err.hidden = false; } var dc = document.getElementById("dp-date"); if (dc) dc.focus(); return; }
+      dateP = new Date(d.date + "T12:00:00").toISOString();
+    }
     var n = pc.pars.length === 18 ? (d.jeu === "aller" || d.jeu === "retour" ? 9 : 18) : (d.jeu === "2x9" ? 18 : 9), tr = [];
     for (i = 0; i < n; i++) tr.push(null);
-    etat.partie = { id: nouvelId("p"), d: auj(), n: n, i: 0, trous: tr, pc: pc.id, renseigne: tr.map(function () { return 0; }), o: d.jeu === "retour" && pc.pars.length === 18 ? 9 : 0,
+    etat.partie = { id: nouvelId("p"), d: dateP, n: n, i: 0, trous: tr, pc: pc.id, renseigne: tr.map(function () { return 0; }), o: d.jeu === "retour" && pc.pars.length === 18 ? 9 : 0,
       coups: tr.map(function () { return []; }),
       validation: tr.map(function () { return "suggere"; }),
       joueurs: (d.joueurs || []).map(function (nm) { return { nom: nm, s: tr.map(function () { return null; }) }; }) };

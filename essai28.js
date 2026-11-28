@@ -44,7 +44,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(await courant() === 'Accueil', nom + ' ouverture sur Accueil');
 
     /* Chaque entrée */
-    const attendu = { accueil: ['Accueil', 'h1'], bilan: ['Performance', '.familles'], parcours: ['Jouer', '#c-partie'], sac: ['Sac', '.sac-onglets'], journal: ['Activité', '.carte-score.parties'] };
+    const attendu = { accueil: ['Accueil', 'h1'], bilan: ['Performance', '.familles'], parcours: ['Jouer', '.jouer-liens'], sac: ['Sac', '.sac-onglets'], journal: ['Activité', '.carte-score.parties'] };
     for (const [v, [lib, sel]] of Object.entries(attendu)) {
       await page.click(`#barre [data-a="onglet"][data-v="${v}"]`);
       const c = await courant(), ok = await page.locator('#vue ' + sel).count();
@@ -63,7 +63,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(await page.locator('#vue [data-a="j-ouvrir"]').count() >= 1 && await page.locator('#vue [data-a="md-ouvrir"]').count() === 1, nom + ' journal : bilans, import et Mes données accessibles');
     /* Jouer renvoie vers le journal */
     await page.click('#barre [data-a="onglet"][data-v="parcours"]');
-    verifie(await page.locator('#vue .journal-lien [data-v="journal"]').count() === 1, nom + ' Jouer : lien vers mes parties');
+    verifie(await page.locator('#vue .journal-lien').count() === 0 && await page.locator('#vue [data-a="dp-ancienne"]').count() === 1, nom + ' Jouer : collecte seulement (l\'historique est dans Activité), ancienne partie proposée');
 
     /* Performance : cinq familles (V4-07) ; le coaching est dans le profil */
     await page.click('#barre [data-a="onglet"][data-v="bilan"]');

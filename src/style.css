@@ -1807,3 +1807,8 @@ main.entree { animation: entreeVue .22s ease-out; }
 .club-hist li span:last-child, .club-prov li span:last-child { text-align: right; color: var(--encre-2); }
 .club-voisins { display: flex; justify-content: space-between; gap: 10px; }
 .pli-corps { padding: 0 16px 14px; }
+/* V4-08 · Jouer : une action principale, puis les accès de collecte. */
+.jouer-cta { display: block; min-height: 0; font-size: inherit; position: relative; width: 100%; text-align: left; margin: 8px 0 0; background: var(--action); color: var(--sur-action, #fff); border-color: var(--action); }
+.jouer-cta .tb-titre { display: flex; align-items: center; gap: 10px; font-size: 22px; color: inherit; }
+.jouer-cta .tb-meta { color: inherit; opacity: .9; }
+.jouer-cta .ico { color: inherit; }
