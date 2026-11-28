@@ -1819,3 +1819,22 @@ main.entree { animation: entreeVue .22s ease-out; }
 .cl-barre > span { display: block; height: 100%; background: var(--action); border-radius: 4px; }
 .cl-val { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 #st-classements .fenetres { margin-bottom: 8px; }
+/* V4-S07 · matrice de wedges : référence (déclarée) en chiffre plein, observation en pastille avec effectif, « — » inconnu. */
+.matrice-wedges th small { display: block; font-size: 11.5px; font-weight: 500; color: var(--encre-2); }
+.matrice-wedges td.num { padding: 3px; }
+.w-case { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; min-width: 52px; min-height: 48px; padding: 4px 2px; border: 1px solid transparent; border-radius: 10px; background: transparent; font: inherit; color: inherit; cursor: pointer; }
+.w-case:hover { background: var(--filet); }
+.w-case[aria-pressed="true"] { border-color: var(--action); background: color-mix(in srgb, var(--action) 8%, transparent); }
+.w-ref { font-weight: 700; font-variant-numeric: tabular-nums; }
+.w-herit { font-style: italic; color: var(--encre-2); font-variant-numeric: tabular-nums; }
+.w-herit::before { content: "≈"; }
+.w-obs { display: inline-flex; align-items: baseline; gap: 2px; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--action) 14%, transparent); color: var(--action); font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.w-obs small { font-size: 11px; font-weight: 600; opacity: .85; }
+.w-vide { color: var(--encre-2); }
+.w-legende { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+.w-legende > span { display: inline-flex; align-items: center; gap: 6px; }
+.w-detail { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--filet); border-radius: 14px; background: var(--papier); }
+.w-detail .titre-bloc { margin-top: 0; }
+.w-detail .etiq { margin: 10px 0 2px; font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--encre-2); }
+.w-saisie input { width: 5.5em; text-align: center; }
+.matrice-wedges .w-frac { font-size: 17px; letter-spacing: 0; text-transform: none; }

@@ -1836,6 +1836,25 @@ main.entree { animation: entreeVue .22s ease-out; }
 .cl-barre > span { display: block; height: 100%; background: var(--action); border-radius: 4px; }
 .cl-val { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 #st-classements .fenetres { margin-bottom: 8px; }
+/* V4-S07 · matrice de wedges : référence (déclarée) en chiffre plein, observation en pastille avec effectif, « — » inconnu. */
+.matrice-wedges th small { display: block; font-size: 11.5px; font-weight: 500; color: var(--encre-2); }
+.matrice-wedges td.num { padding: 3px; }
+.w-case { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; min-width: 52px; min-height: 48px; padding: 4px 2px; border: 1px solid transparent; border-radius: 10px; background: transparent; font: inherit; color: inherit; cursor: pointer; }
+.w-case:hover { background: var(--filet); }
+.w-case[aria-pressed="true"] { border-color: var(--action); background: color-mix(in srgb, var(--action) 8%, transparent); }
+.w-ref { font-weight: 700; font-variant-numeric: tabular-nums; }
+.w-herit { font-style: italic; color: var(--encre-2); font-variant-numeric: tabular-nums; }
+.w-herit::before { content: "≈"; }
+.w-obs { display: inline-flex; align-items: baseline; gap: 2px; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--action) 14%, transparent); color: var(--action); font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.w-obs small { font-size: 11px; font-weight: 600; opacity: .85; }
+.w-vide { color: var(--encre-2); }
+.w-legende { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+.w-legende > span { display: inline-flex; align-items: center; gap: 6px; }
+.w-detail { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--filet); border-radius: 14px; background: var(--papier); }
+.w-detail .titre-bloc { margin-top: 0; }
+.w-detail .etiq { margin: 10px 0 2px; font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--encre-2); }
+.w-saisie input { width: 5.5em; text-align: center; }
+.matrice-wedges .w-frac { font-size: 17px; letter-spacing: 0; text-transform: none; }
 
 /* ---------- Accueil en paysage de golf ----------
    Jour en clair, soirée après 17 h, nuit en mode sombre. Les couleurs du dessin sont des variables. */
@@ -7633,7 +7652,7 @@ function filtrerChronologie(ev, f) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-28T13:02:55.672Z";
+  var VERSION_APPLI = "2026-11-28T13:17:39.446Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, references: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -9413,22 +9432,67 @@ function filtrerChronologie(ev, f) {
     var l = WEDGES.filter(function (id) { return (sac ? sac.indexOf(id) >= 0 : !CLUB[id].perso) || w[id]; });
     return l.length ? l : ["pw", "gw", "sw", "lw"];
   }
+  /* V4-S07 : matrice compacte loft × amplitude (¼ ½ ¾ Plein). Chaque case distingue la référence (ce que le joueur
+     déclare) des observations (coups joués sur le parcours, moyenne et effectif). Rien n'est déduit : sans l'un ni
+     l'autre, la case affiche « — ». Toucher une case ouvre son détail sous le tableau. */
+  var COLONNES_WEDGES = [{ id: "a1", frac: "¼", nom: "7 h 30" }, { id: "a2", frac: "½", nom: "9 h" }, { id: "a3", frac: "¾", nom: "10 h 30" }, { id: "plein", frac: "Plein", nom: "" }];
+  function caseWedge(id, am) {
+    var obs = am === "plein" ? mesuresObservees()[id] : (coupsDuParcours().wedges[id] || {})[am];
+    var ref = am === "plein" ? referencesClubs()[id] : (etat.carnet.wedges[id] || {})[am];
+    var herit = am === "plein" && !estNombre(ref) ? statsClub(etat.carnet.clubs[id]) : null;
+    return { ref: estNombre(ref) ? ref : null, obs: statsClub(obs), herit: herit };
+  }
+  function celluleWedgeHTML(id, col) {
+    var C = caseWedge(id, col.id), actif = ui.wedgeCase && ui.wedgeCase.id === id && ui.wedgeCase.am === col.id;
+    var lib = nomLoft(CLUB[id]) + ", " + (col.id === "plein" ? "plein swing" : "amplitude " + col.frac + " (" + col.nom + ")") + " : " +
+      (C.ref != null ? "référence " + C.ref + " m" : "pas de référence") + ", " + (C.obs ? "observé " + C.obs.moy + " m sur " + pluriel(C.obs.n, "coup") : "aucun coup observé") +
+      (C.herit ? ", ancienne valeur " + C.herit.moy + " m" : "") + ". Ouvrir le détail";
+    var h = C.ref != null ? '<span class="w-ref">' + C.ref + '</span>' : (C.herit ? '<span class="w-herit">' + C.herit.moy + '</span>' : (C.obs ? '' : '<span class="w-vide">—</span>'));
+    if (C.obs) h += '<span class="w-obs">' + C.obs.moy + '<small>' + C.obs.n + '×</small></span>';
+    return '<td class="num"><button class="w-case" type="button" data-a="w-case" data-w="' + id + '" data-am="' + col.id + '" aria-pressed="' + !!actif + '" aria-label="' + at(lib) + '">' + h + '</button></td>';
+  }
+  function detailWedgeHTML() {
+    var c = ui.wedgeCase; if (!c || !CLUB[c.id] || wedgesMatrice().indexOf(c.id) < 0) return "";
+    var col = COLONNES_WEDGES.filter(function (x) { return x.id === c.am; })[0]; if (!col) return "";
+    var C = caseWedge(c.id, c.am), plein = c.am === "plein";
+    var h = '<div class="w-detail" id="w-detail"><h3 class="titre-bloc">' + t(nomLoft(CLUB[c.id]) + " · " + (plein ? "plein swing" : col.frac + " (" + col.nom + ")")) + '</h3>';
+    h += '<p class="etiq">' + t("Ta référence (déclarée)") + '</p>';
+    if (plein) h += '<p>' + t(C.ref != null ? C.ref + " m, la distance de référence du club." : "Pas de référence pour ce club.") + ' <button class="lien" type="button" data-a="sac-reglages-id" data-id="' + c.id + '">' + t(C.ref != null ? "Modifier" : "Ajouter") + '</button></p>' +
+      (C.herit ? '<p class="aide">' + t("Ancienne valeur du carnet : " + C.herit.moy + " m (" + pluriel(C.herit.n, "mesure") + ", origine non précisée).") + '</p>' : '');
+    else h += '<p class="w-saisie"><input type="text" inputmode="numeric" autocomplete="off" maxlength="3" id="w-' + c.id + '-' + c.am + '" data-c="wedge" data-w="' + c.id + '" data-am="' + c.am + '" aria-label="' + at("Référence " + nomLoft(CLUB[c.id]) + ", amplitude " + col.frac + ", en mètres") + '" value="' + (C.ref == null ? "" : C.ref) + '"> m</p>' +
+      '<p class="erreur" id="w-err" role="alert" hidden></p>';
+    h += '<p class="etiq">' + t("Observé sur le parcours") + '</p><p>' + t(C.obs ? C.obs.moy + " m en moyenne sur " + pluriel(C.obs.n, "coup") + (C.obs.n > 1 ? " (de " + C.obs.min + " à " + C.obs.max + " m)" : "") + "." :
+      plein ? "Aucun coup plein noté avec ce club et une distance." : "Aucun coup noté à cette amplitude : en partie, indique l'amplitude d'un coup de wedge et sa distance.") + '</p>';
+    if (C.obs && C.ref != null && Math.abs(C.obs.moy - C.ref) >= 8) h += '<p class="aide">' + t("Écart de " + Math.abs(C.obs.moy - C.ref) + " m entre ta référence et tes coups joués" + (C.obs.n < 3 ? " ; avec " + pluriel(C.obs.n, "coup") + ", c'est encore peu." : ".")) + '</p>';
+    return h + '<button class="lien" type="button" data-a="w-case-fermer">' + t("Fermer le détail") + '</button></div>';
+  }
+  function lignesWedgesHTML() {
+    return wedgesMatrice().map(function (id) {
+      return '<tr><th scope="row">' + t(courtSac(CLUB[id])) + ' <small>' + t(CLUB[id].perso ? "" : CLUB[id].petit) + '</small></th>' + COLONNES_WEDGES.map(function (col) { return celluleWedgeHTML(id, col); }).join("") + '</tr>';
+    }).join("");
+  }
   function wedgesHTML() {
-    var w = etat.carnet.wedges;
-    return '<p class="aide">Distance de vol moyenne de chaque combinaison, en mètres.</p>' +
-      comment('<p>Trois amplitudes par wedge, comme dans l’exercice de l’horloge : les mains montent à 7 h 30, 9 h ou 10 h 30. Le graphique montre les distances que tu sais faire entre 30 et 80 m, et les trous de plus de 12 m entre deux d’entre elles.</p>') +
-      '<div class="defile"><table class="carte-score grille"><thead><tr><th scope="col">Wedge</th>' +
-      AMPLITUDES.map(function (am) { return '<th scope="col" class="num">' + t(am.nom) + '</th>'; }).join("") + '</tr></thead><tbody>' +
-      wedgesMatrice().map(function (id) {
-        return '<tr><th scope="row">' + t(courtSac(CLUB[id])) + ' <small>' + t(CLUB[id].perso ? "" : CLUB[id].petit) + '</small></th>' + AMPLITUDES.map(function (am) {
-          var v = w[id] && w[id][am.id];
-          return '<td class="num"><input type="text" inputmode="numeric" autocomplete="off" maxlength="3" id="w-' + id + '-' + am.id + '" data-c="wedge" data-w="' + id + '" data-am="' + am.id + '" aria-label="' + at(nomLoft(CLUB[id]) + ", amplitude " + am.nom + ", en mètres") + '" value="' + (v == null ? "" : v) + '"></td>';
-        }).join("") + '</tr>';
-      }).join("") + '</tbody></table></div>' +
-      '<p class="aide">' + t("Les lignes suivent les wedges de ton sac : ajoutes-en un avec son loft depuis la configuration du sac (icône en haut de la page).") + '</p>' +
-      '<p class="erreur" id="w-err" role="alert" hidden></p>' +
+    return '<p class="legende w-legende"><span><span class="w-ref">52</span> ' + t("ta référence") + '</span><span><span class="w-obs">49<small>4×</small></span> ' + t("observé (moyenne, nombre de coups)") + '</span><span><span class="w-vide">—</span> ' + t("inconnu") + '</span></p>' +
+      '<div class="defile"><table class="carte-score grille matrice-wedges"><caption class="vh">' + t("Distances de vol par wedge et amplitude, en mètres") + '</caption><thead><tr><th scope="col">Wedge</th>' +
+      COLONNES_WEDGES.map(function (col) { return '<th scope="col" class="num"><span class="w-frac">' + t(col.frac) + '</span>' + (col.nom ? '<small>' + t(col.nom) + '</small>' : '') + '</th>'; }).join("") + '</tr></thead><tbody>' +
+      lignesWedgesHTML() + '</tbody></table></div>' +
+      detailWedgeHTML() +
+      aideHTML('<p>' + t("Distances de vol, en mètres. ¼, ½ et ¾ : les mains montent à 7 h 30, 9 h ou 10 h 30, comme dans l'exercice de l'horloge. Touche une case pour saisir ta référence ou voir tes coups joués. Les lignes suivent les wedges de ton sac : ajoutes-en un avec son loft depuis la configuration du sac (icône en haut de la page).") + '</p>', "Lire la matrice") +
       '<div id="graph-wedges">' + grapheWedgesHTML() + '</div>';
   }
+  ACTIONS["w-case"] = function (el) {
+    var id = el.getAttribute("data-w"), am = el.getAttribute("data-am");
+    ui.wedgeCase = ui.wedgeCase && ui.wedgeCase.id === id && ui.wedgeCase.am === am ? null : { id: id, am: am };
+    rendre();
+    var inp = document.getElementById("w-" + id + "-" + am), d = document.getElementById("w-detail");
+    if (inp) { inp.focus({ preventScroll: true }); inp.select(); } else { var b = app.querySelector('[data-a="w-case"][data-w="' + id + '"][data-am="' + am + '"]'); if (b) b.focus({ preventScroll: true }); }
+    if (d && d.scrollIntoView) d.scrollIntoView({ block: "nearest" });
+  };
+  ACTIONS["w-case-fermer"] = function () {
+    var c = ui.wedgeCase; ui.wedgeCase = null; rendre();
+    if (c) { var b = app.querySelector('[data-a="w-case"][data-w="' + c.id + '"][data-am="' + c.am + '"]'); if (b) b.focus({ preventScroll: true }); }
+  };
+  ACTIONS["sac-reglages-id"] = function (el) { var id = el.getAttribute("data-id"); if (CLUB[id]) ouvrirSac({ sac: id }, el); };
 
   /* ============================================================
      COUPS GAGNÉS : estimation par secteur face à un joueur cible
@@ -9571,11 +9635,17 @@ function filtrerChronologie(ev, f) {
         return;
       }
       el.removeAttribute("aria-invalid"); if (err) err.hidden = true;
+      /* Rien de changé (le « change » du blur après une saisie déjà prise) : la matrice n'est pas redessinée, pour ne pas
+         avaler le toucher sur une autre case. */
+      var avant = w[id] && w[id][am];
+      if ((brut === "" && avant == null) || v === avant) return;
       if (brut === "") { if (w[id]) { delete w[id][am]; if (!Object.keys(w[id]).length) delete w[id]; } }
       else { (w[id] = w[id] || {})[am] = v; el.value = String(v); }
       sauver();
-      /* Seul le graphique est redessiné : la saisie continue de case en case. */
-      var g = document.getElementById("graph-wedges"); if (g) { g.innerHTML = grapheWedgesHTML(); monterGraphes(); }
+      /* V4-S07 : la matrice est redessinée (la case montre la nouvelle référence), la saisie garde le focus. */
+      var tb = document.querySelector(".matrice-wedges tbody"), g = document.getElementById("graph-wedges");
+      if (tb) tb.innerHTML = lignesWedgesHTML();
+      if (g) { g.innerHTML = grapheWedgesHTML(); monterGraphes(); }
     }
   };
 

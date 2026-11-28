@@ -134,7 +134,8 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   await vue('10b-sac');
   /* Matrice de wedges (onglet Wedges, V4-S02) */
   await page.click('[data-a="sac-onglet"][data-v="wedges"]'); 
-  const wedge = async (w, am, v) => { await page.fill(`#w-${w}-${am}`, String(v)); await page.dispatchEvent(`#w-${w}-${am}`, 'change'); };
+  /* V4-S07 : la référence se saisit dans le détail de la case touchée */
+  const wedge = async (w, am, v) => { if (!await page.locator(`#w-${w}-${am}`).count()) await page.click(`[data-a="w-case"][data-w="${w}"][data-am="${am}"]`); await page.fill(`#w-${w}-${am}`, String(v)); await page.dispatchEvent(`#w-${w}-${am}`, 'change'); };
   await wedge('sw', 'a1', 30); await wedge('sw', 'a2', 45); await wedge('sw', 'a3', 62); await wedge('gw', 'a2', 75);
   await wedge('lw', 'a1', 'xx');
   res.erreurWedge = await page.textContent('#w-err');

@@ -33,7 +33,7 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | S04 | Fiches clubs individuelles | P0 | S01, S02 | Terminé | `ux4/s04-fiches-clubs` · #41 |
 | S05 | Statistiques clubs centralisées dans le Sac | P0 | S01, 07 | Terminé | `ux4/s05-stats-clubs` · #42 |
 | S06 | Classements et comparateur | P1 | S04, S05 | En revue | ux4/s06-classements |
-| S07 | Matrice de wedges (cellules, références ≠ observations) | P1 | S01, S02 | À faire | — |
+| S07 | Matrice de wedges (cellules, références ≠ observations) | P1 | S01, S02 | En revue | ux4/s07-wedges |
 | S08 | Putter et configuration | P1 | S02 | À faire | — |
 | S09 | Identité visuelle (clair, sombre, plein soleil) | P2 | tout le reste | À faire | — |
 
@@ -424,3 +424,18 @@ _09 fusionné dans `app` le 28/11 (PR #44)._
   dans un pli « Détail des deux profils ».
 - Vérifications : `npm test`, `test-startup.js`, essais 3 à 40 verts ; essai 19 étendu (quatre classements triés,
   effectifs visibles, pas de score global).
+
+### S07 — Matrice de wedges (28/11/2026)
+
+- **Tableau compact** loft × amplitude : **¼ (7 h 30) · ½ (9 h) · ¾ (10 h 30) · Plein**. Chaque case sépare la
+  **référence** (ce que tu déclares, chiffre en gras) de l'**observé** (moyenne des coups joués sur le parcours, en
+  pastille, avec le nombre de coups : « 42 3× »). Sans l'un ni l'autre : « — ». Rien n'est déduit d'un autre club ou
+  d'une autre amplitude. En Plein, une ancienne valeur du carnet (origine non précisée) apparaît en italique « ≈ ».
+- **Case cliquable** : le détail s'ouvre sous le tableau — saisie de la référence (¼ ½ ¾), ou lien vers les réglages du
+  club (Plein, où la référence est celle du club) ; coups observés (moyenne, effectif, de … à …) ou « Aucun coup noté
+  à cette amplitude » ; l'écart référence / observé est signalé à partir de 8 m, avec la réserve d'effectif.
+- Les saisies en ligne dans le tableau disparaissent ; le graphique et les constats de trous restent sous la matrice ;
+  l'explication passe dans un pli « Lire la matrice ».
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 41 verts ; **nouvel `essai41.js`** (colonnes, référence ≠
+  observé, inconnu « — », détail, modification sans toucher aux observations) ; essais 3, 6 et 9 adaptés (saisie par
+  la case).
