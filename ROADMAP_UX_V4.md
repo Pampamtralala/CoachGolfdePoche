@@ -30,8 +30,8 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | S01 | Séparer références et observations | P0 | 01 | Terminé | `ux4/s01-references` · #32 |
 | S02 | Trois onglets de Mon sac, configuration par une icône | P0 | 02–04 | Terminé | `ux4/s02-onglets-sac` · #39 |
 | S03 | Graphique d'étagement | P0 | S01, S02 | Terminé | `ux4/s03-etagement` · #40 |
-| S04 | Fiches clubs individuelles | P0 | S01, S02 | **En revue** | `ux4/s04-fiches-clubs` |
-| S05 | Statistiques clubs centralisées dans le Sac | P0 | S01, 07 | À faire | — |
+| S04 | Fiches clubs individuelles | P0 | S01, S02 | Terminé | `ux4/s04-fiches-clubs` · #41 |
+| S05 | Statistiques clubs centralisées dans le Sac | P0 | S01, 07 | **En revue** | `ux4/s05-stats-clubs` |
 | S06 | Classements et comparateur | P1 | S04, S05 | À faire | — |
 | S07 | Matrice de wedges (cellules, références ≠ observations) | P1 | S01, S02 | À faire | — |
 | S08 | Putter et configuration | P1 | S02 | À faire | — |
@@ -355,3 +355,17 @@ _S03 fusionné dans `app` le 28/11 (PR #40)._
 - Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts. `nav-essai.js` gagne `listeSac`, `pageClub`,
   `reglagesClub` ; essais 3, 6, 7, 8, 9, 10, 11, 19, 33 adaptés (dont : héritées seules → aucune dispersion ;
   provenance ; navigation entre clubs ; réglages sans chiffres). Captures 390 px vérifiées.
+
+_S04 fusionné dans `app` le 28/11 (PR #41)._
+
+### S05 — Centraliser les statistiques des clubs dans Sac (28/11/2026)
+
+- La rubrique « Comparaison des clubs » quitte Performance : le profil des clubs, les départs par type de club et le
+  comparateur ne vivent plus que dans **Sac › Performance** (`clubsStatsHTML`, un seul calcul).
+- Filtre conservé sans duplication : l'onglet porte les mêmes pastilles de période que Performance, sur le même état
+  (`filtresStats`) ; changer la période ici la change aussi là-bas, et inversement.
+- Liens contextuels : « Statistiques par club (dans Sac) » en bas de Résultats ; `allerA("bilan", "st-clubs")` (anciens
+  liens) et `st-voir-club` mènent à Sac › Performance ; nouvelle entrée de recherche « Statistiques et comparaison des
+  clubs » ; la page d'un club garde « Comparer un club ».
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts ; essais 19 (profil des clubs depuis Sac,
+  filtres partagés) et 32 (onze rubriques, lien vers Sac) adaptés. Capture 390 px vérifiée.

@@ -76,6 +76,7 @@
         { a: "cond-ouvrir", t: "Conditions du jour", k: "vent temperature meteo" }] },
       { g: "Sac", l: [
         { p: "sac", t: "Sac et distances", k: "clubs fourchette dispersion ecarts trous" },
+        { p: "sac", s: "st-clubs", t: "Statistiques et comparaison des clubs", k: "profil club comparer direction arrivees departs comparateur" },
         { a: "sac-composer", t: "Configuration du sac : composition et lofts", k: "composer configuration clubs wedges loft reglages" },
         { p: "sac", s: "c-wedges", t: "Matrice de wedges", k: "amplitudes petit jeu" },
         { p: "sac", s: "c-historique", t: "Séries de practice archivées", k: "series balles practice archive" }] },
@@ -120,6 +121,8 @@
   /* Va à une page, et à une de ses sections (ouverte si elle se replie). */
   function allerA(page, sec) {
     if (sec) ui.plis[sec] = true;
+    /* V4-S05 : les statistiques par club ont quitté Performance pour Sac ; les anciens liens y mènent. */
+    if (page === "bilan" && sec === "st-clubs") page = "sac";
     /* UX06 : une section d'Analyses vit dans une rubrique ; on ouvre la bonne. */
     if (page === "bilan" && sec && rubriqueDeSection(sec) && ui.rubrique !== rubriqueDeSection(sec)) { ui.rubrique = rubriqueDeSection(sec); if (ui.onglet === "bilan") rendre(); }
     /* V4-S02 : une section de Sac vit dans un onglet ; on ouvre le bon. */
