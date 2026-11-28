@@ -7,8 +7,8 @@ const fs = require('fs');
 const CLE = 'coachgolf.v1';
 const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
 const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
-const NOMS = ['Résultats et progression', 'Mises en jeu', 'Attaque de green', 'Petit jeu', 'Putting', 'Erreurs récurrentes', 'Coups perdus estimés', 'Analyse des parcours', 'Analyse des trous', 'Qualité des données', 'Comprendre mon jeu'];
-const IDS = ['perf', 'mej', 'attaque', 'petit', 'putting', 'erreurs', 'sg', 'parcours', 'trous', 'qualite', 'comprendre'];
+const NOMS = ['Résultats et progression', 'Mises en jeu', 'Attaque de green', 'Petit jeu', 'Putting', 'Erreurs récurrentes', 'Coups perdus estimés', 'Analyse des parcours', 'Analyse des trous', 'Comprendre mon jeu'];
+const IDS = ['perf', 'mej', 'attaque', 'petit', 'putting', 'erreurs', 'sg', 'parcours', 'trous', 'comprendre'];
 (async () => {
   const D = 'shots32'; fs.mkdirSync(D, { recursive: true });
   const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
@@ -61,7 +61,7 @@ const IDS = ['perf', 'mej', 'attaque', 'petit', 'putting', 'erreurs', 'sg', 'par
       if (['perf', 'mej', 'putting', 'erreurs'].includes(id)) await page.screenshot({ path: `${D}/${nom}-${id}.png` });
     }
     /* Contenus attendus */
-    await rub('perf'); verifie(await page.locator('#vue #st-tableau .kpi').count() === 6 && await page.locator('#vue #reperes').count() === 1 && await page.locator('#vue .rb-liens [data-s="st-clubs"]').count() === 1, nom + ' Résultats : chiffres, repères, liens (clubs, qualité)');
+    await rub('perf'); verifie(await page.locator('#vue #st-tableau .kpi').count() === 6 && await page.locator('#vue #reperes').count() === 1 && await page.locator('#vue .rb-liens [data-s="st-clubs"]').count() === 1 && await page.locator('#vue .rb-liens [data-v="profil"][data-s="donnees"]').count() === 1, nom + ' Résultats : chiffres, repères, liens (clubs, qualité)');
     await rub('mej'); verifie(await page.locator('#vue .repartition').count() >= 1 && await page.locator('#vue #rb-rep-mej, #vue #rb-rep-cotes').count() === 2, nom + ' Mises en jeu : répartition et deux réponses');
     verifie(await page.locator('#vue [data-a="exos-domaine"][data-v="drive"]').count() >= 1, nom + ' Mises en jeu : exercices liés');
     await rub('putting'); verifie(await page.locator('#vue #st-putting').count() === 1 && await page.locator('#vue .rb-ens .rb-ens-liste li').count() >= 1, nom + ' Putting : analyse et enseignement lié, en une ligne (trois-putts en hausse)');

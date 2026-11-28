@@ -14,18 +14,16 @@
     { id: "sg", nom: "Coups perdus estimés", court: "Coups perdus" },
     { id: "parcours", nom: "Analyse des parcours", court: "Parcours" },
     { id: "trous", nom: "Analyse des trous", court: "Trous" },
-    { id: "qualite", nom: "Qualité des données", court: "Qualité" },
     { id: "comprendre", nom: "Comprendre mon jeu", court: "Comprendre" }
   ];
   /* Sections d'avant (liens, recherche, cartes de Mon jeu) → rubrique qui les contient désormais. */
   var SECTION_RUBRIQUE = { "st-putting": "putting", releves: "putting", "st-erreurs": "erreurs", evitables: "erreurs", defauts: "erreurs",
-    "qualite-donnees": "qualite", sg: "sg", notes: "perf", carte: "perf", priorites: "perf", palier: "perf", reperes: "perf",
+    sg: "sg", notes: "perf", carte: "perf", priorites: "perf", palier: "perf", reperes: "perf",
     "rb-perf": "perf", "rb-mej": "mej", "rb-attaque": "attaque", "rb-petit": "petit", "rb-parcours": "parcours", "rb-trous": "trous", "rb-comprendre": "comprendre" };
   function rubriqueDeSection(s) { return SECTION_RUBRIQUE[s] || null; }
   function rubriqueCourante() { var r = ui.rubrique; return RUBRIQUES_AN.some(function (x) { return x.id === r; }) ? r : "perf"; }
   /* V4-07 : cinq familles. Les rubriques restent les unités de contenu (liens profonds inchangés) ; une famille à
-     plusieurs rubriques montre une seconde rangée de pastilles. Les statistiques par club vivent dans Sac (S05) ; qualité des données → profil (09) :
-     en attendant, cette rubrique reste joignable par son lien, hors familles. */
+     plusieurs rubriques montre une seconde rangée de pastilles. Les statistiques par club vivent dans Sac (S05), la qualité des données dans le profil (09). */
   var FAMILLES_AN = [
     { id: "resultats", nom: "Résultats et progression", court: "Résultats", rub: ["perf"] },
     { id: "secteurs", nom: "Secteurs de jeu", court: "Secteurs", rub: ["mej", "attaque", "petit", "putting"] },
@@ -96,14 +94,13 @@
     if (rb === "sg") return "Estimation par secteur face à un joueur d'index " + indexVise() + ".";
     if (rb === "parcours") return pluriel(etat.parcours.length, "parcours") + " enregistré" + (etat.parcours.length > 1 ? "s" : "") + ".";
     if (rb === "trous") return "Les trous joués au moins 3 fois sur ton parcours le plus joué.";
-    if (rb === "qualite") return "Provenance de tes données : mesurées, estimées, déclarées ou inconnues.";
     return "";
   }
   /* Contenu d'une rubrique. B : les blocs déjà calculés par la page (palier, plis). */
   function rubriqueHTML(rb, B) {
     var R0 = RUBRIQUES_AN.filter(function (x) { return x.id === rb; })[0], l = partiesFiltrees(), A = tableauStats(l);
     var tete = '<section class="bloc rb-tete" id="rb-' + rb + '"><h2>' + t(R0.nom) + '</h2>' + (resumeRubrique(rb, A, l) ? '<p class="chapo rb-resume">' + t(resumeRubrique(rb, A, l)) + '</p>' : '') + ensRubriqueHTML(rb);
-    var vide = !A.parties && rb !== "comprendre" && rb !== "qualite" && rb !== "parcours";
+    var vide = !A.parties && rb !== "comprendre" && rb !== "parcours";
     /* Sans partie dans le filtre : les blocs tirés du profil déclaré restent (palier, carte, défauts, objectif). */
     if (vide) {
       var sansPartie = '<p class="aide">' + t(etat.parties.length ? "Aucune partie dans cette période : élargis-la (« Toutes »)." : "Pas encore de partie : les chiffres de cette rubrique apparaîtront après ta première partie.") + '</p></section>';
@@ -125,7 +122,6 @@
     if (rb === "trous") return tete + reponseRubriqueHTML("trous") + (etat.parcours.length ? '<h3 class="titre-bloc">' + t("Trou par trou") + '</h3><ul class="liste-exos">' + etat.parcours.map(function (pc) {
       return '<li><button class="ligne" type="button" data-a="pc-ouvrir" data-id="' + pc.id + '"><span class="quoi"><b>' + t(pc.nom) + '</b><small>' + t("Score moyen et passages de chaque trou") + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>';
     }).join("") + '</ul>' : '') + '</section>';
-    if (rb === "qualite") return tete + '<div class="ligne-btn"><button class="btn" type="button" data-a="md-ouvrir">Mes données : vérifier, corriger, sauvegarder</button></div></section>' + qualiteGolfHTML();
     /* V4-07 : Comprendre mon jeu = enseignements (toutes les parties) + questions (filtre commun), tout en place. */
     var Re = etat.parties.length ? calculEns() : { liste: [], parties: 0 }, n = Re.liste.length, vus = ui.ensTout ? Re.liste : Re.liste.slice(0, 5);
     var ens = '<div id="rb-ens"><h3 class="titre-bloc">' + t("Ce que disent tes données") + '</h3>' + (n ? '<ul class="liste-exos rb-ens-liste">' + vus.map(ligneEnsHTML).join("") + '</ul>' +
@@ -137,7 +133,7 @@
   /* Liens de fin de « Résultats » : rapports, statistiques par club (bientôt dans Sac, S05), qualité des données. */
   function liensResultatsHTML() {
     return '<section class="bloc rb-liens"><ul class="liste-exos">' +
-      [["j-ouvrir", "", "", "Bilans, journal et rapports"], ["aller-a", "sac", "st-clubs", "Statistiques par club (dans Sac)"], ["rubrique", "qualite", "", "Qualité de mes données"]].map(function (x) {
+      [["j-ouvrir", "", "", "Bilans, journal et rapports"], ["aller-a", "sac", "st-clubs", "Statistiques par club (dans Sac)"], ["aller-a", "profil", "donnees", "Qualité de mes données (profil)"]].map(function (x) {
         return '<li><button class="ligne" type="button" data-a="' + x[0] + '"' + (x[1] ? ' data-v="' + x[1] + '"' : '') + (x[2] ? ' data-s="' + x[2] + '"' : '') + '><span class="quoi"><b>' + t(x[3]) + '</b></span><span class="chev" aria-hidden="true">›</span></button></li>';
       }).join("") + '</ul></section>';
   }

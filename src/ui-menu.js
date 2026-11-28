@@ -123,6 +123,8 @@
     if (sec) ui.plis[sec] = true;
     /* V4-S05 : les statistiques par club ont quitté Performance pour Sac ; les anciens liens y mènent. */
     if (page === "bilan" && sec === "st-clubs") page = "sac";
+    /* V4-09 : la qualité des données est dans le profil (Mes données). */
+    if (page === "bilan" && sec === "qualite-donnees") { page = "profil"; ui.plis["qualite-donnees"] = true; }
     /* UX06 : une section d'Analyses vit dans une rubrique ; on ouvre la bonne. */
     if (page === "bilan" && sec && rubriqueDeSection(sec) && ui.rubrique !== rubriqueDeSection(sec)) { ui.rubrique = rubriqueDeSection(sec); if (ui.onglet === "bilan") rendre(); }
     /* V4-S02 : une section de Sac vit dans un onglet ; on ouvre le bon. */
