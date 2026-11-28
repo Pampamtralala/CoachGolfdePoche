@@ -34,7 +34,7 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | S05 | Statistiques clubs centralisées dans le Sac | P0 | S01, 07 | Terminé | `ux4/s05-stats-clubs` · #42 |
 | S06 | Classements et comparateur | P1 | S04, S05 | En revue | ux4/s06-classements |
 | S07 | Matrice de wedges (cellules, références ≠ observations) | P1 | S01, S02 | En revue | ux4/s07-wedges |
-| S08 | Putter et configuration | P1 | S02 | À faire | — |
+| S08 | Putter et configuration | P1 | S02 | En revue | ux4/s08-putter |
 | S09 | Identité visuelle (clair, sombre, plein soleil) | P2 | tout le reste | À faire | — |
 
 Ordre retenu : 01 → S01 → 02 → 03 → 04 → 05 → 06 → 07 → S02 → S03 → S04 → S05 → 08 → 09 → S06 → S07 → S08 → S09.
@@ -439,3 +439,20 @@ _09 fusionné dans `app` le 28/11 (PR #44)._
 - Vérifications : `npm test`, `test-startup.js`, essais 3 à 41 verts ; **nouvel `essai41.js`** (colonnes, référence ≠
   observé, inconnu « — », détail, modification sans toucher aux observations) ; essais 3, 6 et 9 adaptés (saisie par
   la case).
+
+### S08 — Putter et configuration (28/11/2026)
+
+- **Page du putter** : le putting de la période (mêmes filtres et mêmes calculs que Performance › Putting) — putts par
+  18 trous, part de trous à un putt, à trois putts et plus, chacun avec son effectif ; base (trous, parties, putts,
+  longueur du premier putt notée ou non) ; accès à « Évolution et détail du putting ». Un pli explique pourquoi rien
+  n'est attribué au putter : les putts ne sont pas reliés à un modèle de putter (« ton putting, pas ton putter »).
+- **Configuration du sac** : compteur **Clubs sélectionnés n/14** (putter compris), familles Bois et hybrides · Fers ·
+  Wedges, lofts sous les wedges, **références** marquées « réf. … m » (l'ancienne moyenne sans provenance n'est plus
+  affichée), ajout d'un wedge par loft, ligne **Putter** (vers sa page), bouton **Terminé** ; à 14, les autres clubs
+  sont désactivés avec la raison (limite de la règle).
+- **Historique gardé après retrait** : un wedge ajouté n'est plus oublié s'il a des coups joués ; quand on change le
+  loft d'un wedge ajouté, ses **coups joués le suivent** (avant, ils restaient rattachés à l'ancien identifiant et
+  sortaient des analyses) ; dans Distances, un pli **Clubs retirés du sac** liste ceux qui ont un historique (coups,
+  référence, mesures héritées, cases de wedge) et ouvre leur page, marquée « Hors du sac · historique gardé ».
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 42 verts ; **nouvel `essai42.js`** (putter, compteur,
+  références, limite de 14, retrait sans perte, changement de loft, clubs retirés).

@@ -30,6 +30,31 @@
     return mes.length >= 3 ? mes.slice(0, SAC_MAX) : sacActuel();
   }
   function sacCompose() { return !!etat.carnet.sac; }
+  /* V4-S08 : un club a-t-il des coups joués (parties enregistrées ou en cours) ? */
+  function chaqueCoup(f) {
+    etat.parties.concat(etat.partie ? [etat.partie] : []).forEach(function (p) {
+      if (p && Array.isArray(p.coups)) p.coups.forEach(function (l) { (l || []).forEach(function (c) { if (c) f(c); }); });
+    });
+  }
+  function clubJoue(id) { var oui = false; chaqueCoup(function (c) { if (c.c === id) oui = true; }); return oui; }
+  function renommerCoups(de, vers) { chaqueCoup(function (c) { if (c.c === de) c.c = vers; }); }
+  /* Clubs sortis du sac dont il reste un historique : coups joués, référence, mesures héritées ou cases de wedge. */
+  function clubsRetires() {
+    var sac = sacActuel(), cb = etat.carnet, joues = {};
+    chaqueCoup(function (c) { joues[c.c] = (joues[c.c] || 0) + 1; });
+    return CLUBS.filter(function (c) { return sac.indexOf(c.id) < 0 && (joues[c.id] || (cb.clubs[c.id] || []).length || referencesClubs()[c.id] != null || cb.wedges[c.id]); })
+      .map(function (c) { return { id: c.id, coups: joues[c.id] || 0, ref: referencesClubs()[c.id], herit: (cb.clubs[c.id] || []).length }; });
+  }
+  function clubsRetiresHTML() {
+    if (!etat.carnet.sac) return "";
+    var l = clubsRetires(); if (!l.length) return "";
+    return '<section class="bloc" id="c-retires"><details class="aide-pli"><summary><span class="ico-info" aria-hidden="true">i</span>' + t("Clubs retirés du sac (" + l.length + ")") + '</summary><div>' +
+      '<p class="aide">' + t("Leur historique est gardé : il compte toujours dans tes statistiques de la période et se retrouve sur leur page.") + '</p>' +
+      '<ul class="liste-exos">' + l.map(function (x) {
+        var sous = [x.coups ? pluriel(x.coups, "coup") + " joué" + (x.coups > 1 ? "s" : "") : "", x.ref != null ? "réf. " + x.ref + " m" : "", x.herit ? pluriel(x.herit, "mesure") + " héritée" + (x.herit > 1 ? "s" : "") : ""].filter(Boolean).join(" · ") || "cases de la matrice de wedges";
+        return '<li><button class="ligne simple" type="button" data-a="sac-fiche-club" data-id="' + x.id + '"><span class="quoi"><b>' + t(nomLoft(CLUB[x.id])) + '</b><small>' + t(sous) + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>';
+      }).join("") + '</ul></div></details></section>';
+  }
   function fixerSac(ids) {
     etat.carnet.sac = CLUBS.filter(function (c) { return ids.indexOf(c.id) >= 0; }).map(function (c) { return c.id; }).slice(0, SAC_MAX);
   }
@@ -155,7 +180,7 @@
       '<section class="feuille sac-fiche" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">';
     function entete(sur, titre) { return '<header><p class="surtitre">' + t(sur) + '</p><h2 id="f-titre">' + t(titre) + '</h2><button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>'; }
     if (id === "putter") {
-      return tete + entete("Putter", "Putter") + '<p>' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans les Statistiques, avec l’estimation des coups gagnés.") + '</p></section>';
+      return tete + entete("Putter", "Putter") + '<p>' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans Performance › Putting ; les putts ne sont pas reliés au modèle de putter.") + '</p></section>';
     }
     var c = CLUB[id], mes = etat.carnet.clubs[id] || [], parc = coupsDuParcours().clubs[id] || [], tout = parc;
     var s = statsClub(parc), an = analyseCarnet(mesuresTout(), sacActuel()), ref = referencesClubs()[id];
@@ -191,23 +216,29 @@
   }
 
   /* ---------- Fiche de composition du sac ---------- */
+  /* V4-S08 : composition (14 clubs au plus, putter compris), lofts, références déclarées (marquées « réf. », jamais une
+     moyenne sans provenance), le putter, et l'assurance que l'historique d'un club retiré est gardé. */
   function sacComposerHTML() {
-    var ids = sacActuel(), plein = ids.length >= SAC_MAX, tout = mesuresTout();
+    var ids = sacActuel(), plein = ids.length >= SAC_MAX, refs = referencesClubs();
     var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer" tabindex="-1"></button>' +
       '<section class="feuille" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
-      '<header><p class="surtitre">' + t(pluriel(ids.length, "club") + " et le putter, " + (SAC_MAX + 1) + " au plus") + '</p><h2 id="f-titre">Configuration du sac</h2>' +
+      '<header><p class="surtitre">' + t("Composition, lofts et références") + '</p><h2 id="f-titre">Configuration du sac</h2>' +
       '<button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>' +
-      '<p class="aide">' + t("Touche un club pour le mettre dans le sac ou l'en sortir. Ses mesures sont gardées.") + '</p>';
+      '<p class="sac-compte" aria-live="polite"><b>' + t("Clubs sélectionnés") + '</b><span class="sac-compte-v' + (plein ? " plein" : "") + '">' + (ids.length + 1) + '/' + (SAC_MAX + 1) + '</span></p>' +
+      '<p class="aide">' + t("Putter compris. Touche un club pour le mettre dans le sac ou l'en sortir : c'est enregistré aussitôt, et l'historique d'un club retiré (coups joués, référence, mesures) est gardé.") + '</p>';
     ["b", "f", "w"].forEach(function (fam) {
       h += '<fieldset class="champ"><legend>' + t(SAC_FAMILLES[fam]) + '</legend><div class="choix-ligne">' +
         CLUBS.filter(function (c) { return c.fam === fam; }).map(function (c) {
-          var dedans = ids.indexOf(c.id) >= 0, m = moyenneClub(tout, c.id);
-          var sous = [c.fam === "w" && !c.perso ? (c.loftPrecise ? c.loft + "°" : c.petitBase) : "", m != null ? m + " m" : ""].filter(Boolean).join(" · ");
+          var dedans = ids.indexOf(c.id) >= 0, m = refs[c.id];
+          var sous = [c.fam === "w" && !c.perso ? (c.loftPrecise ? c.loft + "°" : c.petitBase) : "", m != null ? "réf. " + m + " m" : ""].filter(Boolean).join(" · ");
           return '<button class="opt" type="button" data-a="sac-basculer" data-id="' + c.id + '" aria-pressed="' + dedans + '"' + (!dedans && plein ? " disabled" : "") + '>' + t(c.nom.split(",")[0]) + (sous ? '<small>' + t(sous) + '</small>' : '') + '</button>';
         }).join("") + '</div></fieldset>';
       if (fam === "w") h += ajoutWedgeHTML(plein);
     });
-    if (plein) h += '<p class="aide sac-plein">' + t("Ton sac est plein : sors un club pour en mettre un autre ou ajouter un wedge.") + '</p>';
+    if (plein) h += '<p class="aide sac-plein">' + t("Ton sac est plein (14 clubs avec le putter, la limite de la règle) : sors un club pour en mettre un autre ou ajouter un wedge.") + '</p>';
+    h += '<ul class="liste-exos sac-putter-l"><li><button class="ligne simple" type="button" data-a="sac-putter-page"><span class="quoi"><b>Putter</b><small>' + t("Toujours dans le sac · hors étagement") + '</small></span><span class="chev" aria-hidden="true">›</span></button></li></ul>' +
+      '<p class="aide">' + t("Les références se règlent sur la page de chaque club (icône réglages).") + '</p>' +
+      '<div class="ligne-btn"><button class="btn principal large" type="button" data-a="fermer-feuille">Terminé</button></div>';
     return h + '</section>';
   }
 
@@ -270,6 +301,8 @@
         if (cb.clubs[id]) { cb.clubs[neuf] = cb.clubs[id]; delete cb.clubs[id]; }
         if (cb.references && cb.references[id] != null) { cb.references[neuf] = cb.references[id]; delete cb.references[id]; }
         if (cb.wedges[id]) { cb.wedges[neuf] = cb.wedges[id]; delete cb.wedges[id]; }
+        /* V4-S08 : les coups joués avec ce wedge le suivent aussi (sinon ils ne seraient plus rattachés à aucun club). */
+        renommerCoups(id, neuf);
         var ids = sacActuel().map(function (k) { return k === id ? neuf : k; });
         majWedges(); fixerSac(ids);
         if (ui.sacSel === id) ui.sacSel = neuf;
@@ -295,6 +328,7 @@
     ouvrirClubPage(id); /* V4-S04 : la page du club */
   };
   ACTIONS["sac-composer"] = function (el) { ouvrirSac({ sacComposer: true }, el); };
+  ACTIONS["sac-putter-page"] = function () { ui.retourFocus = null; ouvrirClubPage("putter"); };
   function lireSacVal() {
     var inp = document.getElementById("sac-val"), brut = inp ? inp.value.trim() : "";
     if (brut === "") return null;
@@ -375,7 +409,7 @@
     if (ids.indexOf(id) >= 0) {
       ids = ids.filter(function (k) { return k !== id; }); if (ui.sacSel === id) ui.sacSel = null;
       /* Un wedge ajouté qu'on sort du sac sans l'avoir mesuré disparaît de la liste. */
-      if (CLUB[id].perso && !etat.carnet.clubs[id] && referencesClubs()[id] == null && !etat.carnet.wedges[id]) {
+      if (CLUB[id].perso && !etat.carnet.clubs[id] && referencesClubs()[id] == null && !etat.carnet.wedges[id] && !clubJoue(id)) {
         etat.carnet.wedgesPerso = etat.carnet.wedgesPerso.filter(function (v) { return v !== CLUB[id].loft; }); oubli = true;
       }
     }
