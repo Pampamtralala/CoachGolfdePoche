@@ -1,6 +1,6 @@
   /* ============================================================
-     PROFIL DES CLUBS (roadmap DATA, P06)
-     Sur les parties choisies par les filtres du tableau de bord : régularité et résultat de chaque club.
+     PROFIL DES CLUBS (roadmap DATA, P06 ; dans Sac › Performance depuis V4-S05)
+     Sur les parties choisies par le filtre commun (le même que Performance) : régularité et résultat de chaque club.
      Se lit sans distance ; la distance n'est qu'une indication, arrondie à 5 m.
      ============================================================ */
   function ordreClubs() { return sacActuel().concat(CLUBS.map(function (c) { return c.id; })); }
@@ -51,7 +51,7 @@
   }
   function clubsStatsHTML() {
     var F = filtresStats(), l = selectionStats(F), notes = clubsNotes(l, ordreClubs()), fam = departsParFamille(l);
-    var h = '<section class="bloc" id="st-clubs"><h2>Profil des clubs</h2><p class="aide">' + t("Régularité et résultat de chaque club, sur les parties choisies plus haut.") + '</p>';
+    var h = '<section class="bloc" id="st-clubs"><h2>Profil des clubs</h2>';
     if (!notes.length && !fam.length) return h + etatVideHTML("sac", "Aucun club à profiler", "Note tes coups en saisie Expert pour suivre chaque club. En saisie Standard, le club de départ suffit pour suivre tes mises en jeu par type de club.") + '</section>';
     h += departsFamillesHTML(fam);
     if (notes.length) {
@@ -79,7 +79,8 @@
     var id = el.getAttribute("data-v"), F = filtresStats();
     if (!clubsNotes(selectionStats(F), []).some(function (x) { return x.club === id; })) { F.derniers = 0; F.format = ""; F.parcours = ""; F.debut = ""; F.fin = ""; }
     F.club = id; F.club2 = "";
-    fermerFeuille(); allerOnglet("bilan", false);
+    /* V4-S05 : le profil des clubs vit dans Sac (onglet Performance). */
+    fermerFeuille(); ui.sacClub = null; ui.sacOnglet = "performance"; allerOnglet("sac", false);
     var s = document.getElementById("st-clubs");
     if (s) { s.scrollIntoView({ block: "start" }); var b = s.querySelector('[data-a="st-club"][aria-pressed="true"]'); if (b) b.focus({ preventScroll: true }); }
   };

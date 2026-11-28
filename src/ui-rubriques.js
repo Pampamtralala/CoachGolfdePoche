@@ -14,19 +14,18 @@
     { id: "sg", nom: "Coups perdus estimés", court: "Coups perdus" },
     { id: "parcours", nom: "Analyse des parcours", court: "Parcours" },
     { id: "trous", nom: "Analyse des trous", court: "Trous" },
-    { id: "clubs", nom: "Comparaison des clubs", court: "Clubs" },
     { id: "qualite", nom: "Qualité des données", court: "Qualité" },
     { id: "comprendre", nom: "Comprendre mon jeu", court: "Comprendre" }
   ];
   /* Sections d'avant (liens, recherche, cartes de Mon jeu) → rubrique qui les contient désormais. */
   var SECTION_RUBRIQUE = { "st-putting": "putting", releves: "putting", "st-erreurs": "erreurs", evitables: "erreurs", defauts: "erreurs",
-    "st-clubs": "clubs", "qualite-donnees": "qualite", sg: "sg", notes: "perf", carte: "perf", priorites: "perf", palier: "perf", reperes: "perf",
+    "qualite-donnees": "qualite", sg: "sg", notes: "perf", carte: "perf", priorites: "perf", palier: "perf", reperes: "perf",
     "rb-perf": "perf", "rb-mej": "mej", "rb-attaque": "attaque", "rb-petit": "petit", "rb-parcours": "parcours", "rb-trous": "trous", "rb-comprendre": "comprendre" };
   function rubriqueDeSection(s) { return SECTION_RUBRIQUE[s] || null; }
   function rubriqueCourante() { var r = ui.rubrique; return RUBRIQUES_AN.some(function (x) { return x.id === r; }) ? r : "perf"; }
   /* V4-07 : cinq familles. Les rubriques restent les unités de contenu (liens profonds inchangés) ; une famille à
-     plusieurs rubriques montre une seconde rangée de pastilles. Clubs → Sac (S05) ; qualité des données → profil (09) :
-     en attendant, ces deux rubriques restent joignables par leurs liens, hors familles. */
+     plusieurs rubriques montre une seconde rangée de pastilles. Les statistiques par club vivent dans Sac (S05) ; qualité des données → profil (09) :
+     en attendant, cette rubrique reste joignable par son lien, hors familles. */
   var FAMILLES_AN = [
     { id: "resultats", nom: "Résultats et progression", court: "Résultats", rub: ["perf"] },
     { id: "secteurs", nom: "Secteurs de jeu", court: "Secteurs", rub: ["mej", "attaque", "petit", "putting"] },
@@ -97,7 +96,6 @@
     if (rb === "sg") return "Estimation par secteur face à un joueur d'index " + indexVise() + ".";
     if (rb === "parcours") return pluriel(etat.parcours.length, "parcours") + " enregistré" + (etat.parcours.length > 1 ? "s" : "") + ".";
     if (rb === "trous") return "Les trous joués au moins 3 fois sur ton parcours le plus joué.";
-    if (rb === "clubs") return "Régularité, direction et distance de chaque club noté.";
     if (rb === "qualite") return "Provenance de tes données : mesurées, estimées, déclarées ou inconnues.";
     return "";
   }
@@ -127,7 +125,6 @@
     if (rb === "trous") return tete + reponseRubriqueHTML("trous") + (etat.parcours.length ? '<h3 class="titre-bloc">' + t("Trou par trou") + '</h3><ul class="liste-exos">' + etat.parcours.map(function (pc) {
       return '<li><button class="ligne" type="button" data-a="pc-ouvrir" data-id="' + pc.id + '"><span class="quoi"><b>' + t(pc.nom) + '</b><small>' + t("Score moyen et passages de chaque trou") + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>';
     }).join("") + '</ul>' : '') + '</section>';
-    if (rb === "clubs") return tete + '</section>' + clubsStatsHTML();
     if (rb === "qualite") return tete + '<div class="ligne-btn"><button class="btn" type="button" data-a="md-ouvrir">Mes données : vérifier, corriger, sauvegarder</button></div></section>' + qualiteGolfHTML();
     /* V4-07 : Comprendre mon jeu = enseignements (toutes les parties) + questions (filtre commun), tout en place. */
     var Re = etat.parties.length ? calculEns() : { liste: [], parties: 0 }, n = Re.liste.length, vus = ui.ensTout ? Re.liste : Re.liste.slice(0, 5);
@@ -140,8 +137,8 @@
   /* Liens de fin de « Résultats » : rapports, statistiques par club (bientôt dans Sac, S05), qualité des données. */
   function liensResultatsHTML() {
     return '<section class="bloc rb-liens"><ul class="liste-exos">' +
-      [["j-ouvrir", "", "", "Bilans, journal et rapports"], ["rubrique", "clubs", "", "Statistiques par club"], ["rubrique", "qualite", "", "Qualité de mes données"]].map(function (x) {
-        return '<li><button class="ligne" type="button" data-a="' + x[0] + '"' + (x[1] ? ' data-v="' + x[1] + '"' : '') + '><span class="quoi"><b>' + t(x[3]) + '</b></span><span class="chev" aria-hidden="true">›</span></button></li>';
+      [["j-ouvrir", "", "", "Bilans, journal et rapports"], ["aller-a", "sac", "st-clubs", "Statistiques par club (dans Sac)"], ["rubrique", "qualite", "", "Qualité de mes données"]].map(function (x) {
+        return '<li><button class="ligne" type="button" data-a="' + x[0] + '"' + (x[1] ? ' data-v="' + x[1] + '"' : '') + (x[2] ? ' data-s="' + x[2] + '"' : '') + '><span class="quoi"><b>' + t(x[3]) + '</b></span><span class="chev" aria-hidden="true">›</span></button></li>';
       }).join("") + '</ul></section>';
   }
   ACTIONS.rubrique = function (el) { ui.rubrique = el.getAttribute("data-v"); var Fr = familleDe(ui.rubrique); if (Fr) (ui.rubFamille || (ui.rubFamille = {}))[Fr.id] = ui.rubrique; rendre(); var b = app.querySelector('.rubriques [data-v="' + ui.rubrique + '"]'); if (b) { b.focus({ preventScroll: true }); if (b.scrollIntoView) b.scrollIntoView({ block: "nearest", inline: "center" }); } };

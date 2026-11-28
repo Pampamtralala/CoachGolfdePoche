@@ -1,7 +1,7 @@
 /* P06 : profil des clubs — direction, arrivées, mises en jeu, distance indicative, comparaison, départs par famille, lien depuis le sac. */
 const { chromium } = require('playwright');
 const fs = require('fs');
-const { allerVue } = require('./nav-essai');
+const { pageClub, allerVue } = require('./nav-essai');
 const CLE = 'coachgolf.v1';
 const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
 (async () => {
@@ -22,12 +22,12 @@ const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
     for (let i = 0; i < 8 && await page.locator('[data-a="q-suite"]').count(); i++) await page.click('[data-a="q-suite"]');
     await page.waitForSelector('.tete');
     /* Sans coup ni club de départ : état vide de la section */
-    await page.click('#barre [data-a="onglet"][data-v="bilan"]'); await page.click('[data-a="rubrique"][data-v="clubs"]'); /* UX06 */
+    await page.click('#barre [data-a="onglet"][data-v="sac"]'); await page.click('[data-a="sac-onglet"][data-v="performance"]'); /* V4-S05 : statistiques par club dans Sac */
     const e = await page.evaluate(k => JSON.parse(localStorage.getItem(k)), CLE);
     e.parties = [{ id: 'p_vide', d: '2026-03-01T10:00:00.000Z', o: 0, trous: PARS.map(p => [1, 0, 2, 0, p + 1, p, 0, 0, 0, 0, 0]) }];
     e.maj = Date.now();
     await page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [CLE, e]);
-    await page.reload(); await page.waitForSelector('.tete'); await page.click('#barre [data-a="onglet"][data-v="bilan"]'); await page.click('[data-a="rubrique"][data-v="clubs"]'); /* UX06 */
+    await page.reload(); await page.waitForSelector('.tete'); await page.click('#barre [data-a="onglet"][data-v="sac"]'); await page.click('[data-a="sac-onglet"][data-v="performance"]'); /* V4-S05 : statistiques par club dans Sac */
     r.vide = (await page.textContent('#st-clubs')).replace(/\s+/g, ' ').trim();
     verifie(/Aucun club à profiler/.test(r.vide), nom + ' section vide : ' + r.vide);
     /* 12 parties de 9 trous : driver au départ des par 4/5 (de plus en plus droit), fer 7 sur les par 3,
@@ -46,7 +46,7 @@ const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
     e.maj = Date.now();
     await page.evaluate(([k, v]) => localStorage.setItem(k, JSON.stringify(v)), [CLE, e]);
     await page.reload(); await page.waitForSelector('.tete');
-    await page.click('#barre [data-a="onglet"][data-v="bilan"]'); await page.click('[data-a="rubrique"][data-v="clubs"]'); /* UX06 */
+    await page.click('#barre [data-a="onglet"][data-v="sac"]'); await page.click('[data-a="sac-onglet"][data-v="performance"]'); /* V4-S05 : statistiques par club dans Sac */
     await page.click('[data-a="st-derniers"][data-v="0"]');
     await page.evaluate(() => document.getElementById('st-clubs').scrollIntoView());
     await page.click('#st-clubs [data-a="st-club"][data-v="dr"]');
@@ -84,7 +84,7 @@ const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
     /* Depuis le sac : la fiche du fer 7 ouvre son profil */
     await allerVue(page, 'sac');
     /* V4-S04 : la page du club mène au comparateur de l'onglet Performance de Sac */
-    await page.click('#c-synthese [data-a="sac-fiche-club"][data-id="f7"]'); await page.waitForSelector('#club-page');
+    await pageClub(page, 'f7');
     r.lien = (await page.textContent('#club-page [data-a="club-comparer"]')).trim();
     await page.click('#club-page [data-a="club-comparer"]');
     await page.waitForSelector('#st-clubs');

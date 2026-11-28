@@ -7621,7 +7621,7 @@ function filtrerChronologie(ev, f) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-28T08:33:42.168Z";
+  var VERSION_APPLI = "2026-11-28T08:57:29.873Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, references: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -9350,7 +9350,8 @@ function filtrerChronologie(ev, f) {
       '<nav class="fenetres sac-onglets" aria-label="Vues du sac">' + ONGLETS_SAC.map(function (x) {
         return '<button class="opt" type="button" data-a="sac-onglet" data-v="' + x.id + '" aria-pressed="' + (x.id === o) + '"' + (x.id === o ? ' aria-current="true"' : '') + '>' + t(x.court) + '</button>';
       }).join("") + '</nav></section>';
-    if (o === "performance") return h + '<section class="bloc sac-perf-intro" id="c-perf-clubs"><p class="aide">' + t(perimetreTexte(partiesFiltrees()) + " Période choisie dans Performance.") + '</p></section>' + clubsStatsHTML();
+    /* V4-S05 : seul endroit des statistiques par club ; même filtre de période que Performance (même état, mêmes calculs). */
+    if (o === "performance") return h + '<section class="bloc sac-perf-intro" id="c-perf-clubs">' + pastillesPeriodeHTML() + '<p class="aide">' + t(perimetreTexte(partiesFiltrees()) + " Même période que Performance.") + '</p></section>' + clubsStatsHTML();
     if (o === "wedges") return h + '<section class="bloc" id="c-wedges"><h2>Ma matrice de wedges</h2>' + wedgesHTML() + '</section>';
     return h + '<section class="bloc sac-resume-chiffres">' + chiffresSacHTML() + '</section>' + syntheseSacHTML() +
       vigilanceSacHTML() + archiveSeriesHTML();
@@ -10020,6 +10021,7 @@ function filtrerChronologie(ev, f) {
         { a: "cond-ouvrir", t: "Conditions du jour", k: "vent temperature meteo" }] },
       { g: "Sac", l: [
         { p: "sac", t: "Sac et distances", k: "clubs fourchette dispersion ecarts trous" },
+        { p: "sac", s: "st-clubs", t: "Statistiques et comparaison des clubs", k: "profil club comparer direction arrivees departs comparateur" },
         { a: "sac-composer", t: "Configuration du sac : composition et lofts", k: "composer configuration clubs wedges loft reglages" },
         { p: "sac", s: "c-wedges", t: "Matrice de wedges", k: "amplitudes petit jeu" },
         { p: "sac", s: "c-historique", t: "Séries de practice archivées", k: "series balles practice archive" }] },
@@ -10064,6 +10066,8 @@ function filtrerChronologie(ev, f) {
   /* Va à une page, et à une de ses sections (ouverte si elle se replie). */
   function allerA(page, sec) {
     if (sec) ui.plis[sec] = true;
+    /* V4-S05 : les statistiques par club ont quitté Performance pour Sac ; les anciens liens y mènent. */
+    if (page === "bilan" && sec === "st-clubs") page = "sac";
     /* UX06 : une section d'Analyses vit dans une rubrique ; on ouvre la bonne. */
     if (page === "bilan" && sec && rubriqueDeSection(sec) && ui.rubrique !== rubriqueDeSection(sec)) { ui.rubrique = rubriqueDeSection(sec); if (ui.onglet === "bilan") rendre(); }
     /* V4-S02 : une section de Sac vit dans un onglet ; on ouvre le bon. */
@@ -12654,8 +12658,8 @@ function filtrerChronologie(ev, f) {
   CHANGEMENTS["st-comparer"] = function (el) { filtresStats().comparer = !!el.checked; rendre(); };
 
   /* ============================================================
-     PROFIL DES CLUBS (roadmap DATA, P06)
-     Sur les parties choisies par les filtres du tableau de bord : régularité et résultat de chaque club.
+     PROFIL DES CLUBS (roadmap DATA, P06 ; dans Sac › Performance depuis V4-S05)
+     Sur les parties choisies par le filtre commun (le même que Performance) : régularité et résultat de chaque club.
      Se lit sans distance ; la distance n'est qu'une indication, arrondie à 5 m.
      ============================================================ */
   function ordreClubs() { return sacActuel().concat(CLUBS.map(function (c) { return c.id; })); }
@@ -12706,7 +12710,7 @@ function filtrerChronologie(ev, f) {
   }
   function clubsStatsHTML() {
     var F = filtresStats(), l = selectionStats(F), notes = clubsNotes(l, ordreClubs()), fam = departsParFamille(l);
-    var h = '<section class="bloc" id="st-clubs"><h2>Profil des clubs</h2><p class="aide">' + t("Régularité et résultat de chaque club, sur les parties choisies plus haut.") + '</p>';
+    var h = '<section class="bloc" id="st-clubs"><h2>Profil des clubs</h2>';
     if (!notes.length && !fam.length) return h + etatVideHTML("sac", "Aucun club à profiler", "Note tes coups en saisie Expert pour suivre chaque club. En saisie Standard, le club de départ suffit pour suivre tes mises en jeu par type de club.") + '</section>';
     h += departsFamillesHTML(fam);
     if (notes.length) {
@@ -12734,7 +12738,8 @@ function filtrerChronologie(ev, f) {
     var id = el.getAttribute("data-v"), F = filtresStats();
     if (!clubsNotes(selectionStats(F), []).some(function (x) { return x.club === id; })) { F.derniers = 0; F.format = ""; F.parcours = ""; F.debut = ""; F.fin = ""; }
     F.club = id; F.club2 = "";
-    fermerFeuille(); allerOnglet("bilan", false);
+    /* V4-S05 : le profil des clubs vit dans Sac (onglet Performance). */
+    fermerFeuille(); ui.sacClub = null; ui.sacOnglet = "performance"; allerOnglet("sac", false);
     var s = document.getElementById("st-clubs");
     if (s) { s.scrollIntoView({ block: "start" }); var b = s.querySelector('[data-a="st-club"][aria-pressed="true"]'); if (b) b.focus({ preventScroll: true }); }
   };
@@ -13259,19 +13264,18 @@ function filtrerChronologie(ev, f) {
     { id: "sg", nom: "Coups perdus estimés", court: "Coups perdus" },
     { id: "parcours", nom: "Analyse des parcours", court: "Parcours" },
     { id: "trous", nom: "Analyse des trous", court: "Trous" },
-    { id: "clubs", nom: "Comparaison des clubs", court: "Clubs" },
     { id: "qualite", nom: "Qualité des données", court: "Qualité" },
     { id: "comprendre", nom: "Comprendre mon jeu", court: "Comprendre" }
   ];
   /* Sections d'avant (liens, recherche, cartes de Mon jeu) → rubrique qui les contient désormais. */
   var SECTION_RUBRIQUE = { "st-putting": "putting", releves: "putting", "st-erreurs": "erreurs", evitables: "erreurs", defauts: "erreurs",
-    "st-clubs": "clubs", "qualite-donnees": "qualite", sg: "sg", notes: "perf", carte: "perf", priorites: "perf", palier: "perf", reperes: "perf",
+    "qualite-donnees": "qualite", sg: "sg", notes: "perf", carte: "perf", priorites: "perf", palier: "perf", reperes: "perf",
     "rb-perf": "perf", "rb-mej": "mej", "rb-attaque": "attaque", "rb-petit": "petit", "rb-parcours": "parcours", "rb-trous": "trous", "rb-comprendre": "comprendre" };
   function rubriqueDeSection(s) { return SECTION_RUBRIQUE[s] || null; }
   function rubriqueCourante() { var r = ui.rubrique; return RUBRIQUES_AN.some(function (x) { return x.id === r; }) ? r : "perf"; }
   /* V4-07 : cinq familles. Les rubriques restent les unités de contenu (liens profonds inchangés) ; une famille à
-     plusieurs rubriques montre une seconde rangée de pastilles. Clubs → Sac (S05) ; qualité des données → profil (09) :
-     en attendant, ces deux rubriques restent joignables par leurs liens, hors familles. */
+     plusieurs rubriques montre une seconde rangée de pastilles. Les statistiques par club vivent dans Sac (S05) ; qualité des données → profil (09) :
+     en attendant, cette rubrique reste joignable par son lien, hors familles. */
   var FAMILLES_AN = [
     { id: "resultats", nom: "Résultats et progression", court: "Résultats", rub: ["perf"] },
     { id: "secteurs", nom: "Secteurs de jeu", court: "Secteurs", rub: ["mej", "attaque", "petit", "putting"] },
@@ -13342,7 +13346,6 @@ function filtrerChronologie(ev, f) {
     if (rb === "sg") return "Estimation par secteur face à un joueur d'index " + indexVise() + ".";
     if (rb === "parcours") return pluriel(etat.parcours.length, "parcours") + " enregistré" + (etat.parcours.length > 1 ? "s" : "") + ".";
     if (rb === "trous") return "Les trous joués au moins 3 fois sur ton parcours le plus joué.";
-    if (rb === "clubs") return "Régularité, direction et distance de chaque club noté.";
     if (rb === "qualite") return "Provenance de tes données : mesurées, estimées, déclarées ou inconnues.";
     return "";
   }
@@ -13372,7 +13375,6 @@ function filtrerChronologie(ev, f) {
     if (rb === "trous") return tete + reponseRubriqueHTML("trous") + (etat.parcours.length ? '<h3 class="titre-bloc">' + t("Trou par trou") + '</h3><ul class="liste-exos">' + etat.parcours.map(function (pc) {
       return '<li><button class="ligne" type="button" data-a="pc-ouvrir" data-id="' + pc.id + '"><span class="quoi"><b>' + t(pc.nom) + '</b><small>' + t("Score moyen et passages de chaque trou") + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>';
     }).join("") + '</ul>' : '') + '</section>';
-    if (rb === "clubs") return tete + '</section>' + clubsStatsHTML();
     if (rb === "qualite") return tete + '<div class="ligne-btn"><button class="btn" type="button" data-a="md-ouvrir">Mes données : vérifier, corriger, sauvegarder</button></div></section>' + qualiteGolfHTML();
     /* V4-07 : Comprendre mon jeu = enseignements (toutes les parties) + questions (filtre commun), tout en place. */
     var Re = etat.parties.length ? calculEns() : { liste: [], parties: 0 }, n = Re.liste.length, vus = ui.ensTout ? Re.liste : Re.liste.slice(0, 5);
@@ -13385,8 +13387,8 @@ function filtrerChronologie(ev, f) {
   /* Liens de fin de « Résultats » : rapports, statistiques par club (bientôt dans Sac, S05), qualité des données. */
   function liensResultatsHTML() {
     return '<section class="bloc rb-liens"><ul class="liste-exos">' +
-      [["j-ouvrir", "", "", "Bilans, journal et rapports"], ["rubrique", "clubs", "", "Statistiques par club"], ["rubrique", "qualite", "", "Qualité de mes données"]].map(function (x) {
-        return '<li><button class="ligne" type="button" data-a="' + x[0] + '"' + (x[1] ? ' data-v="' + x[1] + '"' : '') + '><span class="quoi"><b>' + t(x[3]) + '</b></span><span class="chev" aria-hidden="true">›</span></button></li>';
+      [["j-ouvrir", "", "", "Bilans, journal et rapports"], ["aller-a", "sac", "st-clubs", "Statistiques par club (dans Sac)"], ["rubrique", "qualite", "", "Qualité de mes données"]].map(function (x) {
+        return '<li><button class="ligne" type="button" data-a="' + x[0] + '"' + (x[1] ? ' data-v="' + x[1] + '"' : '') + (x[2] ? ' data-s="' + x[2] + '"' : '') + '><span class="quoi"><b>' + t(x[3]) + '</b></span><span class="chev" aria-hidden="true">›</span></button></li>';
       }).join("") + '</ul></section>';
   }
   ACTIONS.rubrique = function (el) { ui.rubrique = el.getAttribute("data-v"); var Fr = familleDe(ui.rubrique); if (Fr) (ui.rubFamille || (ui.rubFamille = {}))[Fr.id] = ui.rubrique; rendre(); var b = app.querySelector('.rubriques [data-v="' + ui.rubrique + '"]'); if (b) { b.focus({ preventScroll: true }); if (b.scrollIntoView) b.scrollIntoView({ block: "nearest", inline: "center" }); } };

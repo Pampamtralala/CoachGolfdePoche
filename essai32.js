@@ -7,8 +7,8 @@ const fs = require('fs');
 const CLE = 'coachgolf.v1';
 const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
 const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
-const NOMS = ['Résultats et progression', 'Mises en jeu', 'Attaque de green', 'Petit jeu', 'Putting', 'Erreurs récurrentes', 'Coups perdus estimés', 'Analyse des parcours', 'Analyse des trous', 'Comparaison des clubs', 'Qualité des données', 'Comprendre mon jeu'];
-const IDS = ['perf', 'mej', 'attaque', 'petit', 'putting', 'erreurs', 'sg', 'parcours', 'trous', 'clubs', 'qualite', 'comprendre'];
+const NOMS = ['Résultats et progression', 'Mises en jeu', 'Attaque de green', 'Petit jeu', 'Putting', 'Erreurs récurrentes', 'Coups perdus estimés', 'Analyse des parcours', 'Analyse des trous', 'Qualité des données', 'Comprendre mon jeu'];
+const IDS = ['perf', 'mej', 'attaque', 'petit', 'putting', 'erreurs', 'sg', 'parcours', 'trous', 'qualite', 'comprendre'];
 (async () => {
   const D = 'shots32'; fs.mkdirSync(D, { recursive: true });
   const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
@@ -61,7 +61,7 @@ const IDS = ['perf', 'mej', 'attaque', 'petit', 'putting', 'erreurs', 'sg', 'par
       if (['perf', 'mej', 'putting', 'erreurs'].includes(id)) await page.screenshot({ path: `${D}/${nom}-${id}.png` });
     }
     /* Contenus attendus */
-    await rub('perf'); verifie(await page.locator('#vue #st-tableau .kpi').count() === 6 && await page.locator('#vue #reperes').count() === 1 && await page.locator('#vue .rb-liens [data-v="clubs"]').count() === 1, nom + ' Résultats : chiffres, repères, liens (clubs, qualité)');
+    await rub('perf'); verifie(await page.locator('#vue #st-tableau .kpi').count() === 6 && await page.locator('#vue #reperes').count() === 1 && await page.locator('#vue .rb-liens [data-s="st-clubs"]').count() === 1, nom + ' Résultats : chiffres, repères, liens (clubs, qualité)');
     await rub('mej'); verifie(await page.locator('#vue .repartition').count() >= 1 && await page.locator('#vue #rb-rep-mej, #vue #rb-rep-cotes').count() === 2, nom + ' Mises en jeu : répartition et deux réponses');
     verifie(await page.locator('#vue [data-a="exos-domaine"][data-v="drive"]').count() >= 1, nom + ' Mises en jeu : exercices liés');
     await rub('putting'); verifie(await page.locator('#vue #st-putting').count() === 1 && await page.locator('#vue .rb-ens .rb-ens-liste li').count() >= 1, nom + ' Putting : analyse et enseignement lié, en une ligne (trois-putts en hausse)');
@@ -71,8 +71,12 @@ const IDS = ['perf', 'mej', 'attaque', 'petit', 'putting', 'erreurs', 'sg', 'par
     verifie(await page.locator('#vue [aria-expanded="true"][data-v="score"]').count() === 1 && await page.locator('#vue #an-rep-score').count() === 1 && await page.locator('#feuille').count() === 0, nom + ' Comprendre : la question s\'ouvre en place');
 
     /* Rubrique conservée quand on revient dans Analyses */
-    await rub('clubs'); await page.click('#barre [data-v="sac"]'); await page.click('#barre [data-v="bilan"]');
-    verifie(await page.locator('#vue .rubriques [aria-pressed="true"][data-v="clubs"]').count() === 1, nom + ' rubrique conservée');
+    await rub('sg'); await page.click('#barre [data-v="sac"]'); await page.click('#barre [data-v="bilan"]');
+    verifie(await page.locator('#vue .rubriques [aria-pressed="true"][data-v="sg"]').count() === 1, nom + ' rubrique conservée');
+    /* V4-S05 : les statistiques par club ne sont plus dans Performance ; le lien mène à Sac › Performance */
+    await rub('perf'); await page.click('#vue .rb-liens [data-s="st-clubs"]');
+    verifie(await page.locator('#barre [aria-current="page"][data-v="sac"]').count() === 1 && await page.locator('.sac-onglets [aria-pressed="true"][data-v="performance"]').count() === 1 && await page.locator('#vue #st-clubs').count() === 1, nom + ' statistiques par club : dans Sac');
+    await page.click('#barre [data-v="bilan"]');
     /* Navigation en profondeur depuis Mon jeu : Mises en jeu */
     await page.click('#barre [data-v="accueil"]');
     await page.click('#mj-kpi .kpi-lien:has-text("Départs jouables")'); await page.waitForTimeout(80);
