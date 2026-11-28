@@ -245,12 +245,23 @@
   /* ============================================================
      CARNET : parties, distances par club, matrice de wedges
      ============================================================ */
+  /* V4-08 : Jouer = la collecte. Une action principale (nouvelle partie, ou reprise), puis : saisir une ancienne partie,
+     mes parcours et GPS, conditions de jeu, niveau de saisie au lancement. L'historique est dans Activité. */
+  function ligneJouerHTML(a, titre, sous, extra) {
+    return '<li><button class="ligne" type="button" data-a="' + a + '"' + (extra || '') + '><span class="quoi"><b>' + t(titre) + '</b><small>' + t(sous) + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>';
+  }
   VUES.parcours = function () {
-    var pt = etat.partie;
-    return '<section class="bloc premier"><p class="surtitre">Jouer</p><h1>Ta partie</h1>' +
-      (pt || ui.depart ? '' : '<button class="btn principal large cta-partie" type="button" data-a="dp-ouvrir">' + icone("drapeau") + '<span>Nouvelle partie</span></button>') +
-      '<p class="sjc-lib">Mode de saisie</p>' + modesHTML() + '</section>' +
-      partiesHTML() + parcoursListeHTML() + carteAppelHTML();
+    var pt = etat.partie, c = conditionsDuJour();
+    var h = '<section class="bloc premier"><h1>Jouer</h1>';
+    if (!pt && !ui.depart) h += '<button class="carte-tb lien-tb jouer-cta cta-partie" type="button" data-a="dp-ouvrir"><p class="tb-titre">' + icone("drapeau") + ' Nouvelle partie</p><p class="tb-meta">' + t("Score et coups sur le parcours") + '</p>' + icone("chevron") + '</button>';
+    h += '</section>' + partieEnDirectHTML();
+    if (!pt && !ui.depart) h += '<section class="bloc"><ul class="liste-exos jouer-liens">' +
+      ligneJouerHTML("dp-ancienne", "Saisir une ancienne partie", "Compléter mon historique, à sa date") +
+      ligneJouerHTML("aller-a", "Mes parcours et GPS", etat.parcours.length ? pluriel(etat.parcours.length, "parcours") + " · préparer et visualiser" : "Ajouter un golf et sa carte", ' data-v="parcours" data-s="' + (etat.parcours.length ? "c-parcours" : "c-carte") + '"') +
+      ligneJouerHTML("cond-ouvrir", "Conditions de jeu", c ? [c.vent ? VENTS[c.vent].nom : "", c.temp ? TEMPS[c.temp].nom : ""].filter(Boolean).join(" · ") : "Vent et température du jour") +
+      '</ul></section>';
+    h += '<section class="bloc"><h2>' + t("Niveau de saisie") + '</h2>' + modesHTML() + '<p class="aide">' + t("Modifiable pendant la partie ; la distance reste facultative.") + '</p></section>';
+    return h + parcoursListeHTML() + carteAppelHTML();
   };
   /* V4-S02 : trois onglets — Distances (par défaut), Performance, Wedges — et la configuration derrière une icône.
      Les ancres existantes (#c-synthese, #c-distances, #c-wedges, #c-historique, #st-clubs) ouvrent le bon onglet. */

@@ -25,7 +25,7 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | 05 | Arborescence et navigation (Accueil · Performance · Jouer · Sac · Activité) | P0 | 02–04 | Terminé | `ux4/05-navigation` · #36 |
 | 06 | Refaire l'accueil | P0 | 04, 05 | Terminé | `ux4/06-accueil` · #37 |
 | 07 | Regrouper Performance (5 familles) | P0 | 04, 05 | Terminé | `ux4/07-performance` · #38 |
-| 08 | Simplifier Jouer et le bilan | P1 | 05 | À faire | — |
+| 08 | Simplifier Jouer et le bilan | P1 | 05 | **En revue** | `ux4/08-jouer` |
 | 09 | Unifier Activité et le profil (coaching et Mes données dans le profil) | P1 | 05 | À faire | — |
 | S01 | Séparer références et observations | P0 | 01 | Terminé | `ux4/s01-references` · #32 |
 | S02 | Trois onglets de Mon sac, configuration par une icône | P0 | 02–04 | Terminé | `ux4/s02-onglets-sac` · #39 |
@@ -369,3 +369,22 @@ _S04 fusionné dans `app` le 28/11 (PR #41)._
   clubs » ; la page d'un club garde « Comparer un club ».
 - Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts ; essais 19 (profil des clubs depuis Sac,
   filtres partagés) et 32 (onze rubriques, lien vers Sac) adaptés. Capture 390 px vérifiée.
+
+### 08 — Simplifier Jouer et le bilan (28/11/2026)
+
+- **Jouer = collecte** : titre « Jouer », une action principale (« Nouvelle partie · Score et coups sur le parcours »,
+  ou la partie en direct avec « Reprendre » quand une partie est en cours), puis trois accès : **Saisir une ancienne
+  partie** (compléter son historique), **Mes parcours et GPS**, **Conditions de jeu** (vent et température du jour,
+  résumé si déjà notées) ; enfin le **niveau de saisie** au lancement (Express · Standard · Expert, modifiable en
+  partie ; la distance reste facultative, sans préremplissage). « Mes parties » quitte Jouer : l'historique est dans
+  Activité.
+- **Ancienne partie** : le même départ, avec la **date** en premier et des libellés au passé (« Tu as joué ») ; la
+  partie est datée de ce jour-là (à midi) ; une date future est refusée. Pour une partie du jour, la date est en
+  dernier, déjà remplie.
+- **Bilan express court** : score, trois points à retenir (constat et poids en coups) ; les boutons d'exercices et de
+  défis en sortent (coaching rangé dans le profil) ; habitudes, trous marquants, clubs et erreurs sont repliés dans
+  « Plus de détails sur cette partie » ; « Voir la partie en chiffres » et « Voir l'analyse complète » restent.
+- Texte : Jouer 639 → 713 caractères (+12 %, trois accès nouveaux à la place d'un long paragraphe d'aide et du lien
+  vers les parties) ; textes de la carte GPS raccourcis.
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 40 verts ; **nouvel `essai40.js`** (accès de Jouer,
+  ancienne partie : date d'abord, libellés, futur refusé, partie datée) ; essai 28 adapté.

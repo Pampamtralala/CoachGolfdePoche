@@ -680,7 +680,6 @@
   }
   function carteAppelHTML() {
     var n = etat.parcours.filter(function (pc) { return carteDe(pc.id); }).length;
-    return '<section class="bloc" id="c-carte"><h2>Carte GPS</h2><p>' + t(n ? n + " parcours avec sa carte : pendant la partie, le pavé affiche les distances à l'entrée, au milieu et au fond du green."
-      : "Ajoute ton golf avec sa carte : pendant la partie, le pavé affiche les distances à l'entrée, au milieu et au fond du green.") + '</p>' +
+    return '<section class="bloc" id="c-carte"><h2>Carte GPS</h2><p>' + t((n ? pluriel(n, "parcours") + " avec sa carte. " : "") + "En partie : distances à l'entrée, au milieu et au fond du green.") + '</p>' +
       (etat.parcours.length < 20 ? '<button class="btn" type="button" data-a="carte-feuille" data-id="nouveau">' + icone("carte") + ' Ajouter un golf avec sa carte</button>' : '') + '</section>';
   }
