@@ -161,8 +161,8 @@
     var s = statsClub(parc), an = analyseCarnet(mesuresTout(), sacActuel()), ref = referencesClubs()[id];
     /* V4 S01 : le champ montre la référence saisie, ou rien ; une estimation n'apparaît qu'en indication. */
     var depart = ref != null ? ref : null, sh = statsClub(mes), estim = sh ? sh.moy : sacEstimation(id), al = alertesDe(an, id);
-    var h = tete + entete(SAC_FAMILLES[c.fam] + " · dans ton sac", nomLoft(c));
-    h += ficheClubSyntheseHTML(id); /* UX08 : chiffres du club d'abord */
+    /* V4-S04 : cette fiche ne garde que les réglages du club ; la consultation est une page de Sac (ficheClubPageHTML). */
+    var h = tete + entete("Réglages · " + SAC_FAMILLES[c.fam], nomLoft(c));
     if (c.fam === "w") {
       h += '<form class="sac-loft" data-f="sac-loft-club" novalidate><label for="sac-loft-club">Loft</label>' +
         '<span class="sac-loft-champ"><input id="sac-loft-club" type="text" inputmode="numeric" autocomplete="off" maxlength="2" value="' + (c.loftPrecise ? c.loft : "") + '" placeholder="' + c.loft + '" aria-describedby="sac-loft-aide"><span aria-hidden="true">°</span></span>' +
@@ -180,10 +180,6 @@
       '<p class="erreur" id="sac-err" role="alert" hidden></p>' +
       '<p class="aide" id="sac-ref-aide">' + t("La référence t'aide à choisir ton club ; elle n'entre pas dans tes moyennes observées" + (s ? " (" + s.moy + " m sur " + pluriel(s.n, "coup") + " joué" + (s.n > 1 ? "s" : "") + ")." : ".")) + '</p>' +
       '<button class="btn principal large" type="submit">Enregistrer</button></form>';
-    h += ellipseClubHTML(id) || dispersionClubHTML(tout);
-    var nCoups = (clubsNotes(partiesAnalyse(), []).filter(function (x) { return x.club === id; })[0] || {}).n;
-    if (nCoups) h += '<button class="lien voir-profil" type="button" data-a="st-voir-club" data-v="' + at(id) + '">' + t("Voir le profil de ce club : direction, résultat, tendance (" + pluriel(nCoups, "coup") + ")") + '</button>';
-    if (parc.length) h += '<p class="sac-parcours">' + t("Sur le parcours : " + parc.slice(-8).join(", ") + " m" + (parc.length > 8 ? " (" + parc.length + " coups)" : "") + ".") + '</p>';
     /* V4 S01 : les mesures héritées restent visibles, à part, et peuvent être retirées une à une ; plus aucune saisie
        balle par balle ; les séries de practice sont archivées (V4-03). */
     if (mes.length) h += '<details class="sac-balles"' + (ui.sacBalles ? " open" : "") + '><summary>' + t("Mesures héritées (" + mes.length + ")") + '</summary>' +
@@ -296,7 +292,7 @@
   ACTIONS["sac-club"] = function (el) {
     var id = el.getAttribute("data-id");
     if (!CLUB[id]) return;
-    ui.sacSel = id; ui.club = id; ouvrirSac({ sac: id }, el);
+    ouvrirClubPage(id); /* V4-S04 : la page du club */
   };
   ACTIONS["sac-composer"] = function (el) { ouvrirSac({ sacComposer: true }, el); };
   function lireSacVal() {
@@ -353,6 +349,7 @@
     var id = ui.feuille && ui.feuille.sac; if (!id || !CLUB[id]) return;
     fixerSac(sacActuel().filter(function (k) { return k !== id; }));
     if (ui.sacSel === id) ui.sacSel = null;
+    if (ui.sacClub === id) ui.sacClub = null; /* V4-S04 : retour à la liste du sac */
     sauver();
     ui.sacApercu = null; ui.feuille = null; ui.feuilleVue = false; ui.retourFocus = null; rendreFeuille(); rendre();
     var b = app.querySelector('[data-a="sac-composer"]'); if (b) b.focus({ preventScroll: true });

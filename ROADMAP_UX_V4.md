@@ -29,8 +29,8 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | 09 | Unifier Activité et le profil (coaching et Mes données dans le profil) | P1 | 05 | À faire | — |
 | S01 | Séparer références et observations | P0 | 01 | Terminé | `ux4/s01-references` · #32 |
 | S02 | Trois onglets de Mon sac, configuration par une icône | P0 | 02–04 | Terminé | `ux4/s02-onglets-sac` · #39 |
-| S03 | Graphique d'étagement | P0 | S01, S02 | **En revue** | `ux4/s03-etagement` |
-| S04 | Fiches clubs individuelles | P0 | S01, S02 | À faire | — |
+| S03 | Graphique d'étagement | P0 | S01, S02 | Terminé | `ux4/s03-etagement` · #40 |
+| S04 | Fiches clubs individuelles | P0 | S01, S02 | **En revue** | `ux4/s04-fiches-clubs` |
 | S05 | Statistiques clubs centralisées dans le Sac | P0 | S01, 07 | À faire | — |
 | S06 | Classements et comparateur | P1 | S04, S05 | À faire | — |
 | S07 | Matrice de wedges (cellules, références ≠ observations) | P1 | S01, S02 | À faire | — |
@@ -329,3 +329,29 @@ _S02 fusionné dans `app` le 28/11 (PR #39)._
 - Retiré : le graphique « Régularité par club » (canvas de l'ère practice) ; la fourchette observée le remplace.
 - Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts ; essais 33 (lignes, marqueurs, inconnu,
   alerte, vigilance, ouverture de fiche) et 37 (état vide sans point inventé) adaptés. Captures 390 px vérifiées.
+
+_S03 fusionné dans `app` le 28/11 (PR #40)._
+
+### S04 — Fiches individuelles des clubs (28/11/2026)
+
+- La fiche d'un club n'est plus une fiche par-dessus l'écran : c'est une **page de Sac** (`ui.sacClub`), ouverte
+  depuis le graphique d'étagement, les points de vigilance ou les anciens liens (`sac-club`). « ‹ Sac » ramène à la
+  liste (club remis à l'écran) ; toucher Sac dans la barre aussi. Navigation « ‹ club précédent · club suivant › »
+  dans l'ordre du sac, putter compris.
+- Consultation, sur toutes les parties : nom, coups enregistrés et parties ; **distance observée** en grand (fourchette,
+  nombre de mesures, GPS) — sinon « – » avec la référence ou l'héritée en petit ; **direction en trois catégories**
+  (gauche · axe · droite, effectif, coups sans direction) ; **arrivées en jeu** (arrivées connues), **utilisation**
+  (coups par partie où il sert), départs jouables s'il prend des départs ; **évolution** (tendance du moteur) ;
+  plis **Dispersion**, **Historique des coups** (30 plus récents : date, trou, distance et provenance — GPS, estimée —,
+  direction), **Comparer un club** (onglet Performance de Sac, club présélectionné, toutes les parties), **Données et
+  mesures** (observées, référence, héritées, estimations jamais comptées).
+- **Jamais de dispersion inventée** : l'ellipse n'apparaît que si des écarts latéraux ont vraiment été notés et que
+  les distances sont observées (≥ 3) — plus de largeur estimée d'après l'index sur la page ; à défaut, le nuage des
+  distances observées ; sinon rien.
+- **Réglages séparés** (icône) : la fiche ne garde que loft, distance de référence (écarts avec les voisins),
+  mesures héritées, effacer la référence, retirer du sac. Retirer du sac ramène à la liste.
+- **Putter** : page dédiée reliée au putting (putts et trois-putts par 18 trous, « Voir mon putting ») ; aucune
+  statistique attribuée au club lui-même.
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts. `nav-essai.js` gagne `listeSac`, `pageClub`,
+  `reglagesClub` ; essais 3, 6, 7, 8, 9, 10, 11, 19, 33 adaptés (dont : héritées seules → aucune dispersion ;
+  provenance ; navigation entre clubs ; réglages sans chiffres). Captures 390 px vérifiées.

@@ -2,7 +2,7 @@
    erreurs évitables, notes sur 100, priorité de la semaine, objectif d'index. */
 const { chromium } = require('playwright');
 const fs = require('fs');
-const { allerVue, menuAction, saisirTrou } = require('./nav-essai');
+const { listeSac, pageClub, reglagesClub, allerVue, menuAction, saisirTrou } = require('./nav-essai');
 const S = require('./src/engine-strategie.js');
 const A = require('./src/engine-analyse.js');
 const F = '/home/claude/polices/node_modules/@fontsource/';
@@ -72,25 +72,26 @@ function partiePave(g, pars) {
 
     /* ---- 2. Sac : fourchette et ellipse, points touchables ---- */
     await allerVue(page, 'sac');
-    const toucher = async id => { await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${id}"]`); };
+    /* V4-S04 : la fiche du club est une page ; la dispersion y est repliée. */
+    const toucher = async id => { await pageClub(page, id); await page.$$eval('#club-page .club-dispersion', l => l.forEach(d => { d.open = true; })); };
     const fo = S.fourchette(dists);
     await vue('02-sac-fourchette');
-    await toucher('f7'); await page.waitForSelector('#feuille .sac-ellipse');
-    r.bulle = await page.$eval('#feuille .ell-fourchette', x => x.textContent);
+    await toucher('f7'); await page.waitForSelector('#club-page .sac-ellipse');
+    r.bulle = await page.$eval('#club-page .ell-fourchette', x => x.textContent);
     verifie(r.bulle.includes(fo.bas + '–' + fo.haut), nom + ' fiche avec la fourchette ' + fo.bas + '–' + fo.haut + ' : ' + r.bulle);
-    r.fourchetteFiche = await page.textContent('#feuille .ell-fourchette');
-    r.pointsFiche = await page.$$eval('#feuille .sac-ellipse .ell-pt', l => l.length);
+    r.fourchetteFiche = await page.textContent('#club-page .ell-fourchette');
+    r.pointsFiche = await page.$$eval('#club-page .sac-ellipse .ell-pt', l => l.length);
     verifie(r.pointsFiche === 11, nom + ' onze points sur l\'ellipse : ' + r.pointsFiche);
     const el = S.ellipseClub(dists, se.l, 18);
     r.ellipseCalc = JSON.stringify({ d: el.d, cx: el.cx, rx: el.rx, ry: el.ry, estL: el.estimeeL });
-    r.chiffres = await page.$eval('#feuille .sac-ellipse .disp-chiffres', x => x.textContent.replace(/\s+/g, ' ').trim());
+    r.chiffres = await page.$eval('#club-page .sac-ellipse .disp-chiffres', x => x.textContent.replace(/\s+/g, ' ').trim());
     verifie(r.chiffres.includes('±' + el.rx), nom + ' latéral affiché = calculé (±' + el.rx + ') : ' + r.chiffres);
-    await page.click('#feuille .sac-ellipse .ell-pt[data-v="0"]', { force: true });
+    await page.click('#club-page .sac-ellipse .ell-pt[data-v="0"]', { force: true });
     r.legendePoint = await page.textContent('#ell-legende');
     verifie(/Coup du trou 1/.test(r.legendePoint) && /droite/.test(r.legendePoint), nom + ' point touché : ' + r.legendePoint);
-    await page.evaluate(() => document.querySelector('#feuille .sac-ellipse').scrollIntoView({ block: 'start' })); await page.waitForTimeout(100);
+    await page.evaluate(() => document.querySelector('#club-page .sac-ellipse').scrollIntoView({ block: 'start' })); await page.waitForTimeout(100);
     await vue('03-fiche-ellipse');
-    await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' });
+    await listeSac(page);
 
     /* ---- 3. Parcours : se joue comme, visée, coup posé sur l'ellipse, erreurs ---- */
     await menuAction(page, 'partie-rapide'); await page.fill('#dp-nom', 'Golf de Test'); await page.click('[data-a="pt-nouvelle"]');

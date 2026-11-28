@@ -1804,6 +1804,26 @@ main.entree { animation: entreeVue .22s ease-out; }
 .eta-ligne:focus-visible { outline: 3px solid var(--focus, var(--action)); outline-offset: 2px; border-radius: 8px; }
 .eta-axe > span { font-size: 12px; } .eta-axe > span:last-child { text-align: right; }
 .eta-axe > span:last-child { align-self: start; }
+/* V4-S04 · fiche individuelle d'un club (page de Sac). */
+.club-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.club-nav .retour { margin: 0; }
+.club-page h1 { margin: 2px 0 2px; }
+.club-distance { margin-top: 10px; }
+.club-distance .mj-val { font-size: 44px; line-height: 1.05; margin: 0; }
+.club-dir3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 4px; text-align: center; }
+.club-dir3 > div { padding: 12px 6px; border-radius: 12px; background: var(--papier); border: 1.5px solid var(--filet); }
+.club-dir3 > .axe { border-color: var(--action); background: var(--sauge-fond); }
+.club-dir3 .main { display: block; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.club-dir3 span + span { font-size: 13.5px; color: var(--encre-2); }
+.pli-ligne > summary { display: flex; justify-content: space-between; align-items: center; min-height: 52px; padding: 0 16px; font-weight: 700; cursor: pointer; list-style: none; }
+.pli-ligne > summary::-webkit-details-marker { display: none; }
+.pli-ligne > summary::after { content: "+"; font-size: 20px; color: var(--encre-2); font-weight: 400; }
+.pli-ligne[open] > summary::after { content: "−"; }
+.club-hist, .club-prov { list-style: none; margin: 0; padding: 0 16px 12px; }
+.club-hist li, .club-prov li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--filet); font-size: 14.5px; }
+.club-hist li span:last-child, .club-prov li span:last-child { text-align: right; color: var(--encre-2); }
+.club-voisins { display: flex; justify-content: space-between; gap: 10px; }
+.pli-corps { padding: 0 16px 14px; }
 
 /* ---------- Accueil en paysage de golf ----------
    Jour en clair, soirée après 17 h, nuit en mode sombre. Les couleurs du dessin sont des variables. */
@@ -7601,7 +7621,7 @@ function filtrerChronologie(ev, f) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-28T00:20:16.580Z";
+  var VERSION_APPLI = "2026-11-28T08:33:42.168Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, references: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -8236,7 +8256,7 @@ function filtrerChronologie(ev, f) {
   /* Va à une page (les anciens noms, comme « plan » ou « distances », y mènent aussi). */
   function allerOnglet(nom, haut) {
     nom = pageDe(nom);
-    ui.entree = ui.onglet !== nom; ui.onglet = nom; ui.menu = false;
+    ui.entree = ui.onglet !== nom; ui.onglet = nom; ui.menu = false; ui.sacClub = null; /* V4-S04 : la barre ramène à la liste */
     try { if (location.hash !== "#" + adresseDe(nom)) location.hash = adresseDe(nom); } catch (e) { /* hash indisponible */ }
     rendre();
     if (haut) window.scrollTo(0, 0);
@@ -9309,7 +9329,7 @@ function filtrerChronologie(ev, f) {
   function ongletSac() { return ui.sacOnglet || "distances"; }
   function ongletSacDeSection(sec) { return SECTION_ONGLET_SAC[sec] || (/^(c-synthese|c-distances|c-historique|sac-bilan)$/.test(sec) ? "distances" : null); }
   ACTIONS["sac-onglet"] = function (el) {
-    ui.sacOnglet = el.getAttribute("data-v"); rendre();
+    ui.sacOnglet = el.getAttribute("data-v"); ui.sacClub = null; rendre();
     var b = app.querySelector('.sac-onglets [data-v="' + ui.sacOnglet + '"]'); if (b) b.focus({ preventScroll: true });
   };
   /* Chiffres d'en-tête de l'onglet Distances : clubs dans le sac, documentés (≥ 3 coups observés), à vérifier. */
@@ -9323,6 +9343,7 @@ function filtrerChronologie(ev, f) {
       { t: "À vérifier", v: String(averif), u: averif === 1 ? "écart anormal" : "écarts anormaux" }], "sac-chiffres");
   }
   VUES.sac = function () {
+    if (ui.sacClub && (CLUB[ui.sacClub] || ui.sacClub === "putter")) return ficheClubPageHTML(ui.sacClub);
     var o = ongletSac();
     var h = '<section class="bloc premier sac-tete"><div class="titre-ligne"><h1>Sac</h1>' +
       '<button class="icone-btn" type="button" data-a="sac-composer" data-id="sac" aria-label="Configurer mon sac : composition, lofts, wedges">' + icone("reglages") + '</button></div>' +
@@ -9696,8 +9717,8 @@ function filtrerChronologie(ev, f) {
     var s = statsClub(parc), an = analyseCarnet(mesuresTout(), sacActuel()), ref = referencesClubs()[id];
     /* V4 S01 : le champ montre la référence saisie, ou rien ; une estimation n'apparaît qu'en indication. */
     var depart = ref != null ? ref : null, sh = statsClub(mes), estim = sh ? sh.moy : sacEstimation(id), al = alertesDe(an, id);
-    var h = tete + entete(SAC_FAMILLES[c.fam] + " · dans ton sac", nomLoft(c));
-    h += ficheClubSyntheseHTML(id); /* UX08 : chiffres du club d'abord */
+    /* V4-S04 : cette fiche ne garde que les réglages du club ; la consultation est une page de Sac (ficheClubPageHTML). */
+    var h = tete + entete("Réglages · " + SAC_FAMILLES[c.fam], nomLoft(c));
     if (c.fam === "w") {
       h += '<form class="sac-loft" data-f="sac-loft-club" novalidate><label for="sac-loft-club">Loft</label>' +
         '<span class="sac-loft-champ"><input id="sac-loft-club" type="text" inputmode="numeric" autocomplete="off" maxlength="2" value="' + (c.loftPrecise ? c.loft : "") + '" placeholder="' + c.loft + '" aria-describedby="sac-loft-aide"><span aria-hidden="true">°</span></span>' +
@@ -9715,10 +9736,6 @@ function filtrerChronologie(ev, f) {
       '<p class="erreur" id="sac-err" role="alert" hidden></p>' +
       '<p class="aide" id="sac-ref-aide">' + t("La référence t'aide à choisir ton club ; elle n'entre pas dans tes moyennes observées" + (s ? " (" + s.moy + " m sur " + pluriel(s.n, "coup") + " joué" + (s.n > 1 ? "s" : "") + ")." : ".")) + '</p>' +
       '<button class="btn principal large" type="submit">Enregistrer</button></form>';
-    h += ellipseClubHTML(id) || dispersionClubHTML(tout);
-    var nCoups = (clubsNotes(partiesAnalyse(), []).filter(function (x) { return x.club === id; })[0] || {}).n;
-    if (nCoups) h += '<button class="lien voir-profil" type="button" data-a="st-voir-club" data-v="' + at(id) + '">' + t("Voir le profil de ce club : direction, résultat, tendance (" + pluriel(nCoups, "coup") + ")") + '</button>';
-    if (parc.length) h += '<p class="sac-parcours">' + t("Sur le parcours : " + parc.slice(-8).join(", ") + " m" + (parc.length > 8 ? " (" + parc.length + " coups)" : "") + ".") + '</p>';
     /* V4 S01 : les mesures héritées restent visibles, à part, et peuvent être retirées une à une ; plus aucune saisie
        balle par balle ; les séries de practice sont archivées (V4-03). */
     if (mes.length) h += '<details class="sac-balles"' + (ui.sacBalles ? " open" : "") + '><summary>' + t("Mesures héritées (" + mes.length + ")") + '</summary>' +
@@ -9831,7 +9848,7 @@ function filtrerChronologie(ev, f) {
   ACTIONS["sac-club"] = function (el) {
     var id = el.getAttribute("data-id");
     if (!CLUB[id]) return;
-    ui.sacSel = id; ui.club = id; ouvrirSac({ sac: id }, el);
+    ouvrirClubPage(id); /* V4-S04 : la page du club */
   };
   ACTIONS["sac-composer"] = function (el) { ouvrirSac({ sacComposer: true }, el); };
   function lireSacVal() {
@@ -9888,6 +9905,7 @@ function filtrerChronologie(ev, f) {
     var id = ui.feuille && ui.feuille.sac; if (!id || !CLUB[id]) return;
     fixerSac(sacActuel().filter(function (k) { return k !== id; }));
     if (ui.sacSel === id) ui.sacSel = null;
+    if (ui.sacClub === id) ui.sacClub = null; /* V4-S04 : retour à la liste du sac */
     sauver();
     ui.sacApercu = null; ui.feuille = null; ui.feuilleVue = false; ui.retourFocus = null; rendreFeuille(); rendre();
     var b = app.querySelector('[data-a="sac-composer"]'); if (b) b.focus({ preventScroll: true });
@@ -11256,10 +11274,11 @@ function filtrerChronologie(ev, f) {
     return h + '</div>';
   }
   ACTIONS["ell-point"] = function (el) {
-    var f = ui.feuille, id = f && f.sac; if (!id) return;
+    /* V4-S04 : l'ellipse vit dans la page du club (Sac), ou dans une fiche. */
+    var f = ui.feuille, id = (f && f.sac) || ui.sacClub; if (!id) return;
     var i = parseInt(el.getAttribute("data-v"), 10);
     ui.ellSel = ui.ellSel && ui.ellSel.id === id && ui.ellSel.i === i ? null : { id: id, i: i };
-    var bloc = document.querySelector("#feuille .sac-ellipse");
+    var bloc = document.querySelector((f && f.sac ? "#feuille" : "#club-page") + " .sac-ellipse");
     if (bloc) { var tmp = document.createElement("div"); tmp.innerHTML = ellipseClubHTML(id); bloc.parentNode.replaceChild(tmp.firstChild, bloc); }
   };
 
@@ -13447,7 +13466,93 @@ function filtrerChronologie(ev, f) {
     var h = '<div class="fiche-club-synthese">' + kpisHTML(cases.map(function (c) { return { t: c.t, v: c.v, ctx: c.x, prov: c.prov }; }));
     return h + '</div>';
   }
-  ACTIONS["sac-fiche-club"] = function (el) { var id = el.getAttribute("data-id"); if (!CLUB[id] && id !== "putter") return; ui.sacSel = id; ui.club = id; ouvrirSac({ sac: id }, el); };
+  /* ============================================================
+     V4-S04 : FICHE INDIVIDUELLE D'UN CLUB — une page de Sac (plus une fiche par-dessus l'écran).
+     Consultation seulement : distance observée, direction en trois catégories, arrivées connues, utilisation,
+     tendance, historique, provenance au détail. Réglages (référence, loft, mesures héritées) derrière l'icône.
+     Toutes les parties ; navigation entre clubs du sac.
+     ============================================================ */
+  function clubsNavigables() { return sacActuel().concat(["putter"]); }
+  function ouvrirClubPage(id) {
+    ui.sacClub = id; ui.sacSel = id; ui.club = id; if (ui.feuille) { ui.feuille = null; ui.pile = []; rendreFeuille(); }
+    if (ui.onglet !== "sac") { allerOnglet("sac", true); ui.sacClub = id; }
+    rendre(); window.scrollTo(0, 0); var h = document.querySelector("#club-page h1"); if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); }
+  }
+  ACTIONS["sac-fiche-club"] = function (el) { var id = el.getAttribute("data-id"); if (!CLUB[id] && id !== "putter") return; ouvrirClubPage(id); };
+  ACTIONS["club-retour"] = function () {
+    var id = ui.sacClub; ui.sacClub = null; rendre();
+    var b = document.querySelector('#vue [data-a="sac-fiche-club"][data-id="' + id + '"]'); if (b) { b.scrollIntoView({ block: "center" }); b.focus({ preventScroll: true }); }
+  };
+  ACTIONS["club-reglages"] = function (el) { ouvrirSac({ sac: ui.sacClub }, el); };
+  ACTIONS["club-comparer"] = function () {
+    var F = filtresStats(); F.club = ui.sacClub; F.club2 = ""; F.derniers = 0; F.format = ""; F.parcours = ""; F.debut = ""; F.fin = "";
+    ui.sacClub = null; ui.sacOnglet = "performance"; rendre();
+    var s = document.getElementById("st-club2"); if (s) { s.scrollIntoView({ block: "center" }); s.focus({ preventScroll: true }); }
+  };
+  function ligneClubPage(lib, html, cls) { return '<li' + (cls ? ' class="' + cls + '"' : '') + '><span>' + t(lib) + '</span><span>' + html + '</span></li>'; }
+  function ficheClubPageHTML(id) {
+    var ids = clubsNavigables(), i = ids.indexOf(id), av = i > 0 ? ids[i - 1] : null, ap = i >= 0 && i < ids.length - 1 ? ids[i + 1] : null;
+    var nom = id === "putter" ? "Putter" : nomLoft(CLUB[id]);
+    function nomNav(x) { return x === "putter" ? "Putter" : nomEtagement(CLUB[x]); }
+    var h = '<div id="club-page"><section class="bloc premier club-page"><div class="titre-ligne club-nav">' +
+      '<button class="lien retour" type="button" data-a="club-retour">' + icone("retour") + ' Sac</button>' +
+      (id !== "putter" ? '<button class="icone-btn" type="button" data-a="club-reglages" aria-label="' + at("Réglages de " + nom + " : référence, loft, mesures héritées") + '">' + icone("reglages") + '</button>' : '') + '</div>';
+    if (id === "putter") {
+      var A = tableauStats(partiesAnalyse());
+      h += '<h1>Putter</h1><p class="page-sous">' + t("Hors étagement des distances : le putter se suit avec tes statistiques de putting.") + '</p></section>' +
+        '<section class="bloc">' + kpisHTML([
+          { t: "Putts", v: nbStat(A.putts18), u: "par 18 trous", n: A.parties ? pluriel(A.parties, "partie") : "" },
+          { t: "Trois-putts", v: nbStat(A.troisPutts18), u: "par 18 trous" }]) +
+        '<div class="ligne-btn"><button class="btn" type="button" data-a="aller-a" data-v="bilan" data-s="st-putting">Voir mon putting</button></div>' +
+        '<p class="aide">' + t("Les putts ne sont pas reliés à un modèle de putter : aucune statistique n'est attribuée au club lui-même.") + '</p></section>';
+      return h + navClubsHTML(av, ap, nomNav) + '</div>';
+    }
+    var P = profilClub(partiesAnalyse(), id), M = mesuresClubParSource(id), st = statsClub(M.observees), fo = M.n >= MIN_OBS_DISTANCE ? fourchette(M.observees) : null, sh = statsClub(M.heritees);
+    var D = P.direction, Ar = P.arrivees, T = P.tendance, Dist = P.distance;
+    h += '<h1>' + t(nom) + '</h1><p class="page-sous">' + t(P.n ? pluriel(P.n, "coup") + " enregistré" + (P.n > 1 ? "s" : "") + " · " + pluriel(P.parties, "partie") : "Aucun coup enregistré avec ce club") + '</p>';
+    /* Distance : observée en grand ; sinon la référence ou l'héritée, marquées, en petit. */
+    h += '<div class="club-distance"><p class="mj-val main">' + t(st ? st.moy + " m" : "–") + '</p><p class="aide">' + t(st
+        ? (fo && fo.bas !== fo.haut ? fo.bas + "–" + fo.haut + " m · " : "") + pluriel(M.n, "mesure") + " sur le parcours" + (Dist.gps ? ", dont " + Dist.gps + " au GPS" : "") + (M.n < MIN_OBS_DISTANCE ? " · peu de coups" : "")
+        : "Aucune distance mesurée sur le parcours" + (M.reference != null ? " · référence " + M.reference + " m" : sh ? " · " + sh.moy + " m hérité" : "")) + '</p></div></section>';
+    /* Direction en trois catégories : jamais de dispersion métrique dessinée ici. */
+    h += '<section class="bloc club-direction">' + sectionTeteHTML("Direction des coups", { aide: '<p>' + t("Gauche ou droite : à plus de " + SEUIL_LATERAL + " m de la ligne de visée, d'après le côté noté pour chaque coup. Trois catégories seulement, pas une mesure de dispersion.") + '</p>' }) +
+      (D.n ? '<div class="club-dir3">' + [["Gauche", D.partGauche], ["Axe", D.partCentre], ["Droite", D.partDroite]].map(function (x) {
+        return '<div class="' + (x[0] === "Axe" ? "axe" : "") + '"><span class="main">' + x[1] + ' %</span><span>' + x[0] + '</span></div>'; }).join("") + '</div>' +
+        '<p class="aide">' + t(pluriel(D.n, "direction") + " renseignée" + (D.n > 1 ? "s" : "") + (P.n > D.n ? " · " + (P.n - D.n) + " sans direction" : "")) + '</p>'
+      : '<p class="aide">' + t("Aucune direction notée : touche le côté de l'ellipse quand tu notes un coup.") + '</p>') + '</section>';
+    h += '<section class="bloc">' + kpisHTML([
+      { t: "Arrivées en jeu", v: Ar.partEnJeu == null ? "–" : Ar.partEnJeu + " %", u: Ar.n ? pluriel(Ar.n, "arrivée") + " connue" + (Ar.n > 1 ? "s" : "") : "aucune arrivée connue" },
+      { t: "Utilisation", v: P.parties ? String(Math.round(10 * P.n / P.parties) / 10).replace(".", ",") : "–", u: "coups par partie où il sert" },
+      P.departs.departs ? { t: "Départs jouables", v: P.departs.part == null ? "–" : P.departs.part + " %", u: pluriel(P.departs.n, "départ") + " renseigné" + (P.departs.n > 1 ? "s" : "") } : null
+    ]) + (T ? '<p class="aide club-tendance">' + t("Évolution, des " + T.n + " coups les plus anciens aux " + T.n + " plus récents : " + [T.axe ? "dans l'axe " + T.axe.avant + " % → " + T.axe.apres + " %" : "", T.enJeu ? "en jeu " + T.enJeu.avant + " % → " + T.enJeu.apres + " %" : ""].filter(Boolean).join(" ; ") + ".") + '</p>'
+      : '<p class="aide club-tendance">' + t("Évolution : à partir de " + MIN_TENDANCE + " coups notés avec ce club.") + '</p>') + '</section>';
+    /* Historique, comparaison, provenance : au détail. */
+    var coups = coupsDuClub(partiesAnalyse(), id).slice(-30).reverse();
+    var hist = coups.length ? '<ul class="club-hist">' + coups.map(function (x) {
+        var c = x.coup, d = estNombre(c.d) ? (c.dm ? "≈ " : "") + c.d + " m" + (c.dm ? " (estimée)" : c.gps ? " (GPS)" : "") : "distance non notée";
+        var dir = x.lateral == null ? "" : x.lateral < -SEUIL_LATERAL ? " · à gauche" : x.lateral > SEUIL_LATERAL ? " · à droite" : " · dans l'axe";
+        return '<li><span>' + t((x.jour ? dateCourte(x.jour) : "") + " · trou " + (x.trou + 1)) + '</span><span>' + t(d + dir) + '</span></li>';
+      }).join("") + '</ul>' + (P.n > 30 ? '<p class="aide">' + t("Les 30 coups les plus récents sur " + P.n + ".") + '</p>' : '') : '<p class="aide">' + t("Aucun coup noté avec ce club.") + '</p>';
+    /* Dispersion en mètres, repliée : l'ellipse seulement quand des écarts latéraux ont vraiment été notés et que les
+       distances sont observées (≥ 3 coups) — jamais une largeur estimée d'après l'index ; à défaut, le nuage des
+       distances observées (≥ 3). */
+    var E = ellipseDe(id), disp = (E && !E.estimation && !E.estimeeL && M.n >= MIN_OBS_DISTANCE ? ellipseClubHTML(id) : "") || dispersionClubHTML(M.observees);
+    h += '<section class="bloc club-details"><ul class="liste-exos">' +
+      (disp ? '<li><details class="pli-ligne club-dispersion"><summary>' + t("Dispersion") + '</summary><div class="pli-corps">' + disp + '</div></details></li>' : '') +
+      '<li><details class="pli-ligne"><summary>' + t("Historique des coups") + '</summary>' + hist + '</details></li>' +
+      '<li><button class="ligne" type="button" data-a="club-comparer"><span class="quoi"><b>' + t("Comparer un club") + '</b></span><span class="chev" aria-hidden="true">›</span></button></li>' +
+      '<li><details class="pli-ligne"><summary>' + t("Données et mesures") + '</summary><ul class="club-prov">' +
+        ligneClubPage("Distances observées", t(M.n ? pluriel(M.n, "coup") + " joué" + (M.n > 1 ? "s" : "") + (Dist.gps ? ", dont " + Dist.gps + " au GPS (roule comprise)" : "") : "aucune")) +
+        ligneClubPage("Distance de référence", t(M.reference != null ? M.reference + " m, saisie par toi, hors moyennes" : "aucune")) +
+        ligneClubPage("Mesures héritées", t(M.heritees.length ? pluriel(M.heritees.length, "mesure") + " (" + sh.moy + " m), hors moyennes" : "aucune")) +
+        ligneClubPage("Estimations", t("jamais comptées")) + '</ul></details></li></ul></section>';
+    return h + navClubsHTML(av, ap, nomNav) + '</div>';
+  }
+  function navClubsHTML(av, ap, nomNav) {
+    return '<nav class="bloc club-voisins" aria-label="Autres clubs">' +
+      (av ? '<button class="btn" type="button" data-a="sac-fiche-club" data-id="' + av + '">‹ ' + t(nomNav(av)) + '</button>' : '<span></span>') +
+      (ap ? '<button class="btn" type="button" data-a="sac-fiche-club" data-id="' + ap + '">' + t(nomNav(ap)) + ' ›</button>' : '<span></span>') + '</nav>';
+  }
 
   /* ============================================================
      JOURNAL CHRONOLOGIQUE (roadmap UX, UX10)

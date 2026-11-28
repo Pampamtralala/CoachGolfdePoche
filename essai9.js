@@ -1,9 +1,9 @@
 /* Wedges par loft : ajout depuis la composition du sac, loft précisé, changement de loft, matrice, sac en perspective. */
 const { chromium } = require('playwright');
 const fs = require('fs');
-const { allerVue } = require('./nav-essai');
+const { listeSac, reglagesClub, allerVue } = require('./nav-essai');
 /* Toucher la partie visible d'une tête : la lame d'un fer ou d'un wedge est en haut à droite de sa boîte. */
-const toucher = async (page, id) => { await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${id}"]`); };
+const toucher = async (page, id) => { await reglagesClub(page, id); };
 const F = '/home/claude/polices/node_modules/@fontsource/';
 const face = (fam, file, w) => `@font-face{font-family:"${fam}";font-weight:${w};src:url(data:font/woff2;base64,${fs.readFileSync(F + file).toString('base64')}) format("woff2");}`;
 const POLICES = [face('Barlow Condensed', 'barlow-condensed/files/barlow-condensed-latin-600-normal.woff2', 600), face('Barlow Condensed', 'barlow-condensed/files/barlow-condensed-latin-700-normal.woff2', 700),
@@ -54,7 +54,7 @@ const POLICES = [face('Barlow Condensed', 'barlow-condensed/files/barlow-condens
     await page.click('#feuille [data-a="sac-basculer"][data-id="f4"]');
     e = await lire(); verifie(JSON.stringify(e.wedgesPerso) === '[52,60]', 'wedge 64° oublié : ' + JSON.stringify(e.wedgesPerso));
     await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' });
-    r.scene = await page.$$eval('#c-synthese [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' '));
+    await listeSac(page); r.scene = await page.$$eval('#c-synthese [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' '));
     /* Distances, puis loft précisé sur le sand wedge */
     for (const [id, v] of [['pw', 102], ['w52', 90], ['sw', 78], ['w60', 64]]) {
       await toucher(page, id); if (!(await page.locator('#feuille').count())) await page.click('[data-a="sac-modifier"]');
@@ -86,7 +86,7 @@ const POLICES = [face('Barlow Condensed', 'barlow-condensed/files/barlow-condens
     e = await lire(); verifie(e.wedges.w60 && e.wedges.w60.a2 === 45, 'matrice w60 : ' + JSON.stringify(e.wedges));
     /* Rechargement : tout persiste */
     await page.reload(); await page.waitForSelector('.tete'); await allerVue(page, 'sac');
-    r.apresRechargement = await page.$$eval('#c-synthese [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' '));
+    await listeSac(page); r.apresRechargement = await page.$$eval('#c-synthese [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' '));
     verifie(r.apresRechargement.includes('w50') && r.apresRechargement.includes('w60'), 'persistance : ' + r.apresRechargement);
     await ctx.close();
   }

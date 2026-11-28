@@ -17,7 +17,7 @@ const SCHEMAS = ['dr_porte', 'fe_porte_int', 'fe_barriere', 'fe_alignement', 'dr
 const canon = o => JSON.stringify(o, (k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.keys(v).sort().reduce((a, c) => (a[c] = v[c], a), {}) : v));
 const sansVolatil = e => { const c = JSON.parse(JSON.stringify(e)); delete c.maj; if (c.profil) delete c.profil.indexTexte; return canon(c); };
 
-const { allerVue, menuAction, lirePave, saisirTrou, trouPave } = require('./nav-essai');
+const { listeSac, pageClub, reglagesClub, allerVue, menuAction, lirePave, saisirTrou, trouPave } = require('./nav-essai');
 /* Valeurs d'un graphique lues dans sa description (canvas aria-label). */
 const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-label').replace(/\.$/, '').split(' : ').slice(1).join(' : ').split(' ; ').map(x => x.replace(/^.*? (?=[+−]?\d+,\d|non mesuré)/, '')).join(' '));
 
@@ -85,14 +85,14 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   res.largeurCarnetVide = await largeur();
   await vue('10-carnet-vide');
   /* Sac de golf : chaque club s'ouvre dans une fiche, balle par balle ou moyenne directe */
-  res.sacVide = await page.$$eval('#c-synthese [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' '));
-  const ficheClub = async club => { await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${club}"]`); if (!(await page.locator('#feuille').count())) await page.click('[data-a="sac-modifier"]'); await page.waitForSelector('#feuille'); };
-  const fermer = async () => { await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' }); };
+  await listeSac(page); res.sacVide = await page.$$eval('#c-synthese [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' '));
+  const ficheClub = async club => { await reglagesClub(page, club); };;
+  const fermer = async () => { await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' }); await listeSac(page); };
   const ajouter = async (club, vals) => {
     await ficheClub(club);
     /* V4 S01 : la fiche enregistre une distance de référence (plus de saisie balle par balle). */
     await page.fill('#sac-val', String(Math.round(vals.reduce((a, b) => a + b, 0) / vals.length))); await page.press('#sac-val', 'Enter');
-    await page.waitForSelector('#feuille', { state: 'detached' });
+    await page.waitForSelector('#feuille', { state: 'detached' }); await listeSac(page);
   };
   await ajouter('f7', [150, 152, 148, 155, 140]);
   await ajouter('f5', [170]); await ajouter('f6', [168]); await ajouter('f9', [120]); await ajouter('dr', [215, 225, 205]); await ajouter('b3', [190]); await ajouter('pw', [105]);
@@ -108,13 +108,13 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   await page.fill('#sac-val', '5'); await page.press('#sac-val', 'Enter');
   res.erreurMoyenne = await page.textContent('#sac-err');
   await page.fill('#sac-val', '136'); await page.press('#sac-val', 'Enter');
-  await page.waitForSelector('#feuille', { state: 'detached' });
+  await page.waitForSelector('#feuille', { state: 'detached' }); await listeSac(page);
   e = await lire();
   verifie(e.carnet.references.f8 === 136 && !e.carnet.clubs.f8, 'référence directe : ' + canon(e.carnet.references));
   res.focusApresSaisie = await page.evaluate(() => document.activeElement && document.activeElement.dataset.id);
   res.rangs = await page.locator('#c-distances canvas').count() ? await page.$eval('#c-distances canvas', c => c.getAttribute('aria-label')) : 'graphe de régularité masqué : une référence par club';
   res.constatsClubs = await page.$$eval('#sac-bilan .sac-ecarts li', l => l.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
-  res.alertesSac = await page.$$eval('#c-synthese tr.alerte [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' '));
+  await listeSac(page); res.alertesSac = await page.$$eval('#c-synthese li.alerte [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' '));
   res.scoreSac = await page.$eval('#sac-bilan .sac-score', x => x.textContent);
   await ficheClub('f7');
   res.relevesF7 = await page.$$eval('#feuille .releves .puce', l => l.length);
@@ -123,14 +123,14 @@ const valeursGraphe = (page, sel) => page.$eval(sel, c => c.getAttribute('aria-l
   await page.click('[data-a="sac-effacer"]'); e = await lire();
   verifie(e.carnet.references.f7 == null, 'référence effacée : ' + canon(e.carnet.references));
   if (!(await page.locator('#feuille').count())) await ficheClub('f7');
-  await page.fill('#sac-val', '149'); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' });
+  await page.fill('#sac-val', '149'); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' }); await listeSac(page);
   /* Composition : sortir le bois 5, mettre le gap wedge et le lob wedge */
   await page.click('[data-a="sac-composer"]');
   await page.click('#feuille [data-a="sac-basculer"][data-id="b5"]'); await page.click('#feuille [data-a="sac-basculer"][data-id="gw"]'); await page.click('#feuille [data-a="sac-basculer"][data-id="lw"]');
   await fermer();
   e = await lire();
   res.sacCompose = (e.carnet.sac || []).join(' ');
-  res.sacScene = await page.$$eval('#c-synthese [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' '));
+  await listeSac(page); res.sacScene = await page.$$eval('#c-synthese [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' '));
   await vue('10b-sac');
   /* Matrice de wedges (onglet Wedges, V4-S02) */
   await page.click('[data-a="sac-onglet"][data-v="wedges"]'); 

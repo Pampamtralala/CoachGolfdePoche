@@ -131,10 +131,11 @@
     return h + '</div>';
   }
   ACTIONS["ell-point"] = function (el) {
-    var f = ui.feuille, id = f && f.sac; if (!id) return;
+    /* V4-S04 : l'ellipse vit dans la page du club (Sac), ou dans une fiche. */
+    var f = ui.feuille, id = (f && f.sac) || ui.sacClub; if (!id) return;
     var i = parseInt(el.getAttribute("data-v"), 10);
     ui.ellSel = ui.ellSel && ui.ellSel.id === id && ui.ellSel.i === i ? null : { id: id, i: i };
-    var bloc = document.querySelector("#feuille .sac-ellipse");
+    var bloc = document.querySelector((f && f.sac ? "#feuille" : "#club-page") + " .sac-ellipse");
     if (bloc) { var tmp = document.createElement("div"); tmp.innerHTML = ellipseClubHTML(id); bloc.parentNode.replaceChild(tmp.firstChild, bloc); }
   };
 

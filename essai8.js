@@ -1,6 +1,6 @@
 /* Nouvelle organisation : accueil à trois portes, menu latéral, sac en perspective. */
 const { chromium } = require('playwright');
-const { allerVue } = require('./nav-essai');
+const { listeSac, pageClub, reglagesClub, allerVue } = require('./nav-essai');
 const fs = require('fs');
 const F = '/home/claude/polices/node_modules/@fontsource/';
 const face = (fam, file, w) => `@font-face{font-family:"${fam}";font-weight:${w};src:url(data:font/woff2;base64,${fs.readFileSync(F + file).toString('base64')}) format("woff2");}`;
@@ -31,7 +31,7 @@ const LARGEURS = (process.env.LARGEURS || '390,360,390s,1280').split(',');
     const menu = async (v, s) => { await allerVue(page, v, s); await page.waitForTimeout(150); };
     await menu('sac');
     for (const [id, v] of Object.entries(MOY)) {
-      await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${id}"]`); if (!(await page.locator('#feuille').count())) await page.click('[data-a="sac-modifier"]');
+      await reglagesClub(page, id);
       await page.fill('#sac-val', String(v)); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' });
     }
     await page.evaluate(() => { const f = document.getElementById('fete'); if (f) f.hidden = true; const m = document.getElementById('message'); if (m) m.hidden = true; });
@@ -58,8 +58,8 @@ const LARGEURS = (process.env.LARGEURS || '390,360,390s,1280').split(',');
     /* V4-02 : plus de sac 3D ; le tableau ouvre directement la fiche du club. */
     r.sansSac3D = await page.locator('#sac-scene, .c3d').count();
     await page.screenshot({ path: `${D}/${nom}-3-sac.png` });
-    await page.click('#c-synthese [data-a="sac-fiche-club"][data-id="dr"]'); await page.waitForSelector('#feuille');
-    r.ficheDriver = await page.$eval('#feuille h2', x => x.textContent);
+    await pageClub(page, 'dr');
+    r.ficheDriver = await page.$eval('#club-page h1', x => x.textContent);
     await page.screenshot({ path: `${D}/${nom}-5-fiche.png` });
     await page.keyboard.press('Escape'); await page.waitForTimeout(250);
     /* Les autres pages par le menu */

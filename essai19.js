@@ -83,10 +83,10 @@ const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
     verifie(r.apresFiltre.join(' | ') === 'Driver 7 | Fer 7 9', nom + ' le profil suit les filtres : ' + r.apresFiltre.join(' | '));
     /* Depuis le sac : la fiche du fer 7 ouvre son profil */
     await allerVue(page, 'sac');
-    await page.click('#c-synthese [data-a="sac-fiche-club"][data-id="f7"]');
-    await page.waitForSelector('#feuille [data-a="st-voir-club"]');
-    r.lien = (await page.textContent('#feuille [data-a="st-voir-club"]')).trim();
-    await page.click('#feuille [data-a="st-voir-club"]');
+    /* V4-S04 : la page du club mène au comparateur de l'onglet Performance de Sac */
+    await page.click('#c-synthese [data-a="sac-fiche-club"][data-id="f7"]'); await page.waitForSelector('#club-page');
+    r.lien = (await page.textContent('#club-page [data-a="club-comparer"]')).trim();
+    await page.click('#club-page [data-a="club-comparer"]');
     await page.waitForSelector('#st-clubs');
     r.depuisSac = await page.$eval('#st-clubs [data-a="st-club"][aria-pressed="true"]', x => x.textContent.replace(/\s+/g, ' ').trim());
     verifie(/Fer 7/.test(r.depuisSac) && !(await page.locator('#feuille').count()), nom + ' lien depuis le sac : ' + r.lien + ' → ' + r.depuisSac);

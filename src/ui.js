@@ -644,7 +644,7 @@
   /* Va à une page (les anciens noms, comme « plan » ou « distances », y mènent aussi). */
   function allerOnglet(nom, haut) {
     nom = pageDe(nom);
-    ui.entree = ui.onglet !== nom; ui.onglet = nom; ui.menu = false;
+    ui.entree = ui.onglet !== nom; ui.onglet = nom; ui.menu = false; ui.sacClub = null; /* V4-S04 : la barre ramène à la liste */
     try { if (location.hash !== "#" + adresseDe(nom)) location.hash = adresseDe(nom); } catch (e) { /* hash indisponible */ }
     rendre();
     if (haut) window.scrollTo(0, 0);

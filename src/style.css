@@ -1787,3 +1787,23 @@ main.entree { animation: entreeVue .22s ease-out; }
 .eta-ligne:focus-visible { outline: 3px solid var(--focus, var(--action)); outline-offset: 2px; border-radius: 8px; }
 .eta-axe > span { font-size: 12px; } .eta-axe > span:last-child { text-align: right; }
 .eta-axe > span:last-child { align-self: start; }
+/* V4-S04 · fiche individuelle d'un club (page de Sac). */
+.club-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.club-nav .retour { margin: 0; }
+.club-page h1 { margin: 2px 0 2px; }
+.club-distance { margin-top: 10px; }
+.club-distance .mj-val { font-size: 44px; line-height: 1.05; margin: 0; }
+.club-dir3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 4px; text-align: center; }
+.club-dir3 > div { padding: 12px 6px; border-radius: 12px; background: var(--papier); border: 1.5px solid var(--filet); }
+.club-dir3 > .axe { border-color: var(--action); background: var(--sauge-fond); }
+.club-dir3 .main { display: block; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.club-dir3 span + span { font-size: 13.5px; color: var(--encre-2); }
+.pli-ligne > summary { display: flex; justify-content: space-between; align-items: center; min-height: 52px; padding: 0 16px; font-weight: 700; cursor: pointer; list-style: none; }
+.pli-ligne > summary::-webkit-details-marker { display: none; }
+.pli-ligne > summary::after { content: "+"; font-size: 20px; color: var(--encre-2); font-weight: 400; }
+.pli-ligne[open] > summary::after { content: "−"; }
+.club-hist, .club-prov { list-style: none; margin: 0; padding: 0 16px 12px; }
+.club-hist li, .club-prov li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--filet); font-size: 14.5px; }
+.club-hist li span:last-child, .club-prov li span:last-child { text-align: right; color: var(--encre-2); }
+.club-voisins { display: flex; justify-content: space-between; gap: 10px; }
+.pli-corps { padding: 0 16px 14px; }
