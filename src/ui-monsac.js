@@ -96,6 +96,22 @@
     ui.sacClub = null; ui.sacOnglet = "performance"; rendre();
     var s = document.getElementById("st-club2"); if (s) { s.scrollIntoView({ block: "center" }); s.focus({ preventScroll: true }); }
   };
+  /* V4-S08 : la page du putter montre le putting de la période (mêmes filtres et mêmes calculs que Performance ›
+     Putting). Les putts ne sont pas reliés à un modèle de putter : rien n'est attribué au club lui-même. */
+  function putterPageHTML() {
+    var F = filtresStats(), l = selectionStats(F), R = analysePutting(l), A = R.total;
+    var h = '<h1>Putter</h1><p class="page-sous">' + t("Hors étagement des distances. Ton putting, tous putts confondus.") + '</p></section>';
+    h += '<section class="bloc putter-page">' + pastillesPeriodeHTML();
+    if (!A.trous) return h + etatVideHTML("stats", "Pas encore de putts sur cette période", "Le nombre de putts de chaque trou suffit : note une partie, ou élargis la période.") + '</section>';
+    h += kpisHTML([
+      { t: "Putts", v: nb1(A.par18), u: "par 18 trous", n: pluriel(A.trous, "trou") },
+      { t: "Un putt", v: A.partUn == null ? "–" : A.partUn + " %", u: "des trous", n: pluriel(A.un, "trou") },
+      { t: "Trois putts et +", v: A.partTrois == null ? "–" : A.partTrois + " %", u: "des trous", n: pluriel(A.troisPlus, "trou") }], "putt-kpis") +
+      '<p class="aide">' + t("Sur " + pluriel(A.trous, "trou") + " (" + pluriel(R.parties, "partie") + "), " + A.putts + " putts. " + (R.premierPutt.notes ? "Longueur du premier putt notée sur " + pluriel(R.premierPutt.notes, "trou") + "." : "Longueur du premier putt pas encore notée.") + " Même période que Performance.") + '</p>' +
+      '<div class="ligne-btn"><button class="btn" type="button" data-a="aller-a" data-v="bilan" data-s="st-putting">Évolution et détail du putting</button></div>' +
+      aideHTML('<p>' + t("Les putts sont notés trou par trou, sans le modèle de putter utilisé : ces chiffres décrivent ton putting, pas ton putter. Changer de putter ne remet rien à zéro.") + '</p>', "Pourquoi rien n'est attribué au putter") + '</section>';
+    return h;
+  }
   function ligneClubPage(lib, html, cls) { return '<li' + (cls ? ' class="' + cls + '"' : '') + '><span>' + t(lib) + '</span><span>' + html + '</span></li>'; }
   function ficheClubPageHTML(id) {
     var ids = clubsNavigables(), i = ids.indexOf(id), av = i > 0 ? ids[i - 1] : null, ap = i >= 0 && i < ids.length - 1 ? ids[i + 1] : null;
@@ -104,19 +120,11 @@
     var h = '<div id="club-page"><section class="bloc premier club-page"><div class="titre-ligne club-nav">' +
       '<button class="lien retour" type="button" data-a="club-retour">' + icone("retour") + ' Sac</button>' +
       (id !== "putter" ? '<button class="icone-btn" type="button" data-a="club-reglages" aria-label="' + at("Réglages de " + nom + " : référence, loft, mesures héritées") + '">' + icone("reglages") + '</button>' : '') + '</div>';
-    if (id === "putter") {
-      var A = tableauStats(partiesAnalyse());
-      h += '<h1>Putter</h1><p class="page-sous">' + t("Hors étagement des distances : le putter se suit avec tes statistiques de putting.") + '</p></section>' +
-        '<section class="bloc">' + kpisHTML([
-          { t: "Putts", v: nbStat(A.putts18), u: "par 18 trous", n: A.parties ? pluriel(A.parties, "partie") : "" },
-          { t: "Trois-putts", v: nbStat(A.troisPutts18), u: "par 18 trous" }]) +
-        '<div class="ligne-btn"><button class="btn" type="button" data-a="aller-a" data-v="bilan" data-s="st-putting">Voir mon putting</button></div>' +
-        '<p class="aide">' + t("Les putts ne sont pas reliés à un modèle de putter : aucune statistique n'est attribuée au club lui-même.") + '</p></section>';
-      return h + navClubsHTML(av, ap, nomNav) + '</div>';
-    }
+    if (id === "putter") return h + putterPageHTML() + navClubsHTML(av, ap, nomNav) + '</div>';
     var P = profilClub(partiesAnalyse(), id), M = mesuresClubParSource(id), st = statsClub(M.observees), fo = M.n >= MIN_OBS_DISTANCE ? fourchette(M.observees) : null, sh = statsClub(M.heritees);
     var D = P.direction, Ar = P.arrivees, T = P.tendance, Dist = P.distance;
-    h += '<h1>' + t(nom) + '</h1><p class="page-sous">' + t(P.n ? pluriel(P.n, "coup") + " enregistré" + (P.n > 1 ? "s" : "") + " · " + pluriel(P.parties, "partie") : "Aucun coup enregistré avec ce club") + '</p>';
+    h += '<h1>' + t(nom) + '</h1><p class="page-sous">' + t(P.n ? pluriel(P.n, "coup") + " enregistré" + (P.n > 1 ? "s" : "") + " · " + pluriel(P.parties, "partie") : "Aucun coup enregistré avec ce club") + '</p>' +
+      (etat.carnet.sac && sacActuel().indexOf(id) < 0 ? '<p class="marque-retire">' + t("Hors du sac · historique gardé") + '</p>' : '');
     /* Distance : observée en grand ; sinon la référence ou l'héritée, marquées, en petit. */
     h += '<div class="club-distance"><p class="mj-val main">' + t(st ? st.moy + " m" : "–") + '</p><p class="aide">' + t(st
         ? (fo && fo.bas !== fo.haut ? fo.bas + "–" + fo.haut + " m · " : "") + pluriel(M.n, "mesure") + " sur le parcours" + (Dist.gps ? ", dont " + Dist.gps + " au GPS" : "") + (M.n < MIN_OBS_DISTANCE ? " · peu de coups" : "")

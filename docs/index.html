@@ -1855,6 +1855,13 @@ main.entree { animation: entreeVue .22s ease-out; }
 .w-detail .etiq { margin: 10px 0 2px; font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--encre-2); }
 .w-saisie input { width: 5.5em; text-align: center; }
 .matrice-wedges .w-frac { font-size: 17px; letter-spacing: 0; text-transform: none; }
+/* V4-S08 · configuration (compteur 14 clubs), putter, clubs retirés. */
+.sac-compte { display: flex; justify-content: space-between; align-items: baseline; margin: 4px 0 2px; }
+.sac-compte-v { font-family: var(--f-titre); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sac-compte-v.plein { color: var(--action); }
+.sac-putter-l { margin: 12px 0; }
+.marque-retire { display: inline-block; margin: 6px 0 0; padding: 2px 10px; border-radius: 999px; background: var(--filet); font-size: 13.5px; font-weight: 600; color: var(--encre-2); }
+.putter-page .fenetres { margin-bottom: 10px; }
 
 /* ---------- Accueil en paysage de golf ----------
    Jour en clair, soirée après 17 h, nuit en mode sombre. Les couleurs du dessin sont des variables. */
@@ -7652,7 +7659,7 @@ function filtrerChronologie(ev, f) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-28T13:17:39.446Z";
+  var VERSION_APPLI = "2026-11-28T13:31:00.343Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, references: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -9398,7 +9405,7 @@ function filtrerChronologie(ev, f) {
     if (o === "performance") return h + '<section class="bloc sac-perf-intro" id="c-perf-clubs">' + pastillesPeriodeHTML() + '<p class="aide">' + t(perimetreTexte(partiesFiltrees()) + " Même période que Performance.") + '</p></section>' + clubsStatsHTML();
     if (o === "wedges") return h + '<section class="bloc" id="c-wedges"><h2>Ma matrice de wedges</h2>' + wedgesHTML() + '</section>';
     return h + '<section class="bloc sac-resume-chiffres">' + chiffresSacHTML() + '</section>' + syntheseSacHTML() +
-      vigilanceSacHTML() + archiveSeriesHTML();
+      vigilanceSacHTML() + clubsRetiresHTML() + archiveSeriesHTML();
   };
 
   /* ---------- Matrice de wedges ---------- */
@@ -9682,6 +9689,31 @@ function filtrerChronologie(ev, f) {
     return mes.length >= 3 ? mes.slice(0, SAC_MAX) : sacActuel();
   }
   function sacCompose() { return !!etat.carnet.sac; }
+  /* V4-S08 : un club a-t-il des coups joués (parties enregistrées ou en cours) ? */
+  function chaqueCoup(f) {
+    etat.parties.concat(etat.partie ? [etat.partie] : []).forEach(function (p) {
+      if (p && Array.isArray(p.coups)) p.coups.forEach(function (l) { (l || []).forEach(function (c) { if (c) f(c); }); });
+    });
+  }
+  function clubJoue(id) { var oui = false; chaqueCoup(function (c) { if (c.c === id) oui = true; }); return oui; }
+  function renommerCoups(de, vers) { chaqueCoup(function (c) { if (c.c === de) c.c = vers; }); }
+  /* Clubs sortis du sac dont il reste un historique : coups joués, référence, mesures héritées ou cases de wedge. */
+  function clubsRetires() {
+    var sac = sacActuel(), cb = etat.carnet, joues = {};
+    chaqueCoup(function (c) { joues[c.c] = (joues[c.c] || 0) + 1; });
+    return CLUBS.filter(function (c) { return sac.indexOf(c.id) < 0 && (joues[c.id] || (cb.clubs[c.id] || []).length || referencesClubs()[c.id] != null || cb.wedges[c.id]); })
+      .map(function (c) { return { id: c.id, coups: joues[c.id] || 0, ref: referencesClubs()[c.id], herit: (cb.clubs[c.id] || []).length }; });
+  }
+  function clubsRetiresHTML() {
+    if (!etat.carnet.sac) return "";
+    var l = clubsRetires(); if (!l.length) return "";
+    return '<section class="bloc" id="c-retires"><details class="aide-pli"><summary><span class="ico-info" aria-hidden="true">i</span>' + t("Clubs retirés du sac (" + l.length + ")") + '</summary><div>' +
+      '<p class="aide">' + t("Leur historique est gardé : il compte toujours dans tes statistiques de la période et se retrouve sur leur page.") + '</p>' +
+      '<ul class="liste-exos">' + l.map(function (x) {
+        var sous = [x.coups ? pluriel(x.coups, "coup") + " joué" + (x.coups > 1 ? "s" : "") : "", x.ref != null ? "réf. " + x.ref + " m" : "", x.herit ? pluriel(x.herit, "mesure") + " héritée" + (x.herit > 1 ? "s" : "") : ""].filter(Boolean).join(" · ") || "cases de la matrice de wedges";
+        return '<li><button class="ligne simple" type="button" data-a="sac-fiche-club" data-id="' + x.id + '"><span class="quoi"><b>' + t(nomLoft(CLUB[x.id])) + '</b><small>' + t(sous) + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>';
+      }).join("") + '</ul></div></details></section>';
+  }
   function fixerSac(ids) {
     etat.carnet.sac = CLUBS.filter(function (c) { return ids.indexOf(c.id) >= 0; }).map(function (c) { return c.id; }).slice(0, SAC_MAX);
   }
@@ -9807,7 +9839,7 @@ function filtrerChronologie(ev, f) {
       '<section class="feuille sac-fiche" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">';
     function entete(sur, titre) { return '<header><p class="surtitre">' + t(sur) + '</p><h2 id="f-titre">' + t(titre) + '</h2><button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>'; }
     if (id === "putter") {
-      return tete + entete("Putter", "Putter") + '<p>' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans les Statistiques, avec l’estimation des coups gagnés.") + '</p></section>';
+      return tete + entete("Putter", "Putter") + '<p>' + t("Le putter ne compte pas dans l'étagement des distances. Ton putting se suit dans Performance › Putting ; les putts ne sont pas reliés au modèle de putter.") + '</p></section>';
     }
     var c = CLUB[id], mes = etat.carnet.clubs[id] || [], parc = coupsDuParcours().clubs[id] || [], tout = parc;
     var s = statsClub(parc), an = analyseCarnet(mesuresTout(), sacActuel()), ref = referencesClubs()[id];
@@ -9843,23 +9875,29 @@ function filtrerChronologie(ev, f) {
   }
 
   /* ---------- Fiche de composition du sac ---------- */
+  /* V4-S08 : composition (14 clubs au plus, putter compris), lofts, références déclarées (marquées « réf. », jamais une
+     moyenne sans provenance), le putter, et l'assurance que l'historique d'un club retiré est gardé. */
   function sacComposerHTML() {
-    var ids = sacActuel(), plein = ids.length >= SAC_MAX, tout = mesuresTout();
+    var ids = sacActuel(), plein = ids.length >= SAC_MAX, refs = referencesClubs();
     var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer" tabindex="-1"></button>' +
       '<section class="feuille" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
-      '<header><p class="surtitre">' + t(pluriel(ids.length, "club") + " et le putter, " + (SAC_MAX + 1) + " au plus") + '</p><h2 id="f-titre">Configuration du sac</h2>' +
+      '<header><p class="surtitre">' + t("Composition, lofts et références") + '</p><h2 id="f-titre">Configuration du sac</h2>' +
       '<button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>' +
-      '<p class="aide">' + t("Touche un club pour le mettre dans le sac ou l'en sortir. Ses mesures sont gardées.") + '</p>';
+      '<p class="sac-compte" aria-live="polite"><b>' + t("Clubs sélectionnés") + '</b><span class="sac-compte-v' + (plein ? " plein" : "") + '">' + (ids.length + 1) + '/' + (SAC_MAX + 1) + '</span></p>' +
+      '<p class="aide">' + t("Putter compris. Touche un club pour le mettre dans le sac ou l'en sortir : c'est enregistré aussitôt, et l'historique d'un club retiré (coups joués, référence, mesures) est gardé.") + '</p>';
     ["b", "f", "w"].forEach(function (fam) {
       h += '<fieldset class="champ"><legend>' + t(SAC_FAMILLES[fam]) + '</legend><div class="choix-ligne">' +
         CLUBS.filter(function (c) { return c.fam === fam; }).map(function (c) {
-          var dedans = ids.indexOf(c.id) >= 0, m = moyenneClub(tout, c.id);
-          var sous = [c.fam === "w" && !c.perso ? (c.loftPrecise ? c.loft + "°" : c.petitBase) : "", m != null ? m + " m" : ""].filter(Boolean).join(" · ");
+          var dedans = ids.indexOf(c.id) >= 0, m = refs[c.id];
+          var sous = [c.fam === "w" && !c.perso ? (c.loftPrecise ? c.loft + "°" : c.petitBase) : "", m != null ? "réf. " + m + " m" : ""].filter(Boolean).join(" · ");
           return '<button class="opt" type="button" data-a="sac-basculer" data-id="' + c.id + '" aria-pressed="' + dedans + '"' + (!dedans && plein ? " disabled" : "") + '>' + t(c.nom.split(",")[0]) + (sous ? '<small>' + t(sous) + '</small>' : '') + '</button>';
         }).join("") + '</div></fieldset>';
       if (fam === "w") h += ajoutWedgeHTML(plein);
     });
-    if (plein) h += '<p class="aide sac-plein">' + t("Ton sac est plein : sors un club pour en mettre un autre ou ajouter un wedge.") + '</p>';
+    if (plein) h += '<p class="aide sac-plein">' + t("Ton sac est plein (14 clubs avec le putter, la limite de la règle) : sors un club pour en mettre un autre ou ajouter un wedge.") + '</p>';
+    h += '<ul class="liste-exos sac-putter-l"><li><button class="ligne simple" type="button" data-a="sac-putter-page"><span class="quoi"><b>Putter</b><small>' + t("Toujours dans le sac · hors étagement") + '</small></span><span class="chev" aria-hidden="true">›</span></button></li></ul>' +
+      '<p class="aide">' + t("Les références se règlent sur la page de chaque club (icône réglages).") + '</p>' +
+      '<div class="ligne-btn"><button class="btn principal large" type="button" data-a="fermer-feuille">Terminé</button></div>';
     return h + '</section>';
   }
 
@@ -9922,6 +9960,8 @@ function filtrerChronologie(ev, f) {
         if (cb.clubs[id]) { cb.clubs[neuf] = cb.clubs[id]; delete cb.clubs[id]; }
         if (cb.references && cb.references[id] != null) { cb.references[neuf] = cb.references[id]; delete cb.references[id]; }
         if (cb.wedges[id]) { cb.wedges[neuf] = cb.wedges[id]; delete cb.wedges[id]; }
+        /* V4-S08 : les coups joués avec ce wedge le suivent aussi (sinon ils ne seraient plus rattachés à aucun club). */
+        renommerCoups(id, neuf);
         var ids = sacActuel().map(function (k) { return k === id ? neuf : k; });
         majWedges(); fixerSac(ids);
         if (ui.sacSel === id) ui.sacSel = neuf;
@@ -9947,6 +9987,7 @@ function filtrerChronologie(ev, f) {
     ouvrirClubPage(id); /* V4-S04 : la page du club */
   };
   ACTIONS["sac-composer"] = function (el) { ouvrirSac({ sacComposer: true }, el); };
+  ACTIONS["sac-putter-page"] = function () { ui.retourFocus = null; ouvrirClubPage("putter"); };
   function lireSacVal() {
     var inp = document.getElementById("sac-val"), brut = inp ? inp.value.trim() : "";
     if (brut === "") return null;
@@ -10027,7 +10068,7 @@ function filtrerChronologie(ev, f) {
     if (ids.indexOf(id) >= 0) {
       ids = ids.filter(function (k) { return k !== id; }); if (ui.sacSel === id) ui.sacSel = null;
       /* Un wedge ajouté qu'on sort du sac sans l'avoir mesuré disparaît de la liste. */
-      if (CLUB[id].perso && !etat.carnet.clubs[id] && referencesClubs()[id] == null && !etat.carnet.wedges[id]) {
+      if (CLUB[id].perso && !etat.carnet.clubs[id] && referencesClubs()[id] == null && !etat.carnet.wedges[id] && !clubJoue(id)) {
         etat.carnet.wedgesPerso = etat.carnet.wedgesPerso.filter(function (v) { return v !== CLUB[id].loft; }); oubli = true;
       }
     }
@@ -13633,6 +13674,22 @@ function filtrerChronologie(ev, f) {
     ui.sacClub = null; ui.sacOnglet = "performance"; rendre();
     var s = document.getElementById("st-club2"); if (s) { s.scrollIntoView({ block: "center" }); s.focus({ preventScroll: true }); }
   };
+  /* V4-S08 : la page du putter montre le putting de la période (mêmes filtres et mêmes calculs que Performance ›
+     Putting). Les putts ne sont pas reliés à un modèle de putter : rien n'est attribué au club lui-même. */
+  function putterPageHTML() {
+    var F = filtresStats(), l = selectionStats(F), R = analysePutting(l), A = R.total;
+    var h = '<h1>Putter</h1><p class="page-sous">' + t("Hors étagement des distances. Ton putting, tous putts confondus.") + '</p></section>';
+    h += '<section class="bloc putter-page">' + pastillesPeriodeHTML();
+    if (!A.trous) return h + etatVideHTML("stats", "Pas encore de putts sur cette période", "Le nombre de putts de chaque trou suffit : note une partie, ou élargis la période.") + '</section>';
+    h += kpisHTML([
+      { t: "Putts", v: nb1(A.par18), u: "par 18 trous", n: pluriel(A.trous, "trou") },
+      { t: "Un putt", v: A.partUn == null ? "–" : A.partUn + " %", u: "des trous", n: pluriel(A.un, "trou") },
+      { t: "Trois putts et +", v: A.partTrois == null ? "–" : A.partTrois + " %", u: "des trous", n: pluriel(A.troisPlus, "trou") }], "putt-kpis") +
+      '<p class="aide">' + t("Sur " + pluriel(A.trous, "trou") + " (" + pluriel(R.parties, "partie") + "), " + A.putts + " putts. " + (R.premierPutt.notes ? "Longueur du premier putt notée sur " + pluriel(R.premierPutt.notes, "trou") + "." : "Longueur du premier putt pas encore notée.") + " Même période que Performance.") + '</p>' +
+      '<div class="ligne-btn"><button class="btn" type="button" data-a="aller-a" data-v="bilan" data-s="st-putting">Évolution et détail du putting</button></div>' +
+      aideHTML('<p>' + t("Les putts sont notés trou par trou, sans le modèle de putter utilisé : ces chiffres décrivent ton putting, pas ton putter. Changer de putter ne remet rien à zéro.") + '</p>', "Pourquoi rien n'est attribué au putter") + '</section>';
+    return h;
+  }
   function ligneClubPage(lib, html, cls) { return '<li' + (cls ? ' class="' + cls + '"' : '') + '><span>' + t(lib) + '</span><span>' + html + '</span></li>'; }
   function ficheClubPageHTML(id) {
     var ids = clubsNavigables(), i = ids.indexOf(id), av = i > 0 ? ids[i - 1] : null, ap = i >= 0 && i < ids.length - 1 ? ids[i + 1] : null;
@@ -13641,19 +13698,11 @@ function filtrerChronologie(ev, f) {
     var h = '<div id="club-page"><section class="bloc premier club-page"><div class="titre-ligne club-nav">' +
       '<button class="lien retour" type="button" data-a="club-retour">' + icone("retour") + ' Sac</button>' +
       (id !== "putter" ? '<button class="icone-btn" type="button" data-a="club-reglages" aria-label="' + at("Réglages de " + nom + " : référence, loft, mesures héritées") + '">' + icone("reglages") + '</button>' : '') + '</div>';
-    if (id === "putter") {
-      var A = tableauStats(partiesAnalyse());
-      h += '<h1>Putter</h1><p class="page-sous">' + t("Hors étagement des distances : le putter se suit avec tes statistiques de putting.") + '</p></section>' +
-        '<section class="bloc">' + kpisHTML([
-          { t: "Putts", v: nbStat(A.putts18), u: "par 18 trous", n: A.parties ? pluriel(A.parties, "partie") : "" },
-          { t: "Trois-putts", v: nbStat(A.troisPutts18), u: "par 18 trous" }]) +
-        '<div class="ligne-btn"><button class="btn" type="button" data-a="aller-a" data-v="bilan" data-s="st-putting">Voir mon putting</button></div>' +
-        '<p class="aide">' + t("Les putts ne sont pas reliés à un modèle de putter : aucune statistique n'est attribuée au club lui-même.") + '</p></section>';
-      return h + navClubsHTML(av, ap, nomNav) + '</div>';
-    }
+    if (id === "putter") return h + putterPageHTML() + navClubsHTML(av, ap, nomNav) + '</div>';
     var P = profilClub(partiesAnalyse(), id), M = mesuresClubParSource(id), st = statsClub(M.observees), fo = M.n >= MIN_OBS_DISTANCE ? fourchette(M.observees) : null, sh = statsClub(M.heritees);
     var D = P.direction, Ar = P.arrivees, T = P.tendance, Dist = P.distance;
-    h += '<h1>' + t(nom) + '</h1><p class="page-sous">' + t(P.n ? pluriel(P.n, "coup") + " enregistré" + (P.n > 1 ? "s" : "") + " · " + pluriel(P.parties, "partie") : "Aucun coup enregistré avec ce club") + '</p>';
+    h += '<h1>' + t(nom) + '</h1><p class="page-sous">' + t(P.n ? pluriel(P.n, "coup") + " enregistré" + (P.n > 1 ? "s" : "") + " · " + pluriel(P.parties, "partie") : "Aucun coup enregistré avec ce club") + '</p>' +
+      (etat.carnet.sac && sacActuel().indexOf(id) < 0 ? '<p class="marque-retire">' + t("Hors du sac · historique gardé") + '</p>' : '');
     /* Distance : observée en grand ; sinon la référence ou l'héritée, marquées, en petit. */
     h += '<div class="club-distance"><p class="mj-val main">' + t(st ? st.moy + " m" : "–") + '</p><p class="aide">' + t(st
         ? (fo && fo.bas !== fo.haut ? fo.bas + "–" + fo.haut + " m · " : "") + pluriel(M.n, "mesure") + " sur le parcours" + (Dist.gps ? ", dont " + Dist.gps + " au GPS" : "") + (M.n < MIN_OBS_DISTANCE ? " · peu de coups" : "")

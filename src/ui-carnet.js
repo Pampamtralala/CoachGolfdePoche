@@ -295,7 +295,7 @@
     if (o === "performance") return h + '<section class="bloc sac-perf-intro" id="c-perf-clubs">' + pastillesPeriodeHTML() + '<p class="aide">' + t(perimetreTexte(partiesFiltrees()) + " Même période que Performance.") + '</p></section>' + clubsStatsHTML();
     if (o === "wedges") return h + '<section class="bloc" id="c-wedges"><h2>Ma matrice de wedges</h2>' + wedgesHTML() + '</section>';
     return h + '<section class="bloc sac-resume-chiffres">' + chiffresSacHTML() + '</section>' + syntheseSacHTML() +
-      vigilanceSacHTML() + archiveSeriesHTML();
+      vigilanceSacHTML() + clubsRetiresHTML() + archiveSeriesHTML();
   };
 
   /* ---------- Matrice de wedges ---------- */
