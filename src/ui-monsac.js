@@ -1,7 +1,7 @@
   /* ============================================================
      MON SAC, CÔTÉ DONNÉES (roadmap UX, UX08)
      Synthèse des clubs en tableau (distance typique observée, fourchette, nombre de mesures par provenance,
-     écarts anormaux, clubs peu documentés) avant le sac en 3D, gardé comme vue alternative ; fiche de club
+     écarts anormaux, clubs peu documentés), onglet Distances de Sac (V4-S02) ; fiche de club
      ouverte par un chiffre-clé de synthèse. Aucune distance estimée n'entre dans ces chiffres.
      ============================================================ */
   var MIN_MESURES_SAC = 3;
@@ -30,11 +30,10 @@
         '<td class="num">' + (fo ? t(fo.bas === fo.haut ? fo.bas + " m" : fo.bas + "–" + fo.haut + " m") : "–") + '</td>' +
         '<td class="num">' + M.n + '</td></tr>';
     }).join("");
-    var etatSac = [alertes ? alertes + (alertes > 1 ? " écarts anormaux" : " écart anormal") : "", peu ? pluriel(peu, "club") + " à documenter" : ""].filter(Boolean).join(" · ");
     return '<section class="bloc" id="c-synthese">' + sectionTeteHTML("Mes clubs", { aide: '<p>' + t("Distances des coups joués sur le parcours, jamais estimées. Une référence saisie (« réf. ») ou une mesure héritée s'affiche à part et n'entre pas dans les moyennes. Un club est à documenter sous " + MIN_OBS_DISTANCE + " coups mesurés.") + '</p>', aideTitre: "D'où viennent ces distances ?" }) +
-      (etatSac ? '<p class="aide sac-resume">' + t(etatSac + ".") + '</p>' : '') +
+      /* V4-S02 : l'état (écarts, clubs à documenter) est dans les chiffres d'en-tête de l'onglet. */
       '<div class="defile"><table class="carte-score sac-synthese"><thead><tr><th scope="col">Club</th><th scope="col" class="num">Distance</th><th scope="col" class="num">Plage</th><th scope="col" class="num">Coups</th></tr></thead><tbody>' +
-      lignes + '</tbody></table></div><div class="ligne-btn"><button class="btn" type="button" data-a="sac-composer" data-id="sac">Composer mon sac</button></div></section>';
+      lignes + '</tbody></table></div></section>';
   }
   /* En tête de la fiche d'un club : ce que disent ses données, par provenance. */
   function ficheClubSyntheseHTML(id) {

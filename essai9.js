@@ -77,9 +77,9 @@ const POLICES = [face('Barlow Condensed', 'barlow-condensed/files/barlow-condens
     verifie(JSON.stringify(e.wedgesPerso) === '[50,60]' && e.lofts.sw === 56 && e.sac.includes('w50') && !e.sac.includes('w52'), 'loft changé : ' + JSON.stringify(e));
     await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' });
     r.ecarts = await page.$$eval('#sac-bilan .sac-ecarts li', l => l.map(x => x.querySelector('.sac-paire').textContent + ' ' + x.querySelector('.sac-val').textContent).slice(-4).join(' | '));
-    r.matrice = await page.$$eval('#c-wedges tbody th', l => l.map(x => x.textContent).join(' | '));
+    await page.click('[data-a="sac-onglet"][data-v="wedges"]'); r.matrice = await page.$$eval('#c-wedges tbody th', l => l.map(x => x.textContent).join(' | '));
     await page.screenshot({ path: `${D}/${nom}-3-sac.png` });
-    await page.evaluate(() => document.getElementById('c-wedges').scrollIntoView()); await page.waitForTimeout(200);
+    await page.waitForTimeout(200);
     await page.screenshot({ path: `${D}/${nom}-4-matrice.png` });
     /* Matrice : saisir une distance pour le wedge 60° */
     await page.fill('#w-w60-a2', '45'); await page.press('#w-w60-a2', 'Tab'); await page.waitForTimeout(150);

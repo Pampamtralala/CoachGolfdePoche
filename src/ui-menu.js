@@ -76,7 +76,7 @@
         { a: "cond-ouvrir", t: "Conditions du jour", k: "vent temperature meteo" }] },
       { g: "Sac", l: [
         { p: "sac", t: "Sac et distances", k: "clubs fourchette dispersion ecarts trous" },
-        { a: "sac-composer", t: "Composer mon sac", k: "configuration clubs wedges loft" },
+        { a: "sac-composer", t: "Configuration du sac : composition et lofts", k: "composer configuration clubs wedges loft reglages" },
         { p: "sac", s: "c-wedges", t: "Matrice de wedges", k: "amplitudes petit jeu" },
         { p: "sac", s: "c-historique", t: "Séries de practice archivées", k: "series balles practice archive" }] },
       { g: "Activité", l: [
@@ -122,6 +122,8 @@
     if (sec) ui.plis[sec] = true;
     /* UX06 : une section d'Analyses vit dans une rubrique ; on ouvre la bonne. */
     if (page === "bilan" && sec && rubriqueDeSection(sec) && ui.rubrique !== rubriqueDeSection(sec)) { ui.rubrique = rubriqueDeSection(sec); if (ui.onglet === "bilan") rendre(); }
+    /* V4-S02 : une section de Sac vit dans un onglet ; on ouvre le bon. */
+    if (page === "sac" && sec && ongletSacDeSection(sec) && ongletSac() !== ongletSacDeSection(sec)) { ui.sacOnglet = ongletSacDeSection(sec); if (ui.onglet === "sac") rendre(); }
     allerOnglet(page, !sec);
     if (sec) allerSection(sec);
     var cible = sec && document.getElementById(sec);

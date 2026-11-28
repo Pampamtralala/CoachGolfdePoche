@@ -196,7 +196,7 @@
     var ids = sacActuel(), plein = ids.length >= SAC_MAX, tout = mesuresTout();
     var h = '<button class="voile" type="button" data-a="fermer-feuille" aria-label="Fermer" tabindex="-1"></button>' +
       '<section class="feuille" role="dialog" aria-modal="true" aria-labelledby="f-titre" id="feuille">' +
-      '<header><p class="surtitre">' + t(pluriel(ids.length, "club") + " et le putter, " + (SAC_MAX + 1) + " au plus") + '</p><h2 id="f-titre">Composer mon sac</h2>' +
+      '<header><p class="surtitre">' + t(pluriel(ids.length, "club") + " et le putter, " + (SAC_MAX + 1) + " au plus") + '</p><h2 id="f-titre">Configuration du sac</h2>' +
       '<button class="fermer" type="button" data-a="fermer-feuille" id="f-fermer">Fermer</button></header>' +
       '<p class="aide">' + t("Touche un club pour le mettre dans le sac ou l'en sortir. Ses mesures sont gardées.") + '</p>';
     ["b", "f", "w"].forEach(function (fam) {

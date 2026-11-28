@@ -1751,3 +1751,13 @@ main.entree { animation: entreeVue .22s ease-out; }
 .an-q::after { content: "+"; flex: none; font-size: 20px; line-height: 1; color: var(--encre-2); }
 .an-q[aria-expanded="true"]::after { content: "−"; }
 .rb-ens-liste .carte-ens { margin: 6px 0 4px; }
+/* V4-S02 · Sac : en-tête avec l'icône de configuration, trois onglets. */
+.sac-tete .titre-ligne { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sac-tete .titre-ligne h1 { margin: 0; }
+.icone-btn { flex: none; display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid var(--filet-fort); background: var(--papier); color: var(--encre); }
+.icone-btn svg { width: 22px; height: 22px; }
+.sac-onglets { display: flex; margin-top: 12px; }
+.sac-onglets .opt { flex: 1 1 0; }
+.sac-chiffres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sac-chiffres .kpi { padding: 12px 10px; }
+.sac-chiffres .kpi-t { letter-spacing: 0; font-size: 12px; overflow-wrap: anywhere; }
