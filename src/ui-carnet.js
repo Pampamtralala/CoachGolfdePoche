@@ -282,16 +282,8 @@
     if (o === "performance") return h + '<section class="bloc sac-perf-intro" id="c-perf-clubs"><p class="aide">' + t(perimetreTexte(partiesFiltrees()) + " Période choisie dans Performance.") + '</p></section>' + clubsStatsHTML();
     if (o === "wedges") return h + '<section class="bloc" id="c-wedges"><h2>Ma matrice de wedges</h2>' + wedgesHTML() + '</section>';
     return h + '<section class="bloc sac-resume-chiffres">' + chiffresSacHTML() + '</section>' + syntheseSacHTML() +
-      '<section class="bloc" id="c-distances"><h2>' + t("Étagement") + '</h2>' + sacHTML() + distancesHTML() + '</section>' + archiveSeriesHTML();
+      vigilanceSacHTML() + archiveSeriesHTML();
   };
-
-  /* Régularité : la dispersion des balles de chaque club, quand au moins un club a plusieurs mesures. */
-  function distancesHTML() {
-    var an = analyseCarnet(mesuresTout(), sacActuel()), sel = CLUB[ui.club] ? ui.club : "f7";
-    if (!an.lignes.some(function (x) { return x.s.n > 1; })) return "";
-    return '<div class="sac-regularite"><h3>Régularité par club</h3>' + grapheDistances(an, sel) +
-      comment('<p>Distance de vol, en mètres. Le point marque ta moyenne, la barre va de ta balle la plus courte à la plus longue. La moyenne écarte la plus longue et la plus courte à partir de cinq mesures.</p>', "Lire ce graphique") + '</div>';
-  }
 
   /* ---------- Matrice de wedges ---------- */
   function constatsWedges(an) {

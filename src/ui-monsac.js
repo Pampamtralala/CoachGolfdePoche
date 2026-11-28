@@ -16,25 +16,52 @@
     var autre = x.a.id === id ? x.b : x.a, nomA = nomCourt(CLUB[autre.id] || { nom: autre.nom || "" }).toLowerCase();
     return x.type === "trou" ? "Trou de " + x.ecart + " m avec le " + nomA : x.type === "doublon" ? "Seulement " + x.ecart + " m avec le " + nomA : "Ordre à vérifier avec le " + nomA;
   }
-  function syntheseSacHTML() {
-    var ids = sacActuel(), an = analyseSac();
-    if (!ids.length) return '';
-    var peu = 0, alertes = 0;
-    var lignes = ids.map(function (id) {
-      var c = CLUB[id], M = mesuresClubParSource(id), st = statsClub(M.observees), fo = M.n >= MIN_OBS_DISTANCE ? fourchette(M.observees) : null, al = alertesDe(an, id), sh = statsClub(M.heritees);
-      if (M.n < MIN_OBS_DISTANCE) peu++; if (al.length) alertes++;
-      var etatLib = al.length ? noteEcartSac(al[0], id) : M.n < MIN_OBS_DISTANCE ? (M.n ? "Peu de coups (" + M.n + "/" + MIN_OBS_DISTANCE + ")" : "Aucun coup mesuré") : "";
-      var dist = st ? t(st.moy + " m") : M.reference != null ? '<span class="marque ref">' + t("réf. " + M.reference + " m") + '</span>' : sh ? '<span class="marque herit">' + t(sh.moy + " m hérité") + '</span>' : '<span class="marque inconnu">–</span>';
-      return '<tr class="' + (al.length ? "alerte" : M.n < MIN_OBS_DISTANCE ? "peu" : "") + '"><th scope="row"><button class="lien" type="button" data-a="sac-fiche-club" data-id="' + id + '">' + t(nomCourt(c)) + '</button>' + (etatLib ? '<small class="sac-etat">' + t(etatLib) + '</small>' : '') + '</th>' +
-        '<td class="num">' + dist + '</td>' +
-        '<td class="num">' + (fo ? t(fo.bas === fo.haut ? fo.bas + " m" : fo.bas + "–" + fo.haut + " m") : "–") + '</td>' +
-        '<td class="num">' + M.n + '</td></tr>';
-    }).join("");
-    return '<section class="bloc" id="c-synthese">' + sectionTeteHTML("Mes clubs", { aide: '<p>' + t("Distances des coups joués sur le parcours, jamais estimées. Une référence saisie (« réf. ») ou une mesure héritée s'affiche à part et n'entre pas dans les moyennes. Un club est à documenter sous " + MIN_OBS_DISTANCE + " coups mesurés.") + '</p>', aideTitre: "D'où viennent ces distances ?" }) +
-      /* V4-S02 : l'état (écarts, clubs à documenter) est dans les chiffres d'en-tête de l'onglet. */
-      '<div class="defile"><table class="carte-score sac-synthese"><thead><tr><th scope="col">Club</th><th scope="col" class="num">Distance</th><th scope="col" class="num">Plage</th><th scope="col" class="num">Coups</th></tr></thead><tbody>' +
-      lignes + '</tbody></table></div></section>';
+  /* V4-S03 : graphique d'étagement. Une ligne par club (putter hors étagement), cliquable vers sa fiche :
+     ● distance typique et ━ fourchette des coups joués (fourchette seulement à partir de 3 coups) ;
+     ○ un ou deux coups seulement ; ◇ distance de référence ; ◌ valeur héritée ; « — » si rien n'est connu. */
+  function ligneEtagement(id, an) {
+    var c = CLUB[id], M = mesuresClubParSource(id), st = statsClub(M.observees), fo = M.n >= MIN_OBS_DISTANCE ? fourchette(M.observees) : null, sh = statsClub(M.heritees), al = alertesDe(an, id);
+    var k = st && fo ? "obs" : st ? "peu" : M.reference != null ? "ref" : sh ? "herit" : "vide";
+    var v = k === "obs" || k === "peu" ? st.moy : k === "ref" ? M.reference : k === "herit" ? sh.moy : null;
+    var lib = v == null ? "—" : k === "ref" ? "réf. " + v + " m" : k === "herit" ? v + " m hérité" : v + " m";
+    /* Note seulement quand elle apprend quelque chose : écart anormal, ou un ou deux coups seulement. */
+    var note = al.length ? noteEcartSac(al[0], id) : k === "peu" ? "Peu de coups (" + M.n + "/" + MIN_OBS_DISTANCE + ")" : "";
+    var dit = nomCourt(c) + " : " + (v == null ? "distance inconnue" : lib) + (fo && fo.bas !== fo.haut ? ", habituellement " + fo.bas + " à " + fo.haut + " m" : "") + ", " + pluriel(M.n, "coup") + " joué" + (M.n > 1 ? "s" : "") + (note ? ". " + note : "") + ". Ouvrir la fiche";
+    return { id: id, k: k, v: v, fo: fo, lib: lib, note: note, alerte: !!al.length, dit: dit, n: M.n };
   }
+  function nomEtagement(c) { return c.fam === "w" ? courtSac(c) : nomCourt(c); }
+  function syntheseSacHTML() {
+    var ids = sacActuel().filter(function (id) { return id !== "putter"; }), an = analyseSac();
+    if (!ids.length) return '';
+    var L = ids.map(function (id) { return ligneEtagement(id, an); });
+    var haut = Math.max.apply(null, [150].concat(L.map(function (x) { return x.fo ? x.fo.haut : x.v || 0; }))), max = Math.ceil(haut / 50) * 50;
+    function X(m) { return (100 * m / max).toFixed(1) + "%"; }
+    var graduations = []; for (var g = 0; g <= max; g += 50) graduations.push(g);
+    var rangs = L.map(function (x) {
+      var piste = (x.fo && x.fo.bas !== x.fo.haut ? '<span class="eta-plage" style="left:' + X(x.fo.bas) + ';width:' + (100 * (x.fo.haut - x.fo.bas) / max).toFixed(1) + '%"></span>' : '') +
+        (x.v != null ? '<span class="eta-point k-' + x.k + '" style="left:' + X(x.v) + '"></span>' : '');
+      return '<li class="eta-' + x.k + (x.alerte ? ' alerte' : '') + '"><button class="eta-ligne" type="button" data-a="sac-fiche-club" data-id="' + x.id + '" aria-label="' + at(x.dit) + '">' +
+        '<span class="eta-nom">' + t(nomEtagement(CLUB[x.id])) + (x.note ? '<small>' + t(x.note) + '</small>' : '') + '</span>' +
+        '<span class="eta-piste" aria-hidden="true">' + piste + '</span><span class="eta-val">' + t(x.lib) + '</span></button></li>';
+    }).join("");
+    return '<section class="bloc" id="c-synthese">' + sectionTeteHTML("Étalonnage", { aide: '<p>' + t("Distances des coups joués sur le parcours, jamais estimées : le point est la distance typique, la barre la fourchette habituelle (à partir de " + MIN_OBS_DISTANCE + " coups). Un point creux signale un ou deux coups seulement ; un losange, ta distance de référence ; un cercle pointillé, une ancienne mesure héritée — ni l'une ni l'autre n'entre dans les moyennes. Le putter est hors étagement.") + '</p>', aideTitre: "Lire ce graphique" }) +
+      '<ol class="etagement">' + rangs + '</ol>' +
+      '<div class="eta-ligne eta-axe" aria-hidden="true"><span></span><span class="eta-axe-piste">' + graduations.map(function (g) { return '<span style="left:' + X(g) + '">' + g + '</span>'; }).join("") + '</span><span>m</span></div>' +
+      '<p class="eta-legende" aria-hidden="true"><span class="eta-point k-obs"></span>' + t("Distance typique") + '<span class="eta-plage-leg"></span>' + t("Fourchette") + '<span class="eta-point k-ref"></span>' + t("Référence") + '</p></section>';
+  }
+  /* Points de vigilance : seulement les écarts anormaux (trou, redondance, ordre), chacun vers la fiche du club ;
+     le putter (hors étagement) ; tous les écarts restent consultables, repliés. */
+  function vigilanceSacHTML() {
+    var an = analyseSac(), L = an.alertes.map(function (x) {
+      var lib = x.type === "trou" ? "Écart de " + x.ecart + " m" : x.type === "doublon" ? "Seulement " + x.ecart + " m d'écart" : "Ordre de distance inversé";
+      return '<li><button class="ligne" type="button" data-a="sac-fiche-club" data-id="' + x.b.id + '"><span class="quoi"><b>' + t(nomCourt(x.a) + " / " + nomCourt(x.b)) + '</b><small>' + t(lib) + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>';
+    });
+    L.push('<li><button class="ligne" type="button" data-a="sac-fiche-club" data-id="putter"><span class="quoi"><b>Putter</b><small>' + t("Voir sa fiche") + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>');
+    return '<section class="bloc" id="c-distances"><h2>' + t("Points de vigilance") + '</h2>' +
+      (an.alertes.length ? '' : '<p class="aide">' + t(an.paires.length ? "Aucun écart anormal entre tes clubs connus." : "Il faut au moins deux clubs voisins connus pour vérifier leurs écarts.") + '</p>') +
+      '<ul class="liste-exos">' + L.join("") + '</ul>' + sacHTML() + '</section>';
+  }
+
   /* En tête de la fiche d'un club : ce que disent ses données, par provenance. */
   function ficheClubSyntheseHTML(id) {
     var M = mesuresClubParSource(id), st = statsClub(M.observees), fo = M.n >= MIN_OBS_DISTANCE ? fourchette(M.observees) : null, sh = statsClub(M.heritees);
@@ -46,4 +73,4 @@
     var h = '<div class="fiche-club-synthese">' + kpisHTML(cases.map(function (c) { return { t: c.t, v: c.v, ctx: c.x, prov: c.prov }; }));
     return h + '</div>';
   }
-  ACTIONS["sac-fiche-club"] = function (el) { var id = el.getAttribute("data-id"); if (!CLUB[id]) return; ui.sacSel = id; ui.club = id; ouvrirSac({ sac: id }, el); };
+  ACTIONS["sac-fiche-club"] = function (el) { var id = el.getAttribute("data-id"); if (!CLUB[id] && id !== "putter") return; ui.sacSel = id; ui.club = id; ouvrirSac({ sac: id }, el); };

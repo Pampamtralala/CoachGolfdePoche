@@ -47,9 +47,11 @@
   /* Matrice de wedges : cases saisies, complétées par les coups du parcours. */
   function wedgesTout() { return fusionWedges(etat.carnet.wedges, coupsDuParcours().wedges); }
   /* Mesures, avec la distance en cours de saisie dans la fiche (aperçu en direct). */
+  /* V4-S03 : jamais d'alerte d'étagement sur des données trop rares — un club connu seulement par un ou deux coups
+     joués (sans référence ni valeur héritée) n'entre pas dans l'analyse des écarts. */
   function clubsVus() {
-    var src = mesuresTout(), ap = ui.sacApercu, out = {};
-    Object.keys(src).forEach(function (k) { out[k] = src[k]; });
+    var D = decisionDistances(), src = D.clubs, ap = ui.sacApercu, out = {};
+    Object.keys(src).forEach(function (k) { if (!(D.provenance[k] && D.provenance[k].peu)) out[k] = src[k]; });
     if (ap) { if (ap.v == null) delete out[ap.id]; else out[ap.id] = [ap.v]; }
     return out;
   }
@@ -95,7 +97,8 @@
   }
   /* V4-02 : le sac 3D est retiré ; reste le bilan des écarts entre clubs voisins. */
   function sacHTML() {
-    return '<div class="sac-bilan" id="sac-bilan"><h3>Écarts entre clubs voisins</h3>' + sacBilanHTML(analyseSac()) + '</div>';
+    var an = analyseSac();
+    return '<details class="aide-pli sac-bilan" id="sac-bilan"><summary><span class="ico-info" aria-hidden="true">i</span>' + t("Tous les écarts entre clubs voisins" + (an.paires.length ? " (" + an.ok + "/" + an.paires.length + " dans la zone idéale)" : "")) + '</summary><div>' + sacBilanHTML(an) + '</div></details>';
   }
 
   /* ---------- Dispersion des coups observés (repris de l'ancienne série, V4-03) ---------- */

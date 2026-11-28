@@ -1761,3 +1761,29 @@ main.entree { animation: entreeVue .22s ease-out; }
 .sac-chiffres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .sac-chiffres .kpi { padding: 12px 10px; }
 .sac-chiffres .kpi-t { letter-spacing: 0; font-size: 12px; overflow-wrap: anywhere; }
+/* V4-S03 · graphique d'étagement : une ligne cliquable par club, échelle commune en mètres. */
+.etagement { list-style: none; margin: 4px 0 0; padding: 0; }
+.etagement li + li { border-top: 1px solid var(--filet); }
+.eta-ligne, .eta-axe { font-size: 16px; }
+.eta-ligne { display: grid; grid-template-columns: 5.6em 1fr 5.4em; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 6px 2px; background: none; border: 0; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.eta-nom { font-weight: 650; line-height: 1.2; }
+.eta-nom small { display: block; font-weight: 400; font-size: 12.5px; color: var(--encre-2); }
+.alerte .eta-nom small { color: var(--alerte); }
+.eta-piste { position: relative; height: 22px; background: linear-gradient(var(--filet), var(--filet)) 0 50% / 100% 2px no-repeat; }
+.eta-plage { position: absolute; top: 50%; height: 8px; margin-top: -4px; border-radius: 4px; background: var(--action); opacity: .35; }
+.eta-point { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--action); border: 2px solid var(--papier); box-sizing: border-box; }
+.eta-point.k-peu { background: var(--papier); border: 2.5px solid var(--action); }
+.eta-point.k-ref { background: var(--papier); border: 2.5px solid var(--encre-2); border-radius: 2px; transform: rotate(45deg); }
+.eta-point.k-herit { background: var(--papier); border: 2px dashed var(--encre-2); }
+.alerte .eta-point.k-obs { background: var(--alerte); }
+.eta-val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 650; white-space: nowrap; }
+.eta-ref .eta-val, .eta-herit .eta-val, .eta-vide .eta-val { font-weight: 400; color: var(--encre-2); font-size: 13.5px; white-space: normal; }
+.eta-axe { min-height: 0; height: 18px; padding-top: 0; padding-bottom: 0; margin-top: 2px; cursor: default; color: var(--encre-2); }
+.eta-axe-piste { position: relative; }
+.eta-axe-piste span { position: absolute; transform: translateX(-50%); }
+.eta-legende { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 14px 0 0; font-size: 13px; color: var(--encre-2); }
+.eta-legende .eta-point { position: static; margin: 0; display: inline-block; }
+.eta-plage-leg { display: inline-block; width: 22px; height: 8px; border-radius: 4px; background: var(--action); opacity: .35; }
+.eta-ligne:focus-visible { outline: 3px solid var(--focus, var(--action)); outline-offset: 2px; border-radius: 8px; }
+.eta-axe > span { font-size: 12px; } .eta-axe > span:last-child { text-align: right; }
+.eta-axe > span:last-child { align-self: start; }
