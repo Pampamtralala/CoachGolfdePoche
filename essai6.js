@@ -66,7 +66,7 @@ const { listeSac, pageClub, reglagesClub, allerVue, menuAction } = require('./na
     await page.fill('#sac-val', String(Math.round(v.reduce((a, b) => a + b, 0) / v.length))); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' }); await listeSac(page);
   }
   await page.click('[data-a="sac-onglet"][data-v="wedges"]'); 
-  for (const [w, a, v] of [['sw', 'a1', 30], ['sw', 'a2', 45], ['gw', 'a2', 62], ['pw', 'a3', 92]]) { await page.fill(`#w-${w}-${a}`, String(v)); await page.dispatchEvent(`#w-${w}-${a}`, 'change'); }
+  for (const [w, a, v] of [['sw', 'a1', 30], ['sw', 'a2', 45], ['gw', 'a2', 62], ['pw', 'a3', 92]]) { await page.click(`[data-a="w-case"][data-w="${w}"][data-am="${a}"]`); await page.fill(`#w-${w}-${a}`, String(v)); await page.dispatchEvent(`#w-${w}-${a}`, 'change'); }
   await page.click('[data-a="sac-onglet"][data-v="distances"]'); await page.evaluate(() => window.scrollTo(0, 0)); await vue('73-distances');
   await page.click('[data-a="sac-onglet"][data-v="wedges"]'); await page.evaluate(() => document.getElementById('graph-wedges').scrollIntoView({ block: 'center' })); await vue('74-wedges');
   res.ticks = await page.evaluate(() => Array.from(document.querySelectorAll('canvas')).map(c => { const ch = Chart.getChart(c); return ch.scales.x.ticks.map(t => t.label).filter(Boolean).join(',') + ' rot ' + ch.scales.x.labelRotation; }));

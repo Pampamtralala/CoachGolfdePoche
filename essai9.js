@@ -82,7 +82,7 @@ const POLICES = [face('Barlow Condensed', 'barlow-condensed/files/barlow-condens
     await page.waitForTimeout(200);
     await page.screenshot({ path: `${D}/${nom}-4-matrice.png` });
     /* Matrice : saisir une distance pour le wedge 60° */
-    await page.fill('#w-w60-a2', '45'); await page.press('#w-w60-a2', 'Tab'); await page.waitForTimeout(150);
+    await page.click('[data-a="w-case"][data-w="w60"][data-am="a2"]'); await page.fill('#w-w60-a2', '45'); await page.press('#w-w60-a2', 'Tab'); await page.waitForTimeout(150);
     e = await lire(); verifie(e.wedges.w60 && e.wedges.w60.a2 === 45, 'matrice w60 : ' + JSON.stringify(e.wedges));
     /* Rechargement : tout persiste */
     await page.reload(); await page.waitForSelector('.tete'); await allerVue(page, 'sac');
