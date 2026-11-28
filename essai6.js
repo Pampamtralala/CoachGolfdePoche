@@ -6,7 +6,7 @@ const face = (fam, file, w) => `@font-face{font-family:"${fam}";font-weight:${w}
 const POLICES = [face('Barlow Condensed', 'barlow-condensed/files/barlow-condensed-latin-600-normal.woff2', 600), face('Barlow Condensed', 'barlow-condensed/files/barlow-condensed-latin-700-normal.woff2', 700),
   face('Atkinson Hyperlegible', 'atkinson-hyperlegible/files/atkinson-hyperlegible-latin-400-normal.woff2', 400), face('Atkinson Hyperlegible', 'atkinson-hyperlegible/files/atkinson-hyperlegible-latin-700-normal.woff2', 700),
   face('Caveat', 'caveat/files/caveat-latin-700-normal.woff2', 700)].join('\n');
-const { allerVue, menuAction } = require('./nav-essai');
+const { listeSac, pageClub, reglagesClub, allerVue, menuAction } = require('./nav-essai');
 (async () => {
   const sombre = !!process.env.SOMBRE, D = process.env.DOSSIER || 'shots6';
   fs.mkdirSync(D, { recursive: true });
@@ -62,8 +62,8 @@ const { allerVue, menuAction } = require('./nav-essai');
   await allerVue(page, 'profil'); await vue('72-profil');
   await allerVue(page, 'distances');
   for (const [c, v] of [['dr', [210, 220, 200]], ['f7', [148, 152, 150]], ['f9', [122]], ['sw', [70]]]) {
-    await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${c}"]`); if (!(await page.locator('#feuille').count())) await page.click('[data-a="sac-modifier"]');
-    await page.fill('#sac-val', String(Math.round(v.reduce((a, b) => a + b, 0) / v.length))); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' });
+    await reglagesClub(page, c);
+    await page.fill('#sac-val', String(Math.round(v.reduce((a, b) => a + b, 0) / v.length))); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' }); await listeSac(page);
   }
   await page.click('[data-a="sac-onglet"][data-v="wedges"]'); 
   for (const [w, a, v] of [['sw', 'a1', 30], ['sw', 'a2', 45], ['gw', 'a2', 62], ['pw', 'a3', 92]]) { await page.fill(`#w-${w}-${a}`, String(v)); await page.dispatchEvent(`#w-${w}-${a}`, 'change'); }

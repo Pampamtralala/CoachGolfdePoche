@@ -73,4 +73,90 @@
     var h = '<div class="fiche-club-synthese">' + kpisHTML(cases.map(function (c) { return { t: c.t, v: c.v, ctx: c.x, prov: c.prov }; }));
     return h + '</div>';
   }
-  ACTIONS["sac-fiche-club"] = function (el) { var id = el.getAttribute("data-id"); if (!CLUB[id] && id !== "putter") return; ui.sacSel = id; ui.club = id; ouvrirSac({ sac: id }, el); };
+  /* ============================================================
+     V4-S04 : FICHE INDIVIDUELLE D'UN CLUB — une page de Sac (plus une fiche par-dessus l'écran).
+     Consultation seulement : distance observée, direction en trois catégories, arrivées connues, utilisation,
+     tendance, historique, provenance au détail. Réglages (référence, loft, mesures héritées) derrière l'icône.
+     Toutes les parties ; navigation entre clubs du sac.
+     ============================================================ */
+  function clubsNavigables() { return sacActuel().concat(["putter"]); }
+  function ouvrirClubPage(id) {
+    ui.sacClub = id; ui.sacSel = id; ui.club = id; if (ui.feuille) { ui.feuille = null; ui.pile = []; rendreFeuille(); }
+    if (ui.onglet !== "sac") { allerOnglet("sac", true); ui.sacClub = id; }
+    rendre(); window.scrollTo(0, 0); var h = document.querySelector("#club-page h1"); if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); }
+  }
+  ACTIONS["sac-fiche-club"] = function (el) { var id = el.getAttribute("data-id"); if (!CLUB[id] && id !== "putter") return; ouvrirClubPage(id); };
+  ACTIONS["club-retour"] = function () {
+    var id = ui.sacClub; ui.sacClub = null; rendre();
+    var b = document.querySelector('#vue [data-a="sac-fiche-club"][data-id="' + id + '"]'); if (b) { b.scrollIntoView({ block: "center" }); b.focus({ preventScroll: true }); }
+  };
+  ACTIONS["club-reglages"] = function (el) { ouvrirSac({ sac: ui.sacClub }, el); };
+  ACTIONS["club-comparer"] = function () {
+    var F = filtresStats(); F.club = ui.sacClub; F.club2 = ""; F.derniers = 0; F.format = ""; F.parcours = ""; F.debut = ""; F.fin = "";
+    ui.sacClub = null; ui.sacOnglet = "performance"; rendre();
+    var s = document.getElementById("st-club2"); if (s) { s.scrollIntoView({ block: "center" }); s.focus({ preventScroll: true }); }
+  };
+  function ligneClubPage(lib, html, cls) { return '<li' + (cls ? ' class="' + cls + '"' : '') + '><span>' + t(lib) + '</span><span>' + html + '</span></li>'; }
+  function ficheClubPageHTML(id) {
+    var ids = clubsNavigables(), i = ids.indexOf(id), av = i > 0 ? ids[i - 1] : null, ap = i >= 0 && i < ids.length - 1 ? ids[i + 1] : null;
+    var nom = id === "putter" ? "Putter" : nomLoft(CLUB[id]);
+    function nomNav(x) { return x === "putter" ? "Putter" : nomEtagement(CLUB[x]); }
+    var h = '<div id="club-page"><section class="bloc premier club-page"><div class="titre-ligne club-nav">' +
+      '<button class="lien retour" type="button" data-a="club-retour">' + icone("retour") + ' Sac</button>' +
+      (id !== "putter" ? '<button class="icone-btn" type="button" data-a="club-reglages" aria-label="' + at("Réglages de " + nom + " : référence, loft, mesures héritées") + '">' + icone("reglages") + '</button>' : '') + '</div>';
+    if (id === "putter") {
+      var A = tableauStats(partiesAnalyse());
+      h += '<h1>Putter</h1><p class="page-sous">' + t("Hors étagement des distances : le putter se suit avec tes statistiques de putting.") + '</p></section>' +
+        '<section class="bloc">' + kpisHTML([
+          { t: "Putts", v: nbStat(A.putts18), u: "par 18 trous", n: A.parties ? pluriel(A.parties, "partie") : "" },
+          { t: "Trois-putts", v: nbStat(A.troisPutts18), u: "par 18 trous" }]) +
+        '<div class="ligne-btn"><button class="btn" type="button" data-a="aller-a" data-v="bilan" data-s="st-putting">Voir mon putting</button></div>' +
+        '<p class="aide">' + t("Les putts ne sont pas reliés à un modèle de putter : aucune statistique n'est attribuée au club lui-même.") + '</p></section>';
+      return h + navClubsHTML(av, ap, nomNav) + '</div>';
+    }
+    var P = profilClub(partiesAnalyse(), id), M = mesuresClubParSource(id), st = statsClub(M.observees), fo = M.n >= MIN_OBS_DISTANCE ? fourchette(M.observees) : null, sh = statsClub(M.heritees);
+    var D = P.direction, Ar = P.arrivees, T = P.tendance, Dist = P.distance;
+    h += '<h1>' + t(nom) + '</h1><p class="page-sous">' + t(P.n ? pluriel(P.n, "coup") + " enregistré" + (P.n > 1 ? "s" : "") + " · " + pluriel(P.parties, "partie") : "Aucun coup enregistré avec ce club") + '</p>';
+    /* Distance : observée en grand ; sinon la référence ou l'héritée, marquées, en petit. */
+    h += '<div class="club-distance"><p class="mj-val main">' + t(st ? st.moy + " m" : "–") + '</p><p class="aide">' + t(st
+        ? (fo && fo.bas !== fo.haut ? fo.bas + "–" + fo.haut + " m · " : "") + pluriel(M.n, "mesure") + " sur le parcours" + (Dist.gps ? ", dont " + Dist.gps + " au GPS" : "") + (M.n < MIN_OBS_DISTANCE ? " · peu de coups" : "")
+        : "Aucune distance mesurée sur le parcours" + (M.reference != null ? " · référence " + M.reference + " m" : sh ? " · " + sh.moy + " m hérité" : "")) + '</p></div></section>';
+    /* Direction en trois catégories : jamais de dispersion métrique dessinée ici. */
+    h += '<section class="bloc club-direction">' + sectionTeteHTML("Direction des coups", { aide: '<p>' + t("Gauche ou droite : à plus de " + SEUIL_LATERAL + " m de la ligne de visée, d'après le côté noté pour chaque coup. Trois catégories seulement, pas une mesure de dispersion.") + '</p>' }) +
+      (D.n ? '<div class="club-dir3">' + [["Gauche", D.partGauche], ["Axe", D.partCentre], ["Droite", D.partDroite]].map(function (x) {
+        return '<div class="' + (x[0] === "Axe" ? "axe" : "") + '"><span class="main">' + x[1] + ' %</span><span>' + x[0] + '</span></div>'; }).join("") + '</div>' +
+        '<p class="aide">' + t(pluriel(D.n, "direction") + " renseignée" + (D.n > 1 ? "s" : "") + (P.n > D.n ? " · " + (P.n - D.n) + " sans direction" : "")) + '</p>'
+      : '<p class="aide">' + t("Aucune direction notée : touche le côté de l'ellipse quand tu notes un coup.") + '</p>') + '</section>';
+    h += '<section class="bloc">' + kpisHTML([
+      { t: "Arrivées en jeu", v: Ar.partEnJeu == null ? "–" : Ar.partEnJeu + " %", u: Ar.n ? pluriel(Ar.n, "arrivée") + " connue" + (Ar.n > 1 ? "s" : "") : "aucune arrivée connue" },
+      { t: "Utilisation", v: P.parties ? String(Math.round(10 * P.n / P.parties) / 10).replace(".", ",") : "–", u: "coups par partie où il sert" },
+      P.departs.departs ? { t: "Départs jouables", v: P.departs.part == null ? "–" : P.departs.part + " %", u: pluriel(P.departs.n, "départ") + " renseigné" + (P.departs.n > 1 ? "s" : "") } : null
+    ]) + (T ? '<p class="aide club-tendance">' + t("Évolution, des " + T.n + " coups les plus anciens aux " + T.n + " plus récents : " + [T.axe ? "dans l'axe " + T.axe.avant + " % → " + T.axe.apres + " %" : "", T.enJeu ? "en jeu " + T.enJeu.avant + " % → " + T.enJeu.apres + " %" : ""].filter(Boolean).join(" ; ") + ".") + '</p>'
+      : '<p class="aide club-tendance">' + t("Évolution : à partir de " + MIN_TENDANCE + " coups notés avec ce club.") + '</p>') + '</section>';
+    /* Historique, comparaison, provenance : au détail. */
+    var coups = coupsDuClub(partiesAnalyse(), id).slice(-30).reverse();
+    var hist = coups.length ? '<ul class="club-hist">' + coups.map(function (x) {
+        var c = x.coup, d = estNombre(c.d) ? (c.dm ? "≈ " : "") + c.d + " m" + (c.dm ? " (estimée)" : c.gps ? " (GPS)" : "") : "distance non notée";
+        var dir = x.lateral == null ? "" : x.lateral < -SEUIL_LATERAL ? " · à gauche" : x.lateral > SEUIL_LATERAL ? " · à droite" : " · dans l'axe";
+        return '<li><span>' + t((x.jour ? dateCourte(x.jour) : "") + " · trou " + (x.trou + 1)) + '</span><span>' + t(d + dir) + '</span></li>';
+      }).join("") + '</ul>' + (P.n > 30 ? '<p class="aide">' + t("Les 30 coups les plus récents sur " + P.n + ".") + '</p>' : '') : '<p class="aide">' + t("Aucun coup noté avec ce club.") + '</p>';
+    /* Dispersion en mètres, repliée : l'ellipse seulement quand des écarts latéraux ont vraiment été notés et que les
+       distances sont observées (≥ 3 coups) — jamais une largeur estimée d'après l'index ; à défaut, le nuage des
+       distances observées (≥ 3). */
+    var E = ellipseDe(id), disp = (E && !E.estimation && !E.estimeeL && M.n >= MIN_OBS_DISTANCE ? ellipseClubHTML(id) : "") || dispersionClubHTML(M.observees);
+    h += '<section class="bloc club-details"><ul class="liste-exos">' +
+      (disp ? '<li><details class="pli-ligne club-dispersion"><summary>' + t("Dispersion") + '</summary><div class="pli-corps">' + disp + '</div></details></li>' : '') +
+      '<li><details class="pli-ligne"><summary>' + t("Historique des coups") + '</summary>' + hist + '</details></li>' +
+      '<li><button class="ligne" type="button" data-a="club-comparer"><span class="quoi"><b>' + t("Comparer un club") + '</b></span><span class="chev" aria-hidden="true">›</span></button></li>' +
+      '<li><details class="pli-ligne"><summary>' + t("Données et mesures") + '</summary><ul class="club-prov">' +
+        ligneClubPage("Distances observées", t(M.n ? pluriel(M.n, "coup") + " joué" + (M.n > 1 ? "s" : "") + (Dist.gps ? ", dont " + Dist.gps + " au GPS (roule comprise)" : "") : "aucune")) +
+        ligneClubPage("Distance de référence", t(M.reference != null ? M.reference + " m, saisie par toi, hors moyennes" : "aucune")) +
+        ligneClubPage("Mesures héritées", t(M.heritees.length ? pluriel(M.heritees.length, "mesure") + " (" + sh.moy + " m), hors moyennes" : "aucune")) +
+        ligneClubPage("Estimations", t("jamais comptées")) + '</ul></details></li></ul></section>';
+    return h + navClubsHTML(av, ap, nomNav) + '</div>';
+  }
+  function navClubsHTML(av, ap, nomNav) {
+    return '<nav class="bloc club-voisins" aria-label="Autres clubs">' +
+      (av ? '<button class="btn" type="button" data-a="sac-fiche-club" data-id="' + av + '">‹ ' + t(nomNav(av)) + '</button>' : '<span></span>') +
+      (ap ? '<button class="btn" type="button" data-a="sac-fiche-club" data-id="' + ap + '">' + t(nomNav(ap)) + ' ›</button>' : '<span></span>') + '</nav>';
+  }

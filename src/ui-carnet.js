@@ -259,7 +259,7 @@
   function ongletSac() { return ui.sacOnglet || "distances"; }
   function ongletSacDeSection(sec) { return SECTION_ONGLET_SAC[sec] || (/^(c-synthese|c-distances|c-historique|sac-bilan)$/.test(sec) ? "distances" : null); }
   ACTIONS["sac-onglet"] = function (el) {
-    ui.sacOnglet = el.getAttribute("data-v"); rendre();
+    ui.sacOnglet = el.getAttribute("data-v"); ui.sacClub = null; rendre();
     var b = app.querySelector('.sac-onglets [data-v="' + ui.sacOnglet + '"]'); if (b) b.focus({ preventScroll: true });
   };
   /* Chiffres d'en-tête de l'onglet Distances : clubs dans le sac, documentés (≥ 3 coups observés), à vérifier. */
@@ -273,6 +273,7 @@
       { t: "À vérifier", v: String(averif), u: averif === 1 ? "écart anormal" : "écarts anormaux" }], "sac-chiffres");
   }
   VUES.sac = function () {
+    if (ui.sacClub && (CLUB[ui.sacClub] || ui.sacClub === "putter")) return ficheClubPageHTML(ui.sacClub);
     var o = ongletSac();
     var h = '<section class="bloc premier sac-tete"><div class="titre-ligne"><h1>Sac</h1>' +
       '<button class="icone-btn" type="button" data-a="sac-composer" data-id="sac" aria-label="Configurer mon sac : composition, lofts, wedges">' + icone("reglages") + '</button></div>' +

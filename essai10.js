@@ -2,7 +2,7 @@
    bilan express, carte en image, meilleurs et pires trous, défi chronométré. */
 const { chromium } = require('playwright');
 const fs = require('fs');
-const { allerVue, menuAction, lirePave, saisirTrou } = require('./nav-essai');
+const { listeSac, pageClub, reglagesClub, allerVue, menuAction, lirePave, saisirTrou } = require('./nav-essai');
 const E = require('./src/engine-plus.js');
 const F = '/home/claude/polices/node_modules/@fontsource/';
 const face = (fam, file, w) => `@font-face{font-family:"${fam}";font-weight:${w};src:url(data:font/woff2;base64,${fs.readFileSync(F + file).toString('base64')}) format("woff2");}`;
@@ -70,20 +70,18 @@ function partieType(graine, pars) {
     await allerVue(page, 'sac');
     r.archive = (await page.textContent('#c-historique summary')).replace(/\s+/g, ' ').trim();
     verifie(/Séries de practice archivées \(1\)/.test(r.archive), nom + ' archive visible dans Mon sac : ' + r.archive);
+    const norm2 = x => x.replace(/\s+/g, ' ').trim();
     /* Fiche du fer 7 : dispersion et distance fiable */
     await allerVue(page, 'sac');
-    const toucher = async id => { await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${id}"]`); };
+    /* V4-S04 : la fiche du club est une page ; la dispersion y est repliée. */
+    const toucher = async id => { await pageClub(page, id); await page.$$eval('#club-page .club-dispersion', l => l.forEach(d => { d.open = true; })); };
     await vue('02-sac-f7');
-    await toucher('f7'); await page.waitForSelector('#feuille .sac-ellipse');
-    r.infoF7 = await page.$eval('#feuille .disp-chiffres', x => x.textContent.replace(/\s+/g, ' ').trim());
-    verifie(/Fiable à 90 % ?\d+ m/.test(r.infoF7), nom + ' distance fiable à 90 % dans la fiche : ' + r.infoF7);
-    const dsp = E.dispersion(e.carnet.clubs.f7);
-    r.dispersion = await page.$eval('#feuille .disp-chiffres', x => x.textContent.replace(/\s+/g, ' ').trim());
-    r.dispersionCalc = JSON.stringify(dsp);
-    verifie(r.dispersion.includes(String(dsp.p10)), nom + ' fiable à 90 % affiché = calculé (' + dsp.p10 + ')');
-    await page.waitForTimeout(450); await page.evaluate(() => document.querySelector('#feuille .sac-ellipse').scrollIntoView({ block: 'center' })); await page.waitForTimeout(150);
+    /* V4-S04 : des mesures héritées seules ne dessinent aucune dispersion (ni ellipse estimée d'après l'index) */
+    await toucher('f7');
+    r.infoF7 = norm2(await page.textContent('#club-page .club-distance'));
+    verifie(/146 m hérité/.test(r.infoF7) && await page.locator('#club-page .club-dispersion, #club-page .sac-ellipse, #club-page .disp-chiffres').count() === 0, nom + ' héritées seules : distance en petit, aucune dispersion inventée : ' + r.infoF7);
     await vue('03-fiche-dispersion');
-    await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' });
+    await listeSac(page);
 
     /* ---- 2. Départ avec deux partenaires ---- */
     await menuAction(page, 'partie-rapide');
@@ -142,15 +140,15 @@ function partieType(graine, pars) {
     verifie(/Trou 2 · par 4/.test(r.bandeau), nom + ' bandeau : ' + r.bandeau);
     await allerVue(page, 'sac');
     r.bandeauSac = await page.locator('.bandeau-partie').count();
-    await toucher('f7'); await page.waitForTimeout(200); if (!(await page.locator('#feuille').count())) await toucher('f7'); await page.waitForSelector('#feuille .sac-ellipse');
+    await toucher('f7'); await page.waitForSelector('#club-page');
     /* Depuis la PR #3, une distance GPS est une distance totale : elle n'entre pas dans la distance de vol du sac.
        Partie en cours : le profil du club (P06), comme les statistiques, ne compte que les parties terminées. */
-    r.ficheParcours = await page.$eval('#feuille .sac-parcours', x => x.textContent).catch(() => 'aucune ligne');
-    r.lienProfil = await page.$eval('#feuille [data-a="st-voir-club"]', x => x.textContent).catch(() => 'aucun lien');
-    verifie(!/150/.test(r.ficheParcours) && r.lienProfil === 'aucun lien', nom + ' distance GPS hors du sac, pas de profil avant la fin de la partie : ' + r.ficheParcours + ' · ' + r.lienProfil);
+    r.ficheParcours = await page.$eval('#club-page .club-distance', x => x.textContent);
+    r.lienProfil = await page.$eval('#club-page .page-sous', x => x.textContent);
+    verifie(!/150/.test(r.ficheParcours) && !/[1-9]\d* coups? enregistrés?/.test(r.lienProfil.replace(/^0 /, '')) , nom + ' distance GPS hors du sac, pas de profil avant la fin de la partie : ' + r.ficheParcours + ' · ' + r.lienProfil);
     e = await lire();
     r.coupsEnregistres = JSON.stringify(e.partie.coups[0]);
-    await page.click('#f-fermer'); await page.waitForSelector('#feuille', { state: 'detached' });
+    await listeSac(page);
     await page.evaluate(() => window.scrollTo(0, 0));
     await vue('09-bandeau-sac');
     await page.click('.bandeau-partie'); await page.waitForSelector('#calque-partie .pave');

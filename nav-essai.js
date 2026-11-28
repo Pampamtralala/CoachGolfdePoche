@@ -26,6 +26,15 @@ async function allerRubrique(page, id) {
   if (await b.count()) await b.click(); else if (!FAMILLE_DE[id]) await page.click(`#vue [data-a="rubrique"][data-v="${id}"]`);
   await page.waitForTimeout(40);
 }
+/* V4-S04 : la fiche d'un club est une page de Sac ; ses réglages s'ouvrent par l'icône. */
+async function listeSac(page) {
+  if (await page.locator('#club-page').count()) await page.click('#club-page [data-a="club-retour"]');
+}
+async function pageClub(page, id) {
+  await listeSac(page);
+  if (!(await page.locator('#c-synthese').count()) && await page.locator('.sac-onglets').count()) await page.click('[data-a="sac-onglet"][data-v="distances"]');
+  await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${id}"]`); await page.waitForSelector('#club-page'); }
+async function reglagesClub(page, id) { await pageClub(page, id); await page.click('#club-page [data-a="club-reglages"]'); await page.waitForSelector('#feuille'); }
 async function menuAction(page, action) {
   await ouvrirMenu(page);
   await page.click(`#recherche-l [data-a="fonction"][data-v="${action}"]`);
@@ -76,4 +85,4 @@ async function modeDetail(page) {
   const b = page.locator('#calque-partie [data-a="mode-saisie"][data-v="detail"]');
   if (await b.count() && (await b.getAttribute('aria-pressed')) !== 'true') await b.click();
 }
-module.exports = { allerRubrique, allerVue, menuAction, ouvrirMenu, lirePave, saisirTrou, trouPave, modeDetail };
+module.exports = { listeSac, pageClub, reglagesClub, allerRubrique, allerVue, menuAction, ouvrirMenu, lirePave, saisirTrou, trouPave, modeDetail };

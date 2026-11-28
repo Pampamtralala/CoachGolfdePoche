@@ -40,9 +40,9 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(/Seulement 1 m avec le fer 8/.test(r.lignes[2]) && /Seulement 1 m avec le fer 7/.test(r.lignes[3]) && /alerte/.test(r.lignes[2]), nom + ' écart anormal fer 7 / fer 8 : ' + r.lignes[2] + ' / ' + r.lignes[3]);
     r.vigilance = await page.$$eval('#c-distances .liste-exos li', l => l.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
     verifie(r.vigilance.length === 2 && /Fer 7 \/ Fer 8/.test(r.vigilance[0]) && /Putter/.test(r.vigilance[1]), nom + ' points de vigilance : ' + r.vigilance.join(' | '));
-    await page.click('#c-synthese [data-a="sac-fiche-club"][data-id="f7"]'); await page.waitForSelector('#feuille');
-    verifie(/Fer 7/.test(norm(await page.textContent('#feuille h2'))), nom + ' une ligne du graphique ouvre la fiche');
-    await page.keyboard.press('Escape'); await page.waitForSelector('#feuille', { state: 'detached' });
+    await page.click('#c-synthese [data-a="sac-fiche-club"][data-id="f7"]'); await page.waitForSelector('#club-page');
+    verifie(/Fer 7/.test(norm(await page.textContent('#club-page h1'))) && await page.locator('#feuille').count() === 0, nom + ' une ligne du graphique ouvre la page du club');
+    await page.click('#club-page [data-a="club-retour"]'); await page.waitForSelector('#c-synthese');
     /* V4-S02 : l'état du sac est dans les chiffres d'en-tête de l'onglet Distances */
     r.chiffres = await page.$$eval('.sac-chiffres .kpi', l => l.map(x => x.querySelector('.kpi-t').textContent + ' ' + x.querySelector('.kpi-v').textContent));
     verifie(r.chiffres.join(' | ') === 'Clubs 6/14 | Documentés 0 | À vérifier 2', nom + ' chiffres du sac : ' + r.chiffres.join(' | '));
@@ -54,14 +54,23 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(await page.evaluate(() => document.documentElement.scrollWidth) <= w, nom + ' Mon sac sans débordement');
     await page.screenshot({ path: `${D}/${nom}-sac.png` });
 
-    /* Fiche du fer 7 depuis le tableau */
-    await page.click('#c-synthese [data-a="sac-fiche-club"][data-id="f7"]');
-    await page.waitForSelector('#feuille.sac-fiche');
-    r.fiche = await page.$$eval('#feuille .fiche-club-synthese .kpi', l => l.map(x => x.querySelector('.kpi-t').textContent.replace(/\s+/g, ' ').trim() + ' = ' + x.querySelector('.kpi-v').textContent.replace(/\s+/g, ' ').trim()));
-    verifie(r.fiche[0] === 'Distance observée Inconnu = –' && r.fiche[1] === 'Référence Référence = –' && r.fiche[2] === 'Mesures héritées Héritée = 140 m', nom + ' fiche fer 7 : ' + r.fiche.join(' | '));
-    verifie(await page.locator('#feuille .fiche-series, #feuille [data-a="serie-ouvrir"]').count() === 0, nom + ' plus d\'évolution des séries ni de bouton de série (V4-03)');
-    await page.screenshot({ path: `${D}/${nom}-fiche.png` });
+    /* V4-S04 : page du fer 7 — consultation ; réglages derrière l'icône ; navigation entre clubs */
+    await page.click('#c-synthese [data-a="sac-fiche-club"][data-id="f7"]'); await page.waitForSelector('#club-page');
+    r.fiche = norm(await page.textContent('#club-page .club-distance')) + ' / ' + norm(await page.textContent('#club-page .page-sous'));
+    verifie(/^–/.test(r.fiche) && /140 m hérité/.test(r.fiche) && /Aucun coup enregistré/.test(r.fiche), nom + ' page fer 7 : distance inconnue, héritée en petit : ' + r.fiche);
+    await page.click('#club-page details:has(summary:text("Données et mesures")) summary');
+    r.prov = norm(await page.innerText('#club-page .club-prov'));
+    verifie(/Distance de référence aucune/.test(r.prov) && /Mesures héritées 3 mesures \(140 m\), hors moyennes/.test(r.prov) && /Estimations jamais comptées/.test(r.prov), nom + ' provenance au détail : ' + r.prov);
+    verifie(await page.locator('#club-page .fiche-series, #club-page [data-a="serie-ouvrir"], #club-page .sac-ellipse').count() === 0, nom + ' ni série, ni dispersion sans écart latéral noté');
+    r.voisins = await page.$$eval('.club-voisins button', l => l.map(b => b.textContent.trim()).join(' | '));
+    verifie(r.voisins === '‹ Bois 5 | Fer 8 ›', nom + ' navigation entre clubs : ' + r.voisins);
+    await page.screenshot({ path: `${D}/${nom}-fiche.png`, fullPage: true });
+    await page.click('.club-voisins button:has-text("Fer 8")');
+    verifie(/Fer 8/.test(norm(await page.textContent('#club-page h1'))), nom + ' club suivant');
+    await page.click('#club-page [data-a="club-reglages"]'); await page.waitForSelector('#feuille.sac-fiche');
+    verifie(/Réglages/.test(norm(await page.textContent('#feuille header'))) && await page.locator('#feuille #sac-val').count() === 1 && await page.locator('#feuille .fiche-club-synthese').count() === 0, nom + ' icône : réglages du club (référence), sans les chiffres');
     await page.keyboard.press('Escape'); await page.waitForSelector('#feuille', { state: 'detached' });
+    await page.click('#club-page [data-a="club-retour"]'); await page.waitForSelector('#c-synthese');
     r.archive = norm(await page.textContent('#c-historique summary'));
     verifie(/Séries de practice archivées \(2\)/.test(r.archive), nom + ' séries archivées consultables : ' + r.archive);
     /* V4-S02 : lien profond vers la matrice → onglet Wedges ; icône de configuration → composition */

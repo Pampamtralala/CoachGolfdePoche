@@ -6,8 +6,8 @@ const face = (fam, file, w) => `@font-face{font-family:"${fam}";font-weight:${w}
 const POLICES = [face('Barlow Condensed', 'barlow-condensed/files/barlow-condensed-latin-600-normal.woff2', 600), face('Barlow Condensed', 'barlow-condensed/files/barlow-condensed-latin-700-normal.woff2', 700),
   face('Atkinson Hyperlegible', 'atkinson-hyperlegible/files/atkinson-hyperlegible-latin-400-normal.woff2', 400), face('Atkinson Hyperlegible', 'atkinson-hyperlegible/files/atkinson-hyperlegible-latin-700-normal.woff2', 700),
   face('Caveat', 'caveat/files/caveat-latin-700-normal.woff2', 700)].join('\n');
-const { allerVue } = require('./nav-essai');
-const fiche = async (page, id) => { await page.click(`#c-synthese [data-a="sac-fiche-club"][data-id="${id}"]`); if (!(await page.locator('#feuille').count())) await page.click('[data-a="sac-modifier"]'); await page.waitForSelector('#feuille'); };
+const { listeSac, pageClub, reglagesClub, allerVue } = require('./nav-essai');
+const fiche = async (page, id) => { await reglagesClub(page, id); };
 const MOY = { dr: 225, b3: 205, b5: 190, f4: 168, f5: 163, f6: 150, f7: 140, f8: 130, f9: 112, pw: 100 };
 (async () => {
   const D = 'shots7'; fs.mkdirSync(D, { recursive: true });
@@ -27,16 +27,17 @@ const MOY = { dr: 225, b3: 205, b5: 190, f4: 168, f5: 163, f6: 150, f7: 140, f8:
     for (let i = 0; i < 8 && await page.locator('[data-a="q-suite"]').count(); i++) await page.click('[data-a="q-suite"]');
     await page.waitForSelector('.tete .ident');
     await allerVue(page, 'sac');
-    for (const [id, v] of Object.entries(MOY)) { await fiche(page, id); await page.fill('#sac-val', String(v)); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' }); }
+    for (const [id, v] of Object.entries(MOY)) { await fiche(page, id); await page.fill('#sac-val', String(v)); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' }); await listeSac(page); }
     await page.evaluate(() => { const f = document.getElementById('fete'); if (f) f.hidden = true; const m = document.getElementById('message'); if (m) m.hidden = true; });
     await page.evaluate(() => document.getElementById('c-synthese').scrollIntoView({ block: 'start' }));
     await page.waitForTimeout(500);
     await page.screenshot({ path: `${D}/${nom}-1-sac.png` });
     res[nom] = {
       largeur: await page.evaluate(() => document.documentElement.scrollWidth),
+      liste: await listeSac(page),
       debord: await page.evaluate(() => [...document.querySelectorAll('#c-synthese [data-a="sac-fiche-club"]')].filter(b => { const r = b.getBoundingClientRect(); return r.left < 0 || r.right > innerWidth; }).map(b => b.dataset.id)),
       chevauche: await page.evaluate(() => { const o = []; document.querySelectorAll('.sac-rang').forEach((r, ri) => { const l = [...r.querySelectorAll('.sac-etiq')].map(e => e.getBoundingClientRect()); l.forEach((a, i) => { if (l[i + 1] && a.right > l[i + 1].left + .5) o.push(ri + ':' + i); }); }); return o; }),
-      alertes: await page.$$eval('#c-synthese tr.alerte [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' ')),
+      alertes: await page.$$eval('#c-synthese li.alerte [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' ')),
       score: await page.$eval('#sac-bilan .sac-score', x => x.textContent)
     };
     await page.evaluate(() => document.getElementById('sac-bilan').scrollIntoView({ block: 'start' })); await page.waitForTimeout(200);
@@ -50,13 +51,13 @@ const MOY = { dr: 225, b3: 205, b5: 190, f4: 168, f5: 163, f6: 150, f7: 140, f8:
     await page.evaluate(() => { const f = document.getElementById('feuille'); f.scrollTop = f.scrollHeight; });
     await page.screenshot({ path: `${D}/${nom}-5-fiche-bas.png` });
     await page.keyboard.press('Escape'); await page.waitForTimeout(250);
-    res[nom].apresEchap = 'feuille : ' + await page.locator('#feuille').count();
+    res[nom].apresEchap = 'feuille : ' + await page.locator('#feuille').count(); await listeSac(page);
     await page.click('[data-a="sac-composer"]'); await page.waitForTimeout(350);
     await page.screenshot({ path: `${D}/${nom}-6-composer.png` });
     await page.keyboard.press('Escape');
     if (w === 390 && !sombre) {
       /* Sac parfaitement étagé : fête */
-      for (const [id, v] of Object.entries({ f4: 175, f5: 162, f9: 118, pw: 106, sw: 94 })) { await fiche(page, id); await page.fill('#sac-val', String(v)); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' }); }
+      for (const [id, v] of Object.entries({ f4: 175, f5: 162, f9: 118, pw: 106, sw: 94 })) { await fiche(page, id); await page.fill('#sac-val', String(v)); await page.press('#sac-val', 'Enter'); await page.waitForSelector('#feuille', { state: 'detached' }); await listeSac(page); }
       res.parfait = await page.$eval('#sac-bilan', x => x.textContent.replace(/\s+/g, ' ').slice(0, 90));
       res.fete = await page.$eval('#fete', x => x.hidden ? '' : x.textContent);
       await page.evaluate(() => document.getElementById('c-synthese').scrollIntoView({ block: 'start' })); await page.waitForTimeout(300);
@@ -65,7 +66,7 @@ const MOY = { dr: 225, b3: 205, b5: 190, f4: 168, f5: 163, f6: 150, f7: 140, f8:
       res[nom].sac3D = await page.locator('#sac-scene, .c3d, .s3d').count(); if (res[nom].sac3D) throw new Error('sac 3D encore présent');
       /* Retirer un club */
       await fiche(page, 'b5'); await page.click('[data-a="sac-retirer"]');
-      res.retire = await page.$$eval('#c-synthese [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' ')) + ' · ' + await page.textContent('#message');
+      await listeSac(page); res.retire = await page.$$eval('#c-synthese [data-a="sac-fiche-club"]', l => l.map(b => b.dataset.id).join(' ')) + ' · ' + await page.textContent('#message');
       res.focusRetire = await page.evaluate(() => document.activeElement.getAttribute('data-a'));
     }
     await ctx.close();
