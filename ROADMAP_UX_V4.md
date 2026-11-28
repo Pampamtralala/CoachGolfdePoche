@@ -28,8 +28,8 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | 08 | Simplifier Jouer et le bilan | P1 | 05 | À faire | — |
 | 09 | Unifier Activité et le profil (coaching et Mes données dans le profil) | P1 | 05 | À faire | — |
 | S01 | Séparer références et observations | P0 | 01 | Terminé | `ux4/s01-references` · #32 |
-| S02 | Trois onglets de Mon sac, configuration par une icône | P0 | 02–04 | **En revue** | `ux4/s02-onglets-sac` |
-| S03 | Graphique d'étagement | P0 | S01, S02 | À faire | — |
+| S02 | Trois onglets de Mon sac, configuration par une icône | P0 | 02–04 | Terminé | `ux4/s02-onglets-sac` · #39 |
+| S03 | Graphique d'étagement | P0 | S01, S02 | **En revue** | `ux4/s03-etagement` |
 | S04 | Fiches clubs individuelles | P0 | S01, S02 | À faire | — |
 | S05 | Statistiques clubs centralisées dans le Sac | P0 | S01, 07 | À faire | — |
 | S06 | Classements et comparateur | P1 | S04, S05 | À faire | — |
@@ -308,3 +308,24 @@ _07 (et le correctif « Comprendre en place ») fusionné dans `app` le 28/11 (P
 - Texte visible de Sac (onglet par défaut) : 1264 → 491 caractères (**−61 %** depuis la référence V4).
 - Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts ; essais 3, 6, 9 (matrice dans l'onglet Wedges),
   28, 33 (onglets, chiffres, lien profond, icône) adaptés. Captures 390 px vérifiées.
+
+_S02 fusionné dans `app` le 28/11 (PR #39)._
+
+### S03 — Graphique d'étagement (28/11/2026)
+
+- Onglet Distances : le tableau « Mes clubs » devient le graphique **Étalonnage** — une ligne par club (le putter est
+  hors étagement), sur une échelle commune en mètres (graduations de 50 m) :
+  - ● distance typique et ━ fourchette habituelle des **coups joués** (fourchette seulement à partir de 3 coups) ;
+  - ○ un ou deux coups seulement (« Peu de coups (n/3) ») ; ◇ distance de **référence** ; ◌ valeur **héritée** ;
+  - « — » et aucun point quand rien n'est connu (jamais d'estimation dessinée) ;
+  - écart anormal : point et note en couleur d'alerte (« Trou de 16 m avec le fer 9 »).
+  Chaque ligne est un bouton vers la fiche du club, avec une étiquette complète pour les lecteurs d'écran (distance,
+  fourchette, nombre de coups, alerte). Légende sous le graphique ; explication repliée (« Lire ce graphique »).
+- **Points de vigilance** : seulement les écarts anormaux (trou, redondance, ordre inversé), chacun vers la fiche, puis
+  le putter (« Voir sa fiche ») ; la liste de tous les écarts (zone idéale) reste consultable, repliée.
+- **Jamais d'alerte sur des données trop rares** : un club connu seulement par un ou deux coups joués (sans référence
+  ni valeur héritée) n'entre plus dans l'analyse des écarts (`clubsVus` s'appuie sur la provenance de
+  `distancesDecision`).
+- Retiré : le graphique « Régularité par club » (canvas de l'ère practice) ; la fourchette observée le remplace.
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 39 verts ; essais 33 (lignes, marqueurs, inconnu,
+  alerte, vigilance, ouverture de fiche) et 37 (état vide sans point inventé) adaptés. Captures 390 px vérifiées.

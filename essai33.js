@@ -29,23 +29,27 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.reload(); await page.waitForSelector('.tete');
     await page.click('#barre [data-v="sac"]');
 
-    /* Synthèse en tête, avant le sac 3D */
+    /* V4-S03 : graphique d'étagement (une ligne cliquable par club), puis points de vigilance */
     r.ordre = await page.$$eval('#vue h2', l => l.map(x => x.textContent.trim()).slice(0, 3));
-    verifie(r.ordre[0] === 'Mes clubs' && r.ordre[1] === 'Étagement', nom + ' synthèse d\'abord, étagement ensuite : ' + r.ordre.join(' | '));
-    r.lignes = await page.$$eval('#c-synthese tbody tr', l => l.map(tr => Array.from(tr.cells).map(c => c.textContent.replace(/\s+/g, ' ').trim()).join(' ; ')));
-    verifie(r.lignes.length === 5, nom + ' cinq clubs : ' + r.lignes.length);
-    verifie(/^Driver ?Aucun coup mesuré ; 225 m hérité ; – ; 0$/.test(r.lignes[0]), nom + ' driver (hérité, hors moyennes) : ' + r.lignes[0]);
-    verifie(/réf\. 139 m/.test(r.lignes[3]), nom + ' fer 8 : référence affichée à part : ' + r.lignes[3]);
-    verifie(/^Bois 5 ?Aucun coup mesuré ; – ; – ; 0$/.test(r.lignes[1]), nom + ' bois 5 sans mesure, sans estimation : ' + r.lignes[1]);
-    verifie(/Seulement 1 m avec le fer 8/.test(r.lignes[2]) && /Seulement 1 m avec le fer 7/.test(r.lignes[3]), nom + ' écart anormal fer 7 / fer 8 : ' + r.lignes[2] + ' / ' + r.lignes[3]);
-    verifie(await page.locator('#c-synthese tr.alerte').count() >= 1, nom + ' ligne en alerte marquée');
+    verifie(r.ordre[0] === 'Étalonnage' && r.ordre[1] === 'Points de vigilance', nom + ' étalonnage d\'abord, vigilance ensuite : ' + r.ordre.join(' | '));
+    r.lignes = await page.$$eval('#c-synthese .etagement li', l => l.map(li => li.className + ' ; ' + li.querySelector('.eta-nom').textContent.replace(/\s+/g, ' ').trim() + ' ; ' + li.querySelector('.eta-val').textContent.trim() + ' ; ' + li.querySelectorAll('.eta-point').length + ' ; ' + li.querySelector('button').getAttribute('aria-label').replace(/\u00a0/g, ' ')));
+    verifie(r.lignes.length === 5, nom + ' cinq clubs, putter hors étagement : ' + r.lignes.length);
+    verifie(/^eta-herit ; Driver ; 225\sm hérité ; 1 ; Driver : 225\sm hérité, 0\scoup joué\./.test(r.lignes[0]), nom + ' driver (hérité, marqueur distinct) : ' + r.lignes[0]);
+    verifie(/eta-ref/.test(r.lignes[3]) && /réf\. 139 m/.test(r.lignes[3]), nom + ' fer 8 : référence, marqueur distinct : ' + r.lignes[3]);
+    verifie(/^eta-vide ; Bois 5 ; — ; 0 ; Bois 5 : distance inconnue/.test(r.lignes[1]), nom + ' bois 5 : inconnu « — », sans point ni estimation : ' + r.lignes[1]);
+    verifie(/Seulement 1 m avec le fer 8/.test(r.lignes[2]) && /Seulement 1 m avec le fer 7/.test(r.lignes[3]) && /alerte/.test(r.lignes[2]), nom + ' écart anormal fer 7 / fer 8 : ' + r.lignes[2] + ' / ' + r.lignes[3]);
+    r.vigilance = await page.$$eval('#c-distances .liste-exos li', l => l.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
+    verifie(r.vigilance.length === 2 && /Fer 7 \/ Fer 8/.test(r.vigilance[0]) && /Putter/.test(r.vigilance[1]), nom + ' points de vigilance : ' + r.vigilance.join(' | '));
+    await page.click('#c-synthese [data-a="sac-fiche-club"][data-id="f7"]'); await page.waitForSelector('#feuille');
+    verifie(/Fer 7/.test(norm(await page.textContent('#feuille h2'))), nom + ' une ligne du graphique ouvre la fiche');
+    await page.keyboard.press('Escape'); await page.waitForSelector('#feuille', { state: 'detached' });
     /* V4-S02 : l'état du sac est dans les chiffres d'en-tête de l'onglet Distances */
     r.chiffres = await page.$$eval('.sac-chiffres .kpi', l => l.map(x => x.querySelector('.kpi-t').textContent + ' ' + x.querySelector('.kpi-v').textContent));
     verifie(r.chiffres.join(' | ') === 'Clubs 6/14 | Documentés 0 | À vérifier 2', nom + ' chiffres du sac : ' + r.chiffres.join(' | '));
     r.onglets = await page.$$eval('.sac-onglets button', l => l.map(b => b.textContent + (b.getAttribute('aria-pressed') === 'true' ? '*' : '')).join(' | '));
     verifie(r.onglets === 'Distances* | Performance | Wedges', nom + ' trois onglets, Distances par défaut : ' + r.onglets);
     r.resume = norm(await page.$eval('#c-synthese .aide-pli > div', x => x.textContent));
-    verifie(/jamais estimées/.test(r.resume) && /sous 3 coups mesurés/.test(r.resume) && /n'entre pas dans les moyennes/.test(r.resume.replace(/’/g, "'")), nom + ' résumé : ' + r.resume);
+    verifie(/jamais estimées/.test(r.resume) && /à partir de 3 coups/.test(r.resume) && /n'entre dans les moyennes/.test(r.resume.replace(/’/g, "'")), nom + ' résumé : ' + r.resume);
     verifie(await page.locator('#sac-scene, .c3d, .s3d').count() === 0, nom + ' sac 3D retiré (V4-02)');
     verifie(await page.evaluate(() => document.documentElement.scrollWidth) <= w, nom + ' Mon sac sans débordement');
     await page.screenshot({ path: `${D}/${nom}-sac.png` });

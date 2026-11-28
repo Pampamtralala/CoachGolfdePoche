@@ -30,7 +30,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     /* États vides */
     verifie(await page.locator('#mj-kpi, #mj-perf').count() === 0 && await page.locator('#premiers-pas').count() === 1, nom + ' Accueil vide : les premiers pas seuls, sans carte vide');
     await page.click('#barre [data-v="sac"]');
-    verifie(/Aucun coup mesuré/.test(norm(await page.textContent('#vue'))) && await page.locator('#vue [data-a="serie-ouvrir"]').count() === 0, nom + ' Mon sac : inconnu affiché, plus de série');
+    verifie(await page.locator('#vue .etagement .eta-vide').count() >= 1 && await page.locator('#vue .etagement .eta-point').count() === 0 && await page.locator('#vue [data-a="serie-ouvrir"]').count() === 0, nom + ' Sac : inconnus « — » sans point inventé, plus de série');
     await page.click('#barre [data-v="journal"]');
     verifie(/Rien pour l.instant/.test(norm(await page.textContent('#c-chronologie'))), nom + ' Journal : état vide');
     await page.click('#barre [data-v="bilan"]');
