@@ -32,7 +32,7 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | S03 | Graphique d'étagement | P0 | S01, S02 | Terminé | `ux4/s03-etagement` · #40 |
 | S04 | Fiches clubs individuelles | P0 | S01, S02 | Terminé | `ux4/s04-fiches-clubs` · #41 |
 | S05 | Statistiques clubs centralisées dans le Sac | P0 | S01, 07 | Terminé | `ux4/s05-stats-clubs` · #42 |
-| S06 | Classements et comparateur | P1 | S04, S05 | À faire | — |
+| S06 | Classements et comparateur | P1 | S04, S05 | En revue | ux4/s06-classements |
 | S07 | Matrice de wedges (cellules, références ≠ observations) | P1 | S01, S02 | À faire | — |
 | S08 | Putter et configuration | P1 | S02 | À faire | — |
 | S09 | Identité visuelle (clair, sombre, plein soleil) | P2 | tout le reste | À faire | — |
@@ -407,3 +407,20 @@ _S05 et 08 fusionnés dans `app` le 28/11 (PR #42, #43)._
 - Texte visible d'Activité (référence V4 → maintenant) : 1638 → 931 caractères (**−43 %**).
 - Vérifications : `npm test`, `test-startup.js`, essais 3 à 40 verts ; essais 23 (Mes données), 28 (Activité), 32
   (dix rubriques, lien qualité → profil), 35 (types, note visible, filtres repliés) adaptés.
+
+_09 fusionné dans `app` le 28/11 (PR #44)._
+
+### S06 — Classements et comparateur (28/11/2026)
+
+- **Classements** dans Sac › Performance (bloc « Profil des clubs ») : un seul critère à la fois — **Précision**
+  (part dans l'axe), **Utilisation** (coups par partie), **En jeu** (arrivées en jeu), **Départs** (départs
+  jouables). Chaque ligne : rang, club, **effectif** (« 56 coups », « 12 départs »…), barre relative au premier,
+  valeur ; elle ouvre la fiche du club. **Aucune note globale.**
+- Un club n'est classé qu'à partir de **5 observations** pour le critère ; en dessous, il est listé à part, sans rang,
+  dans un pli « Peu de données, non classés » (valeur ou « — »). Un club sans départ n'apparaît pas au classement des
+  départs.
+- **Comparateur** : le tableau côte à côte reste (chaque pourcentage avec son n, « – » si rien) ; il précise qu'il
+  porte sur les mêmes parties et la même période (filtre commun avec Performance). Les deux profils détaillés passent
+  dans un pli « Détail des deux profils ».
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 40 verts ; essai 19 étendu (quatre classements triés,
+  effectifs visibles, pas de score global).

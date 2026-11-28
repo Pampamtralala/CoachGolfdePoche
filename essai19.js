@@ -54,6 +54,16 @@ const PARS = [4, 4, 3, 5, 4, 4, 3, 5, 4];
     verifie(r.clubs.length === 2 && /^Driver/.test(r.clubs[0]) && /Fer 7/.test(r.clubs[1]), nom + ' clubs notés dans l\'ordre du sac : ' + r.clubs.join(' | '));
     r.familles = (await page.textContent('.departs-familles')).replace(/\s+/g, ' ').trim();
     verifie(/Driver/.test(r.familles) && /départs renseignés/.test(r.familles), nom + ' départs par type de club : ' + r.familles);
+    /* V4-S06 : classements à un critère, effectifs visibles, pas de score global */
+    const classement = () => page.$$eval('#st-classements li', l => l.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
+    for (const tri of ['precision', 'utilisation', 'arrivees', 'departs']) {
+      await page.click('#st-classements [data-a="st-tri-clubs"][data-v="' + tri + '"]');
+      const c = await classement(), vals = c.filter(x => /^\d/.test(x)).map(x => parseFloat(x.replace(/^.*?(\d+(?:,\d)?)( %)?$/, '$1').replace(',', '.')));
+      verifie(c.length >= 1 && c.every(x => /\d+ (coup|arrivée|départ)s?/.test(x)) && vals.every((v, i) => !i || vals[i - 1] >= v), nom + ' classement ' + tri + ' trié, effectifs : ' + c.join(' / '));
+      r['cl_' + tri] = c;
+    }
+    verifie(!/score global|note globale :/i.test(await page.textContent('#st-classements')) || /pas de note globale/.test(await page.textContent('#st-classements')), nom + ' pas de score global');
+    await page.click('#st-classements [data-a="st-tri-clubs"][data-v="precision"]');
     r.echantillon = (await page.textContent('.stats-club-echantillon')).replace(/\s+/g, ' ');
     verifie(/Driver : 56 coups notés sur 8 parties/.test(r.echantillon), nom + ' échantillon du club : ' + r.echantillon);
     r.lignes = await page.$$eval('#st-clubs .club-ligne', l => l.map(x => x.textContent.replace(/\s+/g, ' ').trim()));

@@ -38,8 +38,8 @@
     return '<div class="defile"><table class="carte-score comparaison-clubs"><caption class="vh">' + t("Comparaison de " + nomClub(A.club) + " et " + nomClub(B.club)) + '</caption>' +
       '<thead><tr><th scope="col"></th><th scope="col" class="num">' + t(nomClub(A.club)) + '</th><th scope="col" class="num">' + t(nomClub(B.club)) + '</th></tr></thead><tbody>' +
       l.map(function (x) { return '<tr><th scope="row">' + t(x.lib) + '</th>' + cel(x.a, x.id) + cel(x.b, x.id) + '</tr>'; }).join("") + '</tbody></table></div>' +
-      '<p class="aide">' + t("n : nombre de coups (ou de départs) sur lequel repose chaque pourcentage. Sous une dizaine, l'écart entre deux clubs peut être le hasard.") + '</p>' +
-      profilClubHTML(A, true) + profilClubHTML(B, true);
+      '<p class="aide">' + t("Côte à côte, sur les mêmes parties et la même période. n : nombre de coups (ou de départs) sur lequel repose chaque pourcentage. Sous une dizaine, l'écart entre deux clubs peut être le hasard. Pas de note globale : chaque ligne se lit seule.") + '</p>' +
+      '<details class="aide-pli"><summary><span class="ico-info" aria-hidden="true">i</span>' + t("Détail des deux profils") + '</summary><div>' + profilClubHTML(A, true) + profilClubHTML(B, true) + '</div></details>';
   }
   function departsFamillesHTML(F) {
     if (!F.length) return "";
@@ -49,16 +49,53 @@
           '<td class="num">' + pctClub(f.part) + '</td><td class="num">' + pctClub(f.n ? Math.round(100 * f.gauche / f.n) : null) + '</td><td class="num">' + pctClub(f.n ? Math.round(100 * f.droite / f.n) : null) + '</td></tr>';
       }).join("") + '</tbody></table></div><p class="aide">' + t("Notés en saisie Standard ou Expert, sans distance : le club de départ et la mise en jeu suffisent.") + '</p>';
   }
+  /* V4-S06 : classements des clubs sur un seul critère à la fois — jamais de score global. Même période (filtre commun),
+     effectif affiché ; sous MIN_CLASSEMENT observations, le club est listé à part, sans rang. */
+  var MIN_CLASSEMENT = 5;
+  var TRIS_CLUBS = [
+    { id: "precision", court: "Précision", lib: "dans l'axe", unite: "%", n: "coup" },
+    { id: "utilisation", court: "Utilisation", lib: "coups par partie", unite: "", n: "coup" },
+    { id: "arrivees", court: "En jeu", lib: "arrivées en jeu", unite: "%", n: "arrivée" },
+    { id: "departs", court: "Départs", lib: "départs jouables", unite: "%", n: "départ" }];
+  function mesureTri(P, tri) {
+    if (tri === "precision") return { v: P.direction.partCentre, n: P.direction.n };
+    if (tri === "utilisation") return { v: P.parties ? Math.round(10 * P.n / P.parties) / 10 : null, n: P.n };
+    if (tri === "arrivees") return { v: P.arrivees.partEnJeu, n: P.arrivees.n };
+    return P.departs.departs ? { v: P.departs.part, n: P.departs.n } : null;
+  }
+  function classementClubsHTML(l, notes) {
+    var tri = ui.triClubs || "precision", T = TRIS_CLUBS.filter(function (x) { return x.id === tri; })[0];
+    var L = notes.map(function (x) { var P = profilClub(l, x.club), m = mesureTri(P, tri); return m ? { club: x.club, v: m.v, n: m.n, parties: P.parties } : null; }).filter(Boolean);
+    var classes = L.filter(function (x) { return x.v != null && x.n >= MIN_CLASSEMENT; }).sort(function (a, b) { return b.v - a.v || b.n - a.n; });
+    var peu = L.filter(function (x) { return !(x.v != null && x.n >= MIN_CLASSEMENT); });
+    var max = classes.length ? Math.max.apply(null, classes.map(function (x) { return x.v; })) || 1 : 1;
+    function val(x) { return x.v == null ? "—" : (T.unite === "%" ? x.v + " %" : String(x.v).replace(".", ",")); }
+    function ligne(x, rang) {
+      return '<li><button class="ligne classement-l" type="button" data-a="sac-fiche-club" data-id="' + at(x.club) + '" aria-label="' + at((rang ? rang + ". " : "") + nomClub(x.club) + " : " + val(x) + " " + T.lib + ", " + pluriel(x.n, T.n) + ". Ouvrir la fiche") + '">' +
+        '<span class="cl-rang">' + (rang || "") + '</span><span class="quoi"><b>' + t(nomClub(x.club)) + '</b><small>' + t(pluriel(x.n, T.n) + (tri === "utilisation" && x.parties ? " en " + pluriel(x.parties, "partie") : "")) + '</small></span>' +
+        (rang ? '<span class="cl-barre" aria-hidden="true"><span style="width:' + Math.max(4, Math.round(100 * x.v / max)) + '%"></span></span>' : '<span></span>') +
+        '<span class="cl-val">' + t(val(x)) + '</span></button></li>';
+    }
+    return '<div id="st-classements"><h3 class="titre-bloc">Classements</h3>' +
+      '<div class="fenetres" role="group" aria-label="Classer les clubs par">' + TRIS_CLUBS.map(function (x) {
+        return '<button class="opt" type="button" data-a="st-tri-clubs" data-v="' + x.id + '" aria-pressed="' + (x.id === tri) + '">' + t(x.court) + '</button>'; }).join("") + '</div>' +
+      (classes.length ? '<ol class="liste-exos classement-clubs">' + classes.map(function (x, i) { return ligne(x, i + 1); }).join("") + '</ol>'
+        : '<p class="aide">' + t("Aucun club n'a encore " + MIN_CLASSEMENT + " " + T.n + "s ou plus pour ce critère.") + '</p>') +
+      (peu.length ? '<details class="aide-pli"><summary><span class="ico-info" aria-hidden="true">i</span>' + t("Peu de données, non classés (" + peu.length + ")") + '</summary><div><ul class="liste-exos classement-clubs">' + peu.map(function (x) { return ligne(x, 0); }).join("") + '</ul></div></details>' : '') +
+      '<p class="aide">' + t("Un seul critère à la fois, sur la période choisie : " + T.lib + ". Classés à partir de " + MIN_CLASSEMENT + " " + T.n + "s ; pas de note globale.") + '</p></div>';
+  }
+  ACTIONS["st-tri-clubs"] = function (el) { ui.triClubs = el.getAttribute("data-v"); rendreEtFocus(el); };
   function clubsStatsHTML() {
     var F = filtresStats(), l = selectionStats(F), notes = clubsNotes(l, ordreClubs()), fam = departsParFamille(l);
     var h = '<section class="bloc" id="st-clubs"><h2>Profil des clubs</h2>';
     if (!notes.length && !fam.length) return h + etatVideHTML("sac", "Aucun club à profiler", "Note tes coups en saisie Expert pour suivre chaque club. En saisie Standard, le club de départ suffit pour suivre tes mises en jeu par type de club.") + '</section>';
+    if (notes.length) h += classementClubsHTML(l, notes);
     h += departsFamillesHTML(fam);
     if (notes.length) {
       var ids = notes.map(function (x) { return x.club; });
       if (ids.indexOf(F.club) < 0) F.club = notes.slice().sort(function (a, b) { return b.n - a.n; })[0].club;
       if (F.club2 && (ids.indexOf(F.club2) < 0 || F.club2 === F.club)) F.club2 = "";
-      h += '<h3 class="titre-bloc">Club par club</h3><div class="fenetres clubs-notes" role="group" aria-label="Club">' + notes.map(function (x) {
+      h += '<h3 class="titre-bloc" id="st-comparateur">Club par club et comparateur</h3><div class="fenetres clubs-notes" role="group" aria-label="Club">' + notes.map(function (x) {
         return '<button class="opt" type="button" data-a="st-club" data-v="' + at(x.club) + '" aria-pressed="' + (x.club === F.club) + '">' + t(nomClub(x.club)) + ' <small>' + x.n + '</small></button>';
       }).join("") + '</div>';
       var A = profilClub(l, F.club);
