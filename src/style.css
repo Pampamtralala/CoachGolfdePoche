@@ -1812,3 +1812,10 @@ main.entree { animation: entreeVue .22s ease-out; }
 .jouer-cta .tb-titre { display: flex; align-items: center; gap: 10px; font-size: 22px; color: inherit; }
 .jouer-cta .tb-meta { color: inherit; opacity: .9; }
 .jouer-cta .ico { color: inherit; }
+/* V4-S06 · classements des clubs : un critère, effectif visible, barre relative au premier. */
+.liste-exos .ligne.classement-l { display: grid; grid-template-columns: 1.4em minmax(0, 1fr) 28% 3.6em; min-height: 54px; align-items: center; gap: 10px; }
+.cl-rang { font-weight: 700; color: var(--encre-2); font-variant-numeric: tabular-nums; }
+.cl-barre { height: 8px; border-radius: 4px; background: var(--filet); overflow: hidden; }
+.cl-barre > span { display: block; height: 100%; background: var(--action); border-radius: 4px; }
+.cl-val { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+#st-classements .fenetres { margin-bottom: 8px; }
