@@ -896,7 +896,9 @@
   /* ---------- Profil ---------- */
   function donneesProfilHTML() {
     var h = '';
-    h += '<section class="bloc" id="donnees"><h2>Tes données</h2><p id="statut-donnees">' + t(texteStatut()) + '</p>' +
+    /* V4-09 : Mes données = qualité (repliée), vérifier et corriger, sauvegarder et restaurer, effacer. */
+    h += '<section class="bloc" id="donnees"><h2>Mes données</h2><p id="statut-donnees">' + t(texteStatut()) + '</p>' +
+      '<details class="aide-pli" id="qualite-donnees-pli"' + (ui.plis["qualite-donnees"] ? ' open' : '') + '><summary><span class="ico-info" aria-hidden="true">i</span>' + t("Qualité de mon carnet : mesuré, estimé, déclaré") + '</summary><div>' + qualiteGolfHTML() + '</div></details>' +
       '<p><button class="btn principal" type="button" data-a="md-ouvrir">Voir et corriger mes données</button></p><div class="ligne-btn">' +
       '<button class="btn" type="button" data-a="exporter-fichier">Télécharger mes données (.json)</button><label class="btn" for="importer-fichier">Restaurer un fichier<input id="importer-fichier" type="file" accept=".json,application/json" data-c="importer-fichier" class="vh"></label><button class="btn" type="button" data-a="exporter">Copier une sauvegarde</button><button class="btn" type="button" data-a="importer">Restaurer un texte</button></div>' +
       '<p style="margin-top:14px"><button class="btn danger large" type="button" data-a="effacer">Tout effacer</button></p></section>';
@@ -911,7 +913,7 @@
   }
   /* V4-05 : le coaching, facultatif, est rangé dans le profil. */
   function coachingProfilHTML() {
-    return '<section class="bloc" id="profil-coaching">' + sectionTeteHTML("Coaching") + '<div class="ligne-btn">' +
+    return '<section class="bloc" id="profil-coaching">' + sectionTeteHTML("Coaching") + '<p class="aide">' + t("Facultatif : programme, exercices, défis et badges.") + '</p><div class="ligne-btn">' +
       '<button class="btn" type="button" data-a="onglet" data-v="practice">Programme</button>' +
       '<button class="btn" type="button" data-a="onglet" data-v="exercices">Exercices et défis</button>' +
       '<button class="btn" type="button" data-a="aller-a" data-v="practice" data-s="badges">Badges</button></div></section>';
@@ -926,7 +928,7 @@
     if (p.questionnaire === false) {
       h += '</dl><p class="aide">' + t("Pas encore de programme d'entraînement : il est facultatif. Le questionnaire (5 minutes) le règle sur ton niveau, tes défauts et ton temps.") + '</p>' +
         '<div class="ligne-btn"><button class="btn large" type="button" data-a="ac-profil">Modifier mon prénom, ma main ou mon index</button><button class="btn" type="button" data-a="modifier">Créer mon programme</button></div></section>';
-      return h + indexViseHTML() + coachingProfilHTML() + donneesProfilHTML() + aProposHTML() + versionHTML();
+      return h + indexViseHTML() + donneesProfilHTML() + coachingProfilHTML() + aProposHTML() + versionHTML();
     }
     h += '<dt>Palier</dt><dd>' + t(pal.n + " · " + pal.nom) + '</dd>' +
       '<dt>Objectif</dt><dd>' + t(obj ? obj.t : "") + '</dd>' +

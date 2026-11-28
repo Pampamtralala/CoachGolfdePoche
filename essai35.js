@@ -43,10 +43,15 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(/Record : ta meilleure partie/.test(r.marquants) && /Ton meilleur index/.test(r.marquants), nom + ' faits marquants : ' + r.marquants);
     /* Filtres */
     verifie(await page.locator('[data-a="chrono-type"][data-v="practice"]').count() === 0, nom + ' plus de filtre practice');
-    await page.click('[data-a="chrono-type"][data-v="note"]');
-    r.note = norm(await page.textContent('#c-chronologie .chrono-ev'));
-    verifie(/Golf du Lac/.test(r.note) && /« Beaucoup de vent »/.test(r.note), nom + ' filtre notes, note visible : ' + r.note);
-    await page.click('[data-a="chrono-type"][data-v="tous"]'); await page.click('[data-a="chrono-periode"][data-v="30"]');
+    /* V4-09 : Tout · Parties · Entraînement en vue ; la note reste visible sur sa partie ; période et parcours repliés */
+    r.types = await page.$$eval('[data-a="chrono-type"]', l => l.map(b => b.textContent.trim()).join(' | '));
+    verifie(r.types === 'Tout | Parties | Entraînement', nom + ' types : ' + r.types);
+    r.note = norm(await page.textContent('#c-chronologie .chrono-ev:has(.chrono-note)'));
+    verifie(/Golf du Lac/.test(r.note) && /« Beaucoup de vent »/.test(r.note), nom + ' note visible sur sa partie : ' + r.note);
+    await page.click('[data-a="chrono-type"][data-v="partie"]');
+    verifie(await page.locator('#c-chronologie .chrono-ev').count() === 5, nom + ' filtre parties : ' + await page.locator('#c-chronologie .chrono-ev').count());
+    await page.click('[data-a="chrono-type"][data-v="tous"]');
+    await page.click('#c-chronologie .chrono-filtres summary'); await page.click('[data-a="chrono-periode"][data-v="30"]');
     verifie(await page.locator('#c-chronologie .chrono-ev').count() === 1, nom + ' filtre 30 jours : ' + await page.locator('#c-chronologie .chrono-ev').count());
     await page.click('[data-a="chrono-periode"][data-v="tout"]'); await page.selectOption('#chrono-parcours', 'p2');
     verifie(await page.locator('#c-chronologie .chrono-ev').count() === 1, nom + ' filtre parcours');

@@ -7626,7 +7626,7 @@ function filtrerChronologie(ev, f) {
   /* ---------- État et sauvegarde ---------- */
   var CLE = "coachgolf.v1";
   /* Date de fabrication de la page, écrite par le build : elle s'affiche dans le profil. */
-  var VERSION_APPLI = "2026-11-28T09:16:09.798Z";
+  var VERSION_APPLI = "2026-11-28T12:29:40.289Z";
   function etatNeuf() {
     return { v: 1, schemaDonnees: 2, profil: null, plan: null, fait: {}, scores: {}, cycle: 1, historique: [], maj: 0,
       carnet: { clubs: {}, references: {}, wedges: {}, sac: null, lofts: {}, wedgesPerso: [], series: [] }, defis: {}, parties: [], partie: null, parcours: [], detail: false, ecranClair: false, conditions: null };
@@ -8513,7 +8513,9 @@ function filtrerChronologie(ev, f) {
   /* ---------- Profil ---------- */
   function donneesProfilHTML() {
     var h = '';
-    h += '<section class="bloc" id="donnees"><h2>Tes données</h2><p id="statut-donnees">' + t(texteStatut()) + '</p>' +
+    /* V4-09 : Mes données = qualité (repliée), vérifier et corriger, sauvegarder et restaurer, effacer. */
+    h += '<section class="bloc" id="donnees"><h2>Mes données</h2><p id="statut-donnees">' + t(texteStatut()) + '</p>' +
+      '<details class="aide-pli" id="qualite-donnees-pli"' + (ui.plis["qualite-donnees"] ? ' open' : '') + '><summary><span class="ico-info" aria-hidden="true">i</span>' + t("Qualité de mon carnet : mesuré, estimé, déclaré") + '</summary><div>' + qualiteGolfHTML() + '</div></details>' +
       '<p><button class="btn principal" type="button" data-a="md-ouvrir">Voir et corriger mes données</button></p><div class="ligne-btn">' +
       '<button class="btn" type="button" data-a="exporter-fichier">Télécharger mes données (.json)</button><label class="btn" for="importer-fichier">Restaurer un fichier<input id="importer-fichier" type="file" accept=".json,application/json" data-c="importer-fichier" class="vh"></label><button class="btn" type="button" data-a="exporter">Copier une sauvegarde</button><button class="btn" type="button" data-a="importer">Restaurer un texte</button></div>' +
       '<p style="margin-top:14px"><button class="btn danger large" type="button" data-a="effacer">Tout effacer</button></p></section>';
@@ -8528,7 +8530,7 @@ function filtrerChronologie(ev, f) {
   }
   /* V4-05 : le coaching, facultatif, est rangé dans le profil. */
   function coachingProfilHTML() {
-    return '<section class="bloc" id="profil-coaching">' + sectionTeteHTML("Coaching") + '<div class="ligne-btn">' +
+    return '<section class="bloc" id="profil-coaching">' + sectionTeteHTML("Coaching") + '<p class="aide">' + t("Facultatif : programme, exercices, défis et badges.") + '</p><div class="ligne-btn">' +
       '<button class="btn" type="button" data-a="onglet" data-v="practice">Programme</button>' +
       '<button class="btn" type="button" data-a="onglet" data-v="exercices">Exercices et défis</button>' +
       '<button class="btn" type="button" data-a="aller-a" data-v="practice" data-s="badges">Badges</button></div></section>';
@@ -8543,7 +8545,7 @@ function filtrerChronologie(ev, f) {
     if (p.questionnaire === false) {
       h += '</dl><p class="aide">' + t("Pas encore de programme d'entraînement : il est facultatif. Le questionnaire (5 minutes) le règle sur ton niveau, tes défauts et ton temps.") + '</p>' +
         '<div class="ligne-btn"><button class="btn large" type="button" data-a="ac-profil">Modifier mon prénom, ma main ou mon index</button><button class="btn" type="button" data-a="modifier">Créer mon programme</button></div></section>';
-      return h + indexViseHTML() + coachingProfilHTML() + donneesProfilHTML() + aProposHTML() + versionHTML();
+      return h + indexViseHTML() + donneesProfilHTML() + coachingProfilHTML() + aProposHTML() + versionHTML();
     }
     h += '<dt>Palier</dt><dd>' + t(pal.n + " · " + pal.nom) + '</dd>' +
       '<dt>Objectif</dt><dd>' + t(obj ? obj.t : "") + '</dd>' +
@@ -10084,6 +10086,8 @@ function filtrerChronologie(ev, f) {
     if (sec) ui.plis[sec] = true;
     /* V4-S05 : les statistiques par club ont quitté Performance pour Sac ; les anciens liens y mènent. */
     if (page === "bilan" && sec === "st-clubs") page = "sac";
+    /* V4-09 : la qualité des données est dans le profil (Mes données). */
+    if (page === "bilan" && sec === "qualite-donnees") { page = "profil"; ui.plis["qualite-donnees"] = true; }
     /* UX06 : une section d'Analyses vit dans une rubrique ; on ouvre la bonne. */
     if (page === "bilan" && sec && rubriqueDeSection(sec) && ui.rubrique !== rubriqueDeSection(sec)) { ui.rubrique = rubriqueDeSection(sec); if (ui.onglet === "bilan") rendre(); }
     /* V4-S02 : une section de Sac vit dans un onglet ; on ouvre le bon. */
@@ -12388,7 +12392,7 @@ function filtrerChronologie(ev, f) {
       '<p class="aide">' + t(q.total ? q.total + " observations · distances : " + q.statuts.declaree + " déclarées, " + q.statuts.gps + " GPS (approximatives, roulé compris), " + q.statuts.inconnue + " inconnues · " + q.direction + " directions gauche / droite connues." : "Les observations apparaîtront après tes premières mesures et tes premiers coups.") + '</p>' +
       (q.total ? '<p class="aide">' + t("Une distance inconnue peut être remplacée par ta moyenne du club, affichée « ≈ … (moyenne) » : c'est une estimation, jamais comptée comme une mesure ni réintégrée dans ta moyenne.") + '</p>' : '') +
       '<p class="aide">' + t(suivis ? confirmes + " scores confirmés sur " + suivis + " trous historiques. Les anciens scores restent utilisables, mais leur confirmation n’est pas connue." : "Aucun trou historique pour le moment.") + '</p>' +
-      '<p class="aide">Chaque coup peut conserver sa source (manuel, GPS, import), sa date, son type de distance et son niveau de confiance. Les anciennes données non documentées restent marquées comme inconnues.</p><p><button class="btn" type="button" data-a="md-ouvrir">Voir et corriger mes données</button></p></section>';
+      '<p class="aide">Chaque coup peut conserver sa source (manuel, GPS, import), sa date, son type de distance et son niveau de confiance. Les anciennes données non documentées restent marquées comme inconnues.</p></section>';
   }
 
   /* ---------- Statistiques : chiffres clés ---------- */
@@ -13038,11 +13042,14 @@ function filtrerChronologie(ev, f) {
   VUES.journal = function () {
     var n = etat.parties.length;
     /* UX10 : la chronologie de toutes les activités d'abord, puis le tableau des parties. */
-    return '<section class="bloc premier"><h1>Activité</h1>' +
-      '<p class="aide">' + t(n ? pluriel(n, "partie") + " enregistrée" + (n > 1 ? "s" : "") + ", avec tes séries de practice, ton index et tes défis." : "Ton historique de parties, de notes et de rapports.") + '</p>' +
-      '<div class="raccourcis"><button class="btn" type="button" data-a="j-ouvrir">Bilans, notes et rapports</button>' +
-      '<button class="btn" type="button" data-a="j-ouvrir">Importer des parties</button>' +
-      '<button class="btn" type="button" data-a="md-ouvrir">Mes données</button></div></section>' + chronologieHTML() + dernieresPartiesHTML();
+    /* V4-09 : Activité = l'historique. Chronologie (parties, entraînement, index), puis bilans et rapports, le tableau des
+       parties replié (carte, notes, corrections), et un lien vers Mes données (profil) pour import, export, sauvegarde. */
+    return '<section class="bloc premier"><h1>Mon activité</h1></section>' + chronologieHTML() +
+      '<section class="bloc"><ul class="liste-exos">' +
+      '<li><button class="ligne" type="button" data-a="j-ouvrir"><span class="quoi"><b>' + t("Bilans et rapports") + '</b><small>' + t("Mois, trimestre, saison · notes et import") + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>' +
+      '<li><button class="ligne" type="button" data-a="aller-a" data-v="profil" data-s="donnees"><span class="quoi"><b>' + t("Mes données et sauvegardes") + '</b><small>' + t("Dans ton profil : exporter, restaurer, corriger") + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>' +
+      '</ul></section>' +
+      (n ? '<section class="bloc"><details class="pli-ligne carte-tb"' + (ui.plis["c-parties"] ? ' open' : '') + '><summary>' + t("Tableau de mes parties (" + n + ")") + '</summary>' + dernieresPartiesHTML() + '</details></section>' : dernieresPartiesHTML());
   };
   function rendreJournal(focusSel) {
     var f = document.getElementById("feuille"), y = f ? f.scrollTop : 0;
@@ -13289,18 +13296,16 @@ function filtrerChronologie(ev, f) {
     { id: "sg", nom: "Coups perdus estimés", court: "Coups perdus" },
     { id: "parcours", nom: "Analyse des parcours", court: "Parcours" },
     { id: "trous", nom: "Analyse des trous", court: "Trous" },
-    { id: "qualite", nom: "Qualité des données", court: "Qualité" },
     { id: "comprendre", nom: "Comprendre mon jeu", court: "Comprendre" }
   ];
   /* Sections d'avant (liens, recherche, cartes de Mon jeu) → rubrique qui les contient désormais. */
   var SECTION_RUBRIQUE = { "st-putting": "putting", releves: "putting", "st-erreurs": "erreurs", evitables: "erreurs", defauts: "erreurs",
-    "qualite-donnees": "qualite", sg: "sg", notes: "perf", carte: "perf", priorites: "perf", palier: "perf", reperes: "perf",
+    sg: "sg", notes: "perf", carte: "perf", priorites: "perf", palier: "perf", reperes: "perf",
     "rb-perf": "perf", "rb-mej": "mej", "rb-attaque": "attaque", "rb-petit": "petit", "rb-parcours": "parcours", "rb-trous": "trous", "rb-comprendre": "comprendre" };
   function rubriqueDeSection(s) { return SECTION_RUBRIQUE[s] || null; }
   function rubriqueCourante() { var r = ui.rubrique; return RUBRIQUES_AN.some(function (x) { return x.id === r; }) ? r : "perf"; }
   /* V4-07 : cinq familles. Les rubriques restent les unités de contenu (liens profonds inchangés) ; une famille à
-     plusieurs rubriques montre une seconde rangée de pastilles. Les statistiques par club vivent dans Sac (S05) ; qualité des données → profil (09) :
-     en attendant, cette rubrique reste joignable par son lien, hors familles. */
+     plusieurs rubriques montre une seconde rangée de pastilles. Les statistiques par club vivent dans Sac (S05), la qualité des données dans le profil (09). */
   var FAMILLES_AN = [
     { id: "resultats", nom: "Résultats et progression", court: "Résultats", rub: ["perf"] },
     { id: "secteurs", nom: "Secteurs de jeu", court: "Secteurs", rub: ["mej", "attaque", "petit", "putting"] },
@@ -13371,14 +13376,13 @@ function filtrerChronologie(ev, f) {
     if (rb === "sg") return "Estimation par secteur face à un joueur d'index " + indexVise() + ".";
     if (rb === "parcours") return pluriel(etat.parcours.length, "parcours") + " enregistré" + (etat.parcours.length > 1 ? "s" : "") + ".";
     if (rb === "trous") return "Les trous joués au moins 3 fois sur ton parcours le plus joué.";
-    if (rb === "qualite") return "Provenance de tes données : mesurées, estimées, déclarées ou inconnues.";
     return "";
   }
   /* Contenu d'une rubrique. B : les blocs déjà calculés par la page (palier, plis). */
   function rubriqueHTML(rb, B) {
     var R0 = RUBRIQUES_AN.filter(function (x) { return x.id === rb; })[0], l = partiesFiltrees(), A = tableauStats(l);
     var tete = '<section class="bloc rb-tete" id="rb-' + rb + '"><h2>' + t(R0.nom) + '</h2>' + (resumeRubrique(rb, A, l) ? '<p class="chapo rb-resume">' + t(resumeRubrique(rb, A, l)) + '</p>' : '') + ensRubriqueHTML(rb);
-    var vide = !A.parties && rb !== "comprendre" && rb !== "qualite" && rb !== "parcours";
+    var vide = !A.parties && rb !== "comprendre" && rb !== "parcours";
     /* Sans partie dans le filtre : les blocs tirés du profil déclaré restent (palier, carte, défauts, objectif). */
     if (vide) {
       var sansPartie = '<p class="aide">' + t(etat.parties.length ? "Aucune partie dans cette période : élargis-la (« Toutes »)." : "Pas encore de partie : les chiffres de cette rubrique apparaîtront après ta première partie.") + '</p></section>';
@@ -13400,7 +13404,6 @@ function filtrerChronologie(ev, f) {
     if (rb === "trous") return tete + reponseRubriqueHTML("trous") + (etat.parcours.length ? '<h3 class="titre-bloc">' + t("Trou par trou") + '</h3><ul class="liste-exos">' + etat.parcours.map(function (pc) {
       return '<li><button class="ligne" type="button" data-a="pc-ouvrir" data-id="' + pc.id + '"><span class="quoi"><b>' + t(pc.nom) + '</b><small>' + t("Score moyen et passages de chaque trou") + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>';
     }).join("") + '</ul>' : '') + '</section>';
-    if (rb === "qualite") return tete + '<div class="ligne-btn"><button class="btn" type="button" data-a="md-ouvrir">Mes données : vérifier, corriger, sauvegarder</button></div></section>' + qualiteGolfHTML();
     /* V4-07 : Comprendre mon jeu = enseignements (toutes les parties) + questions (filtre commun), tout en place. */
     var Re = etat.parties.length ? calculEns() : { liste: [], parties: 0 }, n = Re.liste.length, vus = ui.ensTout ? Re.liste : Re.liste.slice(0, 5);
     var ens = '<div id="rb-ens"><h3 class="titre-bloc">' + t("Ce que disent tes données") + '</h3>' + (n ? '<ul class="liste-exos rb-ens-liste">' + vus.map(ligneEnsHTML).join("") + '</ul>' +
@@ -13412,7 +13415,7 @@ function filtrerChronologie(ev, f) {
   /* Liens de fin de « Résultats » : rapports, statistiques par club (bientôt dans Sac, S05), qualité des données. */
   function liensResultatsHTML() {
     return '<section class="bloc rb-liens"><ul class="liste-exos">' +
-      [["j-ouvrir", "", "", "Bilans, journal et rapports"], ["aller-a", "sac", "st-clubs", "Statistiques par club (dans Sac)"], ["rubrique", "qualite", "", "Qualité de mes données"]].map(function (x) {
+      [["j-ouvrir", "", "", "Bilans, journal et rapports"], ["aller-a", "sac", "st-clubs", "Statistiques par club (dans Sac)"], ["aller-a", "profil", "donnees", "Qualité de mes données (profil)"]].map(function (x) {
         return '<li><button class="ligne" type="button" data-a="' + x[0] + '"' + (x[1] ? ' data-v="' + x[1] + '"' : '') + (x[2] ? ' data-s="' + x[2] + '"' : '') + '><span class="quoi"><b>' + t(x[3]) + '</b></span><span class="chev" aria-hidden="true">›</span></button></li>';
       }).join("") + '</ul></section>';
   }
@@ -13612,16 +13615,19 @@ function filtrerChronologie(ev, f) {
   function chronologieHTML() {
     var C = etatChrono(), tout = evenementsChrono(), B = bornesChrono(C.periode);
     var l = filtrerChronologie(tout, { type: C.type, debut: B.debut, fin: B.fin, parcours: C.parcours });
-    var h = '<section class="bloc" id="c-chronologie"><h2>Chronologie</h2>';
+    var h = '<section class="bloc" id="c-chronologie"><h2 class="vh">Chronologie</h2>';
     if (!tout.length) return h + '<p class="aide">' + t("Rien pour l'instant : tes parties, mises à jour d'index et défis apparaîtront ici, du plus récent au plus ancien.") + '</p></section>';
     var marq = tout.filter(function (e) { return e.marquant; }).slice(0, 3);
     if (marq.length) h += '<div class="chrono-marquants"><p class="titre-liste">' + t("Faits marquants") + '</p><ul class="constats">' + marq.map(function (e) {
       return '<li><button class="lien" type="button" ' + lienChrono(e) + '>' + t(e.marquant) + '</button> ' + t("(" + dateCourte(e.d) + " · " + e.titre + ")") + '</li>';
     }).join("") + '</ul></div>';
-    h += '<div class="fenetres periode" role="group" aria-label="Type d\'activité">' + TYPES_CHRONO.map(function (x) { return '<button class="opt" type="button" data-a="chrono-type" data-v="' + x.id + '" aria-pressed="' + (C.type === x.id) + '">' + t(x.lib) + '</button>'; }).join("") + '</div>' +
+    /* V4-09 : Tout · Parties · Entraînement en vue (index et notes restent dans « Tout ») ; période et parcours repliés. */
+    var typesVus = TYPES_CHRONO.filter(function (x) { return /^(tous|partie|entrainement)$/.test(x.id) || x.id === C.type; });
+    h += '<div class="fenetres periode" role="group" aria-label="Type d\'activité">' + typesVus.map(function (x) { return '<button class="opt" type="button" data-a="chrono-type" data-v="' + x.id + '" aria-pressed="' + (C.type === x.id) + '">' + t(x.lib) + '</button>'; }).join("") + '</div>' +
+      '<details class="aide-pli chrono-filtres"' + (C.periode !== "tout" || C.parcours || C.filtres ? ' open' : '') + '><summary><span class="ico-info" aria-hidden="true">i</span>' + t("Période et parcours") + '</summary><div>' +
       '<div class="fenetres periode" role="group" aria-label="Période">' + PERIODES_CHRONO.map(function (x) { return '<button class="opt" type="button" data-a="chrono-periode" data-v="' + x.id + '" aria-pressed="' + (C.periode === x.id) + '">' + t(x.lib) + '</button>'; }).join("") + '</div>' +
       (etat.parcours.length > 1 ? '<div class="champ"><label for="chrono-parcours">Parcours</label><select id="chrono-parcours" data-c="chrono-parcours"><option value="">Tous les parcours</option>' +
-        etat.parcours.map(function (pc) { return '<option value="' + at(pc.id) + '"' + (pc.id === C.parcours ? " selected" : "") + '>' + t(pc.nom) + '</option>'; }).join("") + '</select></div>' : '');
+        etat.parcours.map(function (pc) { return '<option value="' + at(pc.id) + '"' + (pc.id === C.parcours ? " selected" : "") + '>' + t(pc.nom) + '</option>'; }).join("") + '</select></div>' : '') + '</div></details>';
     h += '<p class="aide chrono-compte">' + t(l.length ? pluriel(l.length, "événement") + (l.length < tout.length ? " sur " + tout.length : "") + "." : "Aucun événement pour ces filtres.") + '</p>';
     var mois = null, vus = l.slice(0, C.n);
     h += '<ol class="chrono-liste">' + vus.map(function (e) {
@@ -13635,9 +13641,9 @@ function filtrerChronologie(ev, f) {
     return h + '</section>';
   }
   ACTIONS["chrono-type"] = function (el) { var C = etatChrono(); C.type = el.getAttribute("data-v"); C.n = NB_CHRONO; rendreEtFocus(el); };
-  ACTIONS["chrono-periode"] = function (el) { var C = etatChrono(); C.periode = el.getAttribute("data-v"); C.n = NB_CHRONO; rendreEtFocus(el); };
+  ACTIONS["chrono-periode"] = function (el) { var C = etatChrono(); C.filtres = true; C.periode = el.getAttribute("data-v"); C.n = NB_CHRONO; rendreEtFocus(el); };
   ACTIONS["chrono-plus"] = function () { etatChrono().n += NB_CHRONO; rendre(); };
-  CHANGEMENTS["chrono-parcours"] = function (el) { etatChrono().parcours = el.value; rendre(); var s = document.getElementById("chrono-parcours"); if (s) s.focus({ preventScroll: true }); };
+  CHANGEMENTS["chrono-parcours"] = function (el) { etatChrono().filtres = true; etatChrono().parcours = el.value; rendre(); var s = document.getElementById("chrono-parcours"); if (s) s.focus({ preventScroll: true }); };
 
   /* ============================================================
      COACHING REPOSITIONNÉ (roadmap UX, UX13)

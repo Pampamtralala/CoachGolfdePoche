@@ -61,11 +61,14 @@
   VUES.journal = function () {
     var n = etat.parties.length;
     /* UX10 : la chronologie de toutes les activités d'abord, puis le tableau des parties. */
-    return '<section class="bloc premier"><h1>Activité</h1>' +
-      '<p class="aide">' + t(n ? pluriel(n, "partie") + " enregistrée" + (n > 1 ? "s" : "") + ", avec tes séries de practice, ton index et tes défis." : "Ton historique de parties, de notes et de rapports.") + '</p>' +
-      '<div class="raccourcis"><button class="btn" type="button" data-a="j-ouvrir">Bilans, notes et rapports</button>' +
-      '<button class="btn" type="button" data-a="j-ouvrir">Importer des parties</button>' +
-      '<button class="btn" type="button" data-a="md-ouvrir">Mes données</button></div></section>' + chronologieHTML() + dernieresPartiesHTML();
+    /* V4-09 : Activité = l'historique. Chronologie (parties, entraînement, index), puis bilans et rapports, le tableau des
+       parties replié (carte, notes, corrections), et un lien vers Mes données (profil) pour import, export, sauvegarde. */
+    return '<section class="bloc premier"><h1>Mon activité</h1></section>' + chronologieHTML() +
+      '<section class="bloc"><ul class="liste-exos">' +
+      '<li><button class="ligne" type="button" data-a="j-ouvrir"><span class="quoi"><b>' + t("Bilans et rapports") + '</b><small>' + t("Mois, trimestre, saison · notes et import") + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>' +
+      '<li><button class="ligne" type="button" data-a="aller-a" data-v="profil" data-s="donnees"><span class="quoi"><b>' + t("Mes données et sauvegardes") + '</b><small>' + t("Dans ton profil : exporter, restaurer, corriger") + '</small></span><span class="chev" aria-hidden="true">›</span></button></li>' +
+      '</ul></section>' +
+      (n ? '<section class="bloc"><details class="pli-ligne carte-tb"' + (ui.plis["c-parties"] ? ' open' : '') + '><summary>' + t("Tableau de mes parties (" + n + ")") + '</summary>' + dernieresPartiesHTML() + '</details></section>' : dernieresPartiesHTML());
   };
   function rendreJournal(focusSel) {
     var f = document.getElementById("feuille"), y = f ? f.scrollTop : 0;

@@ -44,7 +44,7 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     verifie(await courant() === 'Accueil', nom + ' ouverture sur Accueil');
 
     /* Chaque entrée */
-    const attendu = { accueil: ['Accueil', 'h1'], bilan: ['Performance', '.familles'], parcours: ['Jouer', '.jouer-liens'], sac: ['Sac', '.sac-onglets'], journal: ['Activité', '.carte-score.parties'] };
+    const attendu = { accueil: ['Accueil', 'h1'], bilan: ['Performance', '.familles'], parcours: ['Jouer', '.jouer-liens'], sac: ['Sac', '.sac-onglets'], journal: ['Activité', '#c-chronologie'] };
     for (const [v, [lib, sel]] of Object.entries(attendu)) {
       await page.click(`#barre [data-a="onglet"][data-v="${v}"]`);
       const c = await courant(), ok = await page.locator('#vue ' + sel).count();
@@ -57,10 +57,11 @@ const norm = s => s.replace(/[\s  ]+/g, ' ').trim();
     await page.click('#barre [data-a="onglet"][data-v="journal"]');
     r.lignes = await page.locator('.carte-score.parties tbody tr').count();
     verifie(r.lignes === 10, nom + ' journal : ' + r.lignes + ' parties sur 10');
+    await page.click('#vue details.pli-ligne > summary'); /* V4-09 : tableau des parties replié */
     await page.click('.carte-score.parties [data-a="pt-carte"]');
     verifie(await page.locator('#feuille').count() === 1, nom + ' journal : la carte de score s\'ouvre');
     await page.keyboard.press('Escape');
-    verifie(await page.locator('#vue [data-a="j-ouvrir"]').count() >= 1 && await page.locator('#vue [data-a="md-ouvrir"]').count() === 1, nom + ' journal : bilans, import et Mes données accessibles');
+    verifie(await page.locator('#vue [data-a="j-ouvrir"]').count() >= 1 && await page.locator('#vue [data-a="aller-a"][data-v="profil"][data-s="donnees"]').count() === 1, nom + ' Activité : bilans et rapports, lien vers Mes données (profil)');
     /* Jouer renvoie vers le journal */
     await page.click('#barre [data-a="onglet"][data-v="parcours"]');
     verifie(await page.locator('#vue .journal-lien').count() === 0 && await page.locator('#vue [data-a="dp-ancienne"]').count() === 1, nom + ' Jouer : collecte seulement (l\'historique est dans Activité), ancienne partie proposée');

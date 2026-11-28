@@ -29,16 +29,19 @@
   function chronologieHTML() {
     var C = etatChrono(), tout = evenementsChrono(), B = bornesChrono(C.periode);
     var l = filtrerChronologie(tout, { type: C.type, debut: B.debut, fin: B.fin, parcours: C.parcours });
-    var h = '<section class="bloc" id="c-chronologie"><h2>Chronologie</h2>';
+    var h = '<section class="bloc" id="c-chronologie"><h2 class="vh">Chronologie</h2>';
     if (!tout.length) return h + '<p class="aide">' + t("Rien pour l'instant : tes parties, mises à jour d'index et défis apparaîtront ici, du plus récent au plus ancien.") + '</p></section>';
     var marq = tout.filter(function (e) { return e.marquant; }).slice(0, 3);
     if (marq.length) h += '<div class="chrono-marquants"><p class="titre-liste">' + t("Faits marquants") + '</p><ul class="constats">' + marq.map(function (e) {
       return '<li><button class="lien" type="button" ' + lienChrono(e) + '>' + t(e.marquant) + '</button> ' + t("(" + dateCourte(e.d) + " · " + e.titre + ")") + '</li>';
     }).join("") + '</ul></div>';
-    h += '<div class="fenetres periode" role="group" aria-label="Type d\'activité">' + TYPES_CHRONO.map(function (x) { return '<button class="opt" type="button" data-a="chrono-type" data-v="' + x.id + '" aria-pressed="' + (C.type === x.id) + '">' + t(x.lib) + '</button>'; }).join("") + '</div>' +
+    /* V4-09 : Tout · Parties · Entraînement en vue (index et notes restent dans « Tout ») ; période et parcours repliés. */
+    var typesVus = TYPES_CHRONO.filter(function (x) { return /^(tous|partie|entrainement)$/.test(x.id) || x.id === C.type; });
+    h += '<div class="fenetres periode" role="group" aria-label="Type d\'activité">' + typesVus.map(function (x) { return '<button class="opt" type="button" data-a="chrono-type" data-v="' + x.id + '" aria-pressed="' + (C.type === x.id) + '">' + t(x.lib) + '</button>'; }).join("") + '</div>' +
+      '<details class="aide-pli chrono-filtres"' + (C.periode !== "tout" || C.parcours || C.filtres ? ' open' : '') + '><summary><span class="ico-info" aria-hidden="true">i</span>' + t("Période et parcours") + '</summary><div>' +
       '<div class="fenetres periode" role="group" aria-label="Période">' + PERIODES_CHRONO.map(function (x) { return '<button class="opt" type="button" data-a="chrono-periode" data-v="' + x.id + '" aria-pressed="' + (C.periode === x.id) + '">' + t(x.lib) + '</button>'; }).join("") + '</div>' +
       (etat.parcours.length > 1 ? '<div class="champ"><label for="chrono-parcours">Parcours</label><select id="chrono-parcours" data-c="chrono-parcours"><option value="">Tous les parcours</option>' +
-        etat.parcours.map(function (pc) { return '<option value="' + at(pc.id) + '"' + (pc.id === C.parcours ? " selected" : "") + '>' + t(pc.nom) + '</option>'; }).join("") + '</select></div>' : '');
+        etat.parcours.map(function (pc) { return '<option value="' + at(pc.id) + '"' + (pc.id === C.parcours ? " selected" : "") + '>' + t(pc.nom) + '</option>'; }).join("") + '</select></div>' : '') + '</div></details>';
     h += '<p class="aide chrono-compte">' + t(l.length ? pluriel(l.length, "événement") + (l.length < tout.length ? " sur " + tout.length : "") + "." : "Aucun événement pour ces filtres.") + '</p>';
     var mois = null, vus = l.slice(0, C.n);
     h += '<ol class="chrono-liste">' + vus.map(function (e) {
@@ -52,6 +55,6 @@
     return h + '</section>';
   }
   ACTIONS["chrono-type"] = function (el) { var C = etatChrono(); C.type = el.getAttribute("data-v"); C.n = NB_CHRONO; rendreEtFocus(el); };
-  ACTIONS["chrono-periode"] = function (el) { var C = etatChrono(); C.periode = el.getAttribute("data-v"); C.n = NB_CHRONO; rendreEtFocus(el); };
+  ACTIONS["chrono-periode"] = function (el) { var C = etatChrono(); C.filtres = true; C.periode = el.getAttribute("data-v"); C.n = NB_CHRONO; rendreEtFocus(el); };
   ACTIONS["chrono-plus"] = function () { etatChrono().n += NB_CHRONO; rendre(); };
-  CHANGEMENTS["chrono-parcours"] = function (el) { etatChrono().parcours = el.value; rendre(); var s = document.getElementById("chrono-parcours"); if (s) s.focus({ preventScroll: true }); };
+  CHANGEMENTS["chrono-parcours"] = function (el) { etatChrono().filtres = true; etatChrono().parcours = el.value; rendre(); var s = document.getElementById("chrono-parcours"); if (s) s.focus({ preventScroll: true }); };

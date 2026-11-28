@@ -80,7 +80,7 @@
       '<p class="aide">' + t(q.total ? q.total + " observations · distances : " + q.statuts.declaree + " déclarées, " + q.statuts.gps + " GPS (approximatives, roulé compris), " + q.statuts.inconnue + " inconnues · " + q.direction + " directions gauche / droite connues." : "Les observations apparaîtront après tes premières mesures et tes premiers coups.") + '</p>' +
       (q.total ? '<p class="aide">' + t("Une distance inconnue peut être remplacée par ta moyenne du club, affichée « ≈ … (moyenne) » : c'est une estimation, jamais comptée comme une mesure ni réintégrée dans ta moyenne.") + '</p>' : '') +
       '<p class="aide">' + t(suivis ? confirmes + " scores confirmés sur " + suivis + " trous historiques. Les anciens scores restent utilisables, mais leur confirmation n’est pas connue." : "Aucun trou historique pour le moment.") + '</p>' +
-      '<p class="aide">Chaque coup peut conserver sa source (manuel, GPS, import), sa date, son type de distance et son niveau de confiance. Les anciennes données non documentées restent marquées comme inconnues.</p><p><button class="btn" type="button" data-a="md-ouvrir">Voir et corriger mes données</button></p></section>';
+      '<p class="aide">Chaque coup peut conserver sa source (manuel, GPS, import), sa date, son type de distance et son niveau de confiance. Les anciennes données non documentées restent marquées comme inconnues.</p></section>';
   }
 
   /* ---------- Statistiques : chiffres clés ---------- */

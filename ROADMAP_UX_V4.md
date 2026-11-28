@@ -25,13 +25,13 @@ Base : branche `app` au commit `bb64f5d` (roadmap V3, UX01 à UX14, entièrement
 | 05 | Arborescence et navigation (Accueil · Performance · Jouer · Sac · Activité) | P0 | 02–04 | Terminé | `ux4/05-navigation` · #36 |
 | 06 | Refaire l'accueil | P0 | 04, 05 | Terminé | `ux4/06-accueil` · #37 |
 | 07 | Regrouper Performance (5 familles) | P0 | 04, 05 | Terminé | `ux4/07-performance` · #38 |
-| 08 | Simplifier Jouer et le bilan | P1 | 05 | **En revue** | `ux4/08-jouer` |
-| 09 | Unifier Activité et le profil (coaching et Mes données dans le profil) | P1 | 05 | À faire | — |
+| 08 | Simplifier Jouer et le bilan | P1 | 05 | Terminé | `ux4/08-jouer` · #43 |
+| 09 | Unifier Activité et le profil (coaching et Mes données dans le profil) | P1 | 05 | **En revue** | `ux4/09-activite-profil` |
 | S01 | Séparer références et observations | P0 | 01 | Terminé | `ux4/s01-references` · #32 |
 | S02 | Trois onglets de Mon sac, configuration par une icône | P0 | 02–04 | Terminé | `ux4/s02-onglets-sac` · #39 |
 | S03 | Graphique d'étagement | P0 | S01, S02 | Terminé | `ux4/s03-etagement` · #40 |
 | S04 | Fiches clubs individuelles | P0 | S01, S02 | Terminé | `ux4/s04-fiches-clubs` · #41 |
-| S05 | Statistiques clubs centralisées dans le Sac | P0 | S01, 07 | **En revue** | `ux4/s05-stats-clubs` |
+| S05 | Statistiques clubs centralisées dans le Sac | P0 | S01, 07 | Terminé | `ux4/s05-stats-clubs` · #42 |
 | S06 | Classements et comparateur | P1 | S04, S05 | À faire | — |
 | S07 | Matrice de wedges (cellules, références ≠ observations) | P1 | S01, S02 | À faire | — |
 | S08 | Putter et configuration | P1 | S02 | À faire | — |
@@ -388,3 +388,22 @@ _S04 fusionné dans `app` le 28/11 (PR #41)._
   vers les parties) ; textes de la carte GPS raccourcis.
 - Vérifications : `npm test`, `test-startup.js`, essais 3 à 40 verts ; **nouvel `essai40.js`** (accès de Jouer,
   ancienne partie : date d'abord, libellés, futur refusé, partie datée) ; essai 28 adapté.
+
+_S05 et 08 fusionnés dans `app` le 28/11 (PR #42, #43)._
+
+### 09 — Unifier Activité et le profil (28/11/2026)
+
+- **Activité = l'historique** : « Mon activité », la chronologie (pastilles **Tout · Parties · Entraînement** ;
+  index et notes restent dans « Tout » ; période et parcours repliés, ouverts dès qu'on s'en sert ; faits marquants ;
+  regroupement par mois ; chaque événement ouvre son détail), puis **Bilans et rapports** (mois, trimestre, saison,
+  notes et import) et **Mes données et sauvegardes** (lien vers le profil) ; le tableau des parties (carte de score,
+  notes, corrections) est replié. Retirés : le paragraphe d'introduction (qui parlait encore de séries de practice) et
+  la rangée de boutons. Aucun filtre « practice ».
+- **Profil** : **Mes données** passe avant le coaching — état d'enregistrement, **Qualité de mon carnet** (mesuré,
+  estimé, déclaré) repliée, Voir et corriger, sauvegarder / restaurer (fichier ou texte), Tout effacer. Le
+  **coaching** est en second (« Facultatif : programme, exercices, défis et badges »).
+- **Performance** perd la rubrique « Qualité des données » : le lien de fin de Résultats et les anciens liens
+  (`#qualite-donnees`) ouvrent le profil, pli de qualité ouvert. Il reste dix rubriques dans cinq familles.
+- Texte visible d'Activité (référence V4 → maintenant) : 1638 → 931 caractères (**−43 %**).
+- Vérifications : `npm test`, `test-startup.js`, essais 3 à 40 verts ; essais 23 (Mes données), 28 (Activité), 32
+  (dix rubriques, lien qualité → profil), 35 (types, note visible, filtres repliés) adaptés.
